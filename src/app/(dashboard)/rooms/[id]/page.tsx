@@ -4,12 +4,14 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, Plus, Clock, CheckCircle } from 'lucide-react'
 import type { RoomInventory } from '@/lib/types'
 
-// 16 個盤點項目的顯示設定
+// 盤點項目的顯示設定
 const INVENTORY_FIELDS: {
   key: keyof RoomInventory
   label: string
   format: (v: any) => string
 }[] = [
+  { key: 'tenant_name',        label: '住戶',    format: v => v ?? '—' },
+  { key: 'owner_name',         label: '房東',    format: v => v ?? '—' },
   { key: 'bed_type',           label: '床型',    format: v => v ?? '—' },
   { key: 'headboard_type',     label: '床頭',    format: v => v ?? '—' },
   { key: 'bedside_table_count',label: '床頭小櫃', format: v => v != null ? `${v} 個` : '—' },

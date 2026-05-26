@@ -226,6 +226,8 @@ export interface RoomInventory {
   snapshot_date: string
   is_initial: boolean
   change_reason: string | null
+  tenant_name: string | null
+  owner_name: string | null
   bed_type: BedType | null
   wardrobe: boolean | null
   fridge_size: FridgeSize | null

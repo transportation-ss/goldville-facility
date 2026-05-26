@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation'
 import type { BedType, FridgeSize, SofaType, HeadboardType } from '@/lib/types'
 
 export interface InventoryFormData {
+  tenant_name: string
+  owner_name: string
   bed_type: BedType | ''
   wardrobe: boolean
   fridge_size: FridgeSize | ''
@@ -38,6 +40,8 @@ export async function saveRoomInventory(roomId: string, data: InventoryFormData)
     snapshot_date: data.snapshot_date,
     is_initial: data.is_initial,
     change_reason: data.change_reason || null,
+    tenant_name: data.tenant_name || null,
+    owner_name: data.owner_name || null,
     bed_type: data.bed_type || null,
     wardrobe: data.wardrobe,
     fridge_size: data.fridge_size || null,

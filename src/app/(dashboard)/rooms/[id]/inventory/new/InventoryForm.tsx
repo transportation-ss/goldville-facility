@@ -16,6 +16,8 @@ interface Props {
 }
 
 type FormState = {
+  tenant_name: string
+  owner_name: string
   bed_type: BedType | ''
   headboard_type: HeadboardType | ''
   bedside_table_count: number
@@ -42,6 +44,8 @@ function toFormState(prefill: RoomInventory | null): FormState {
   const today = new Date().toISOString().slice(0, 10)
   if (!prefill) {
     return {
+      tenant_name: '',
+      owner_name: '',
       bed_type: '',
       headboard_type: '',
       bedside_table_count: 0,
@@ -65,6 +69,8 @@ function toFormState(prefill: RoomInventory | null): FormState {
     }
   }
   return {
+    tenant_name: prefill.tenant_name ?? '',
+    owner_name: prefill.owner_name ?? '',
     bed_type: (prefill.bed_type ?? '') as BedType | '',
     headboard_type: (prefill.headboard_type ?? '') as HeadboardType | '',
     bedside_table_count: prefill.bedside_table_count ?? 0,
@@ -211,6 +217,33 @@ export function InventoryForm({ roomId, roomName, roomFloor, isInitialMode, pref
           onChange={e => set('snapshot_date', e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
+      </div>
+
+      {/* 住戶資訊 */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">住戶資訊</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">住戶姓名</label>
+            <input
+              type="text"
+              value={form.tenant_name}
+              onChange={e => set('tenant_name', e.target.value)}
+              placeholder="選填"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">房東姓名</label>
+            <input
+              type="text"
+              value={form.owner_name}
+              onChange={e => set('owner_name', e.target.value)}
+              placeholder="選填"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            />
+          </div>
+        </div>
       </div>
 
       {/* 變動原因（非初始模式才顯示）*/}
