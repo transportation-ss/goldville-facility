@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle, XCircle, ShieldCheck, UserX, ChevronDown } from 'lucide-react'
+import { CheckCircle, XCircle, ShieldCheck, UserX, ChevronDown, Loader2 } from 'lucide-react'
 import { approveUser, rejectUser, updateUserRole, toggleUserStatus } from './actions'
 
 interface UserProfile {
@@ -51,19 +51,34 @@ const ALL_ROLES = [
 ]
 
 function UserRow({ user, currentUserId, isSelf }: { user: UserProfile; currentUserId: string; isSelf: boolean }) {
-  const [, startTransition] = useTransition()
+  const [pending, startTransition] = useTransition()
   const [showRoleMenu, setShowRoleMenu] = useState(false)
+  const [action, setAction] = useState<string | null>(null)
 
-  const handleApprove = () => startTransition(() => approveUser(user.id))
-  const handleReject  = () => startTransition(() => rejectUser(user.id))
+  const handleApprove = () => {
+    setAction('approve')
+    startTransition(() => approveUser(user.id))
+  }
+  const handleReject  = () => {
+    setAction('reject')
+    startTransition(() => rejectUser(user.id))
+  }
   const handleRole    = (role: string) => {
     setShowRoleMenu(false)
+    setAction('role')
     startTransition(() => updateUserRole(user.id, role))
   }
-  const handleToggle  = () => startTransition(() => toggleUserStatus(user.id, user.status))
+  const handleToggle  = () => {
+    setAction('toggle')
+    startTransition(() => toggleUserStatus(user.id, user.status))
+  }
+
+  const isLoading = pending
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4">
+    <div className={`bg-white rounded-xl border p-4 transition-all ${
+      isLoading ? 'opacity-60 border-gray-200' : 'border-gray-200 hover:border-emerald-300 hover:shadow-sm'
+    }`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -86,16 +101,22 @@ function UserRow({ user, currentUserId, isSelf }: { user: UserProfile; currentUs
               <>
                 <button
                   onClick={handleApprove}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700"
+                  disabled={isLoading}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 active:scale-95 transition-all disabled:opacity-50"
                 >
-                  <CheckCircle className="w-3.5 h-3.5" />
+                  {isLoading && action === 'approve'
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <CheckCircle className="w-3.5 h-3.5" />}
                   核准
                 </button>
                 <button
                   onClick={handleReject}
-                  className="flex items-center gap-1 px-3 py-1.5 border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50"
+                  disabled={isLoading}
+                  className="flex items-center gap-1 px-3 py-1.5 border border-red-300 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 active:scale-95 transition-all disabled:opacity-50"
                 >
-                  <XCircle className="w-3.5 h-3.5" />
+                  {isLoading && action === 'reject'
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <XCircle className="w-3.5 h-3.5" />}
                   拒絕
                 </button>
               </>
@@ -131,13 +152,16 @@ function UserRow({ user, currentUserId, isSelf }: { user: UserProfile; currentUs
                 {/* 停用/啟用 */}
                 <button
                   onClick={handleToggle}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                  disabled={isLoading}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all active:scale-95 disabled:opacity-50 ${
                     user.status === 'active'
                       ? 'border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500'
                       : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'
                   }`}
                 >
-                  <UserX className="w-3.5 h-3.5" />
+                  {isLoading && action === 'toggle'
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <UserX className="w-3.5 h-3.5" />}
                   {user.status === 'active' ? '停用' : '啟用'}
                 </button>
               </>
