@@ -3,84 +3,93 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard,
-  ClipboardList,
-  CalendarCheck,
-  Wrench,
-  Package,
-  Archive,
-  DoorOpen,
-  Droplets,
-  BarChart3,
-  LogOut,
-  Building2,
-  Settings,
-  Moon,
-  History,
-  Users,
+  LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
+  Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
+  Users, BookOpen, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-const navItems = [
+// ─── 導航結構定義 ─────────────────────────────
+type NavItem = { label: string; href: string; icon: React.ElementType }
+type NavGroup = { type: 'group'; label: string; items: NavItem[] }
+type NavSingle = { type: 'single' } & NavItem
+
+const mainNav: (NavSingle | NavGroup)[] = [
   {
+    type: 'single',
     label: '總覽',
     href: '/dashboard',
     icon: LayoutDashboard,
   },
   {
-    label: '工務派工',
-    href: '/work-orders',
-    icon: ClipboardList,
+    type: 'group',
+    label: '工務',
+    items: [
+      { label: '工務派工',   href: '/work-orders',  icon: ClipboardList },
+      { label: '保養提醒',   href: '/maintenance',  icon: CalendarCheck },
+      { label: '耗材進銷存', href: '/consumables',  icon: Package       },
+      { label: '水電紀錄',   href: '/utilities',    icon: Droplets      },
+    ],
   },
   {
-    label: '保養提醒',
-    href: '/maintenance',
-    icon: CalendarCheck,
+    type: 'group',
+    label: '說明書',
+    items: [
+      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
+    ],
   },
   {
-    label: '耗材進銷存',
-    href: '/consumables',
-    icon: Package,
-  },
-  {
-    label: '緊急維修說明書',
-    href: '/hardware',
-    icon: Wrench,
-  },
-  {
-    label: '財產清單',
-    href: '/assets',
-    icon: Archive,
-  },
-  {
-    label: '房間登錄',
-    href: '/rooms',
-    icon: DoorOpen,
-  },
-  {
-    label: '水電紀錄',
-    href: '/utilities',
-    icon: Droplets,
-  },
-  {
-    label: '報表',
-    href: '/reports',
-    icon: BarChart3,
-  },
-  {
+    type: 'single',
     label: '大夜工作表',
     href: '/nightshift',
     icon: Moon,
   },
-  {
-    label: '大夜歷史紀錄',
-    href: '/nightshift/history',
-    icon: History,
-  },
 ]
 
+const adminNav: NavItem[] = [
+  { label: '帳號管理',     href: '/admin/users',        icon: Users   },
+  { label: '保養項目管理', href: '/maintenance/admin',  icon: Settings },
+  { label: '硬體設備管理', href: '/hardware/admin',     icon: Wrench  },
+  { label: '財產清單',     href: '/assets',             icon: Archive  },
+  { label: '房間登錄',     href: '/rooms',              icon: DoorOpen },
+]
+
+// ─── 子元件 ──────────────────────────────────
+function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+  const Icon = item.icon
+  return (
+    <Link
+      href={item.href}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg mb-0.5 text-sm font-medium transition-colors ${
+        isActive ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+      }`}
+    >
+      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
+      {item.label}
+    </Link>
+  )
+}
+
+function SubNavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+  const Icon = item.icon
+  return (
+    <Link
+      href={item.href}
+      className={`flex items-center gap-2.5 pl-7 pr-3 py-1.5 rounded-lg mb-0.5 text-sm transition-colors ${
+        isActive ? 'text-emerald-700 font-medium' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
+      }`}
+    >
+      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-emerald-500' : 'text-gray-300'}`} />
+      {item.label}
+    </Link>
+  )
+}
+
+// ─── 主元件 ──────────────────────────────────
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
@@ -92,19 +101,11 @@ export function Sidebar() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-
         const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-
+          .from('user_profiles').select('role').eq('id', user.id).single()
         setIsAdmin(!!(profile && ['admin', 'manager'].includes(profile.role)))
-      } catch (error) {
-        console.error('Error checking role:', error)
-      }
+      } catch {}
     }
-
     checkRole()
   }, [])
 
@@ -126,73 +127,33 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          const Icon = item.icon
+        {mainNav.map((section, i) => {
+          if (section.type === 'single') {
+            return <NavLink key={section.href} item={section} pathname={pathname} />
+          }
+          // group
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors
-                ${isActive
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }
-              `}
-            >
-              <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-emerald-600' : 'text-gray-400'}`} />
-              {item.label}
-            </Link>
+            <div key={section.label} className={i > 0 ? 'mt-1' : ''}>
+              <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                {section.label}
+              </p>
+              {section.items.map(item => (
+                <SubNavLink key={item.href} item={item} pathname={pathname} />
+              ))}
+            </div>
           )
         })}
 
-        {/* Admin Menu */}
+        {/* 管理區（admin only） */}
         {isAdmin && (
-          <>
-            <div className="my-2 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="mt-1">
+            <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
               管理
-            </div>
-            <Link
-              href="/admin/users"
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors
-                ${pathname.startsWith('/admin/users')
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }
-              `}
-            >
-              <Users className={`w-4 h-4 shrink-0 ${pathname.startsWith('/admin/users') ? 'text-emerald-600' : 'text-gray-400'}`} />
-              帳號管理
-            </Link>
-            <Link
-              href="/maintenance/admin"
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors
-                ${pathname.startsWith('/maintenance/admin')
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }
-              `}
-            >
-              <Settings className={`w-4 h-4 shrink-0 ${pathname.startsWith('/maintenance/admin') ? 'text-emerald-600' : 'text-gray-400'}`} />
-              保養項目管理
-            </Link>
-            <Link
-              href="/hardware/admin"
-              className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors
-                ${pathname.startsWith('/hardware/admin')
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }
-              `}
-            >
-              <Wrench className={`w-4 h-4 shrink-0 ${pathname.startsWith('/hardware/admin') ? 'text-emerald-600' : 'text-gray-400'}`} />
-              硬體設備管理
-            </Link>
-          </>
+            </p>
+            {adminNav.map(item => (
+              <SubNavLink key={item.href} item={item} pathname={pathname} />
+            ))}
+          </div>
         )}
       </nav>
 
