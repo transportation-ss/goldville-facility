@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, Circle, MessageSquare, ChevronDown, ChevronUp, Plus, X, Moon } from 'lucide-react'
+import { CheckCircle2, Circle, MessageSquare, Plus, X, Moon } from 'lucide-react'
 import { toggleCompletion, saveTaskNotes, saveHandoverNotes, addExtraTask } from './actions'
 
 interface Completion {
@@ -40,49 +40,43 @@ interface Props {
 }
 
 const TIME_SLOTS = ['22:00', '23:00', '02:00', '05:00', '06:30']
-const CATEGORY_COLOR: Record<string, string> = {
-  '巡視':   'bg-blue-50 text-blue-700 border-blue-200',
-  '櫃台事務': 'bg-purple-50 text-purple-700 border-purple-200',
-  '清潔':   'bg-emerald-50 text-emerald-700 border-emerald-200',
-  '開館':   'bg-amber-50 text-amber-700 border-amber-200',
-  '下班前': 'bg-rose-50 text-rose-700 border-rose-200',
-}
 const CATEGORY_HEADER: Record<string, string> = {
-  '巡視':   'bg-blue-600',
+  '巡視':    'bg-blue-600',
   '櫃台事務': 'bg-purple-600',
-  '清潔':   'bg-emerald-600',
-  '開館':   'bg-amber-500',
-  '下班前': 'bg-rose-600',
+  '清潔':    'bg-emerald-600',
+  '開館':    'bg-amber-500',
+  '下班前':  'bg-rose-600',
 }
 
 function TaskRow({
   task,
   completion,
   sessionId,
-  onToggle,
+  currentUserName,
+  onOptimisticToggle,
 }: {
   task: Task
   completion: Completion | undefined
   sessionId: string
-  onToggle: () => void
+  currentUserName: string
+  onOptimisticToggle: (task: Task, wasCompleted: boolean) => void
 }) {
   const [showNote, setShowNote] = useState(false)
   const [noteText, setNoteText] = useState(completion?.notes ?? '')
   const [saving, setSaving] = useState(false)
-  const [, startTransition] = useTransition()
 
   const isCompleted = !!completion
 
   const handleToggle = () => {
-    startTransition(async () => {
-      await toggleCompletion(
-        sessionId,
-        task.is_extra ? null : task.id,
-        task.is_extra ? task.id : null,
-        isCompleted
-      )
-      onToggle()
-    })
+    // 1. 立刻更新畫面（optimistic）
+    onOptimisticToggle(task, isCompleted)
+    // 2. 背景同步 server（不 await，不 block UI）
+    toggleCompletion(
+      sessionId,
+      task.is_extra ? null : task.id,
+      task.is_extra ? task.id : null,
+      isCompleted
+    )
   }
 
   const handleSaveNote = async () => {
@@ -98,21 +92,19 @@ function TaskRow({
   }
 
   return (
-    <div className={`px-4 py-3 border-b border-gray-100 last:border-0 transition-colors cursor-pointer
-      ${isCompleted ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white hover:bg-emerald-50'}`}
+    <div
+      className={`px-4 py-3 border-b border-gray-100 last:border-0 transition-colors cursor-pointer select-none
+        ${isCompleted ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white hover:bg-emerald-50'}`}
       onClick={handleToggle}
     >
       <div className="flex items-start gap-3">
         {/* Checkbox */}
-        <button
-          onClick={e => { e.stopPropagation(); handleToggle() }}
-          className="mt-0.5 shrink-0 transition-transform active:scale-95"
-        >
+        <div className="mt-0.5 shrink-0 transition-transform active:scale-95">
           {isCompleted
             ? <CheckCircle2 className="w-6 h-6 text-emerald-500" />
             : <Circle className="w-6 h-6 text-gray-300" />
           }
-        </button>
+        </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -120,19 +112,16 @@ function TaskRow({
             {task.title}
           </p>
 
-          {/* 完成資訊 */}
           {isCompleted && (
             <p className="text-xs text-emerald-600 mt-0.5">
               ✓ {completion.completer_name ?? '已完成'}・{new Date(completion.completed_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
 
-          {/* 備註 */}
           {completion?.notes && !showNote && (
             <p className="text-xs text-amber-600 mt-1">📝 {completion.notes}</p>
           )}
 
-          {/* 加派標示 */}
           {task.is_extra && (
             <span className="inline-block text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded mt-1">加派</span>
           )}
@@ -180,19 +169,41 @@ function TaskRow({
   )
 }
 
-export function NightshiftSheet({ session, tasks, completions, isAdmin, currentUserName }: Props) {
+export function NightshiftSheet({ session, tasks, completions: initialCompletions, isAdmin, currentUserName }: Props) {
+  // Optimistic state — 直接 manage，不依賴 server revalidation
+  const [localCompletions, setLocalCompletions] = useState<Completion[]>(initialCompletions)
+
   const [handover, setHandover] = useState(session.handover_notes ?? '')
   const [savingHandover, setSavingHandover] = useState(false)
-  const [refresh, setRefresh] = useState(0)
-
-  // 顯示加派任務表單
   const [showAddTask, setShowAddTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskCategory, setNewTaskCategory] = useState('巡視')
   const [newTaskSlot, setNewTaskSlot] = useState('22:00')
   const [, startTransition] = useTransition()
 
-  const forceRefresh = () => setRefresh(r => r + 1)
+  // Optimistic toggle：立刻更新 localCompletions
+  const handleOptimisticToggle = (task: Task, wasCompleted: boolean) => {
+    if (wasCompleted) {
+      // 取消完成 → 移除
+      setLocalCompletions(prev =>
+        prev.filter(c =>
+          task.is_extra ? c.extra_task_id !== task.id : c.template_id !== task.id
+        )
+      )
+    } else {
+      // 標記完成 → 立刻新增暫時 record
+      const optimistic: Completion = {
+        id: 'opt-' + Date.now(),
+        template_id: task.is_extra ? null : task.id,
+        extra_task_id: task.is_extra ? task.id : null,
+        completed_by: null,
+        completed_at: new Date().toISOString(),
+        notes: null,
+        completer_name: currentUserName || '已完成',
+      }
+      setLocalCompletions(prev => [...prev, optimistic])
+    }
+  }
 
   // 組裝分組
   const groups: { slot: string; category: string; tasks: Task[] }[] = []
@@ -206,7 +217,7 @@ export function NightshiftSheet({ session, tasks, completions, isAdmin, currentU
   }
 
   const totalTasks = tasks.length
-  const completedCount = completions.length
+  const completedCount = localCompletions.length
   const progress = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0
 
   const handleSaveHandover = async () => {
@@ -221,12 +232,11 @@ export function NightshiftSheet({ session, tasks, completions, isAdmin, currentU
       await addExtraTask(session.id, newTaskTitle.trim(), newTaskCategory, newTaskSlot)
       setNewTaskTitle('')
       setShowAddTask(false)
-      forceRefresh()
     })
   }
 
   return (
-    <div className="max-w-2xl mx-auto" key={refresh}>
+    <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -240,7 +250,7 @@ export function NightshiftSheet({ session, tasks, completions, isAdmin, currentU
           <p className="text-xs text-gray-400">{completedCount} / {totalTasks} 完成</p>
           <div className="w-20 h-1.5 bg-gray-700 rounded-full mt-1">
             <div
-              className="h-1.5 bg-emerald-400 rounded-full transition-all"
+              className="h-1.5 bg-emerald-400 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -251,34 +261,33 @@ export function NightshiftSheet({ session, tasks, completions, isAdmin, currentU
       <div className="space-y-3 p-4">
         {groups.map(group => (
           <div key={`${group.slot}-${group.category}`} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-            {/* Group Header */}
             <div className={`px-4 py-2 flex items-center gap-2 ${CATEGORY_HEADER[group.category] ?? 'bg-gray-600'}`}>
               <span className="text-xs font-bold text-white">{group.slot}</span>
               <span className="text-xs text-white/80">·</span>
               <span className="text-xs font-bold text-white">{group.category}</span>
               <span className="ml-auto text-xs text-white/70">
-                {completions.filter(c =>
+                {localCompletions.filter(c =>
                   group.tasks.some(t => t.is_extra ? c.extra_task_id === t.id : c.template_id === t.id)
                 ).length} / {group.tasks.length}
               </span>
             </div>
 
-            {/* Tasks */}
             {group.tasks.map(task => (
               <TaskRow
                 key={task.id}
                 task={task}
-                completion={completions.find(c =>
+                completion={localCompletions.find(c =>
                   task.is_extra ? c.extra_task_id === task.id : c.template_id === task.id
                 )}
                 sessionId={session.id}
-                onToggle={forceRefresh}
+                currentUserName={currentUserName}
+                onOptimisticToggle={handleOptimisticToggle}
               />
             ))}
           </div>
         ))}
 
-        {/* 管理員加派任務按鈕 */}
+        {/* 管理員加派任務 */}
         {isAdmin && (
           <div>
             {!showAddTask ? (

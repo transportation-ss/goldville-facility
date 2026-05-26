@@ -53,7 +53,7 @@ export async function toggleCompletion(
     })
   }
 
-  revalidatePath('/nightshift')
+  // revalidatePath 移除：UI 用 optimistic state 即時更新，不需等 server revalidate
 }
 
 // 儲存任務備註
