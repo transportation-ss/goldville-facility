@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
-  Users, BookOpen, KeyRound,
+  Users, BookOpen, KeyRound, HelpCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -105,7 +105,13 @@ const nightshiftNav: (NavSingle | NavGroup)[] = [
       { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
     ],
   },
-  { type: 'single', label: '大夜工作表', href: '/nightshift', icon: Moon },
+  {
+    type: 'group', label: '大夜',
+    items: [
+      { label: '大夜工作表', href: '/nightshift',       icon: Moon        },
+      { label: '使用說明書', href: '/nightshift/guide', icon: HelpCircle  },
+    ],
+  },
 ]
 
 // ─── 子元件 ──────────────────────────────────
