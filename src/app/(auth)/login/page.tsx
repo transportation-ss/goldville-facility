@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Building2, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -20,10 +21,31 @@ export default function LoginPage() {
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError('帳號或密碼錯誤，請再試一次')
+      setLoading(false)
+      return
+    }
+
+    // 檢查帳號審核狀態
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('status')
+      .eq('id', data.user.id)
+      .single()
+
+    if (profile?.status === 'pending') {
+      await supabase.auth.signOut()
+      setError('帳號尚待審核，請等待管理員核准後再登入')
+      setLoading(false)
+      return
+    }
+
+    if (profile?.status === 'disabled') {
+      await supabase.auth.signOut()
+      setError('帳號已停用，請聯絡系統管理員')
       setLoading(false)
       return
     }
@@ -98,8 +120,11 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
-          如需帳號請聯絡系統管理員
+        <p className="text-center text-sm text-gray-500 mt-4">
+          還沒有帳號？{' '}
+          <Link href="/register" className="text-emerald-600 font-medium hover:underline">
+            申請帳號
+          </Link>
         </p>
       </div>
     </div>

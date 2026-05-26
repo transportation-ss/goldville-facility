@@ -16,6 +16,7 @@ import {
   Building2,
   Settings,
   Moon,
+  Users,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -146,6 +147,19 @@ export function Sidebar() {
             <div className="my-2 px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               管理
             </div>
+            <Link
+              href="/admin/users"
+              className={`
+                flex items-center gap-3 px-3 py-2.5 rounded-lg mb-0.5 text-sm font-medium transition-colors
+                ${pathname.startsWith('/admin/users')
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }
+              `}
+            >
+              <Users className={`w-4 h-4 shrink-0 ${pathname.startsWith('/admin/users') ? 'text-emerald-600' : 'text-gray-400'}`} />
+              帳號管理
+            </Link>
             <Link
               href="/maintenance/admin"
               className={`
