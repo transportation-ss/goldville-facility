@@ -33,7 +33,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 未登入 → 導向登入頁（除了 /login 和 /api 路徑）
-  if (!user && !pathname.startsWith('/login') && !pathname.startsWith('/api')) {
+  if (!user && !pathname.startsWith('/login') && !pathname.startsWith('/register') && !pathname.startsWith('/api')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
