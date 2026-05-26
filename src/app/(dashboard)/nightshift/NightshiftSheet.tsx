@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { CheckCircle2, Circle, MessageSquare, Plus, X, Moon, Lock, AlertTriangle, UserCheck } from 'lucide-react'
-import { toggleCompletion, saveTaskNotes, saveHandoverNotes, addExtraTask, closeSession } from './actions'
+import { toggleCompletion, saveTaskNotes, saveHandoverNotes, addExtraTask, closeSession, signInToSession } from './actions'
 
 interface Completion {
   id: string
@@ -186,6 +186,35 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
   // Optimistic state — 直接 manage，不依賴 server revalidation
   const [localCompletions, setLocalCompletions] = useState<Completion[]>(initialCompletions)
 
+  // 簽到 local state（optimistic）
+  const [signins, setSignins] = useState([
+    { name: session.signin_1_name, at: session.signin_1_at },
+    { name: session.signin_2_name, at: session.signin_2_at },
+    { name: session.signin_3_name, at: session.signin_3_at },
+  ])
+  const [signingIn, setSigningIn] = useState(false)
+
+  const isCurrentUserSignedIn = currentUserName
+    ? signins.some(s => s.name === currentUserName)
+    : true  // 若無名稱就隱藏按鈕
+  const hasEmptySlot = signins.some(s => !s.name)
+
+  const handleSignIn = async () => {
+    if (!currentUserName || signingIn) return
+    setSigningIn(true)
+    // Optimistic update
+    const now = new Date().toISOString()
+    setSignins(prev => {
+      const idx = prev.findIndex(s => !s.name)
+      if (idx === -1) return prev
+      const next = [...prev]
+      next[idx] = { name: currentUserName, at: now }
+      return next
+    })
+    await signInToSession(session.id, currentUserName)
+    setSigningIn(false)
+  }
+
   const [handover, setHandover] = useState(session.handover_notes ?? '')
   const [savingHandover, setSavingHandover] = useState(false)
   const [showAddTask, setShowAddTask] = useState(false)
@@ -303,29 +332,49 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
             <span className="text-xs font-bold text-white">夜班簽到</span>
           </div>
           <div className="divide-y divide-gray-100">
-            {([
-              { name: session.signin_1_name, at: session.signin_1_at, label: '簽到 1' },
-              { name: session.signin_2_name, at: session.signin_2_at, label: '簽到 2' },
-              { name: session.signin_3_name, at: session.signin_3_at, label: '簽到 3' },
-            ] as { name: string | null; at: string | null; label: string }[]).map((slot, i) => (
+            {signins.map((slot, i) => (
               <div key={i} className="px-4 py-3 flex items-center gap-3">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0
                   ${slot.name ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-300'}`}>
                   {i + 1}
                 </div>
                 {slot.name ? (
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{slot.name}</p>
-                    <p className="text-xs text-indigo-500">
+                  <div className="flex-1">
+                    <p className={`text-sm font-medium ${slot.name === currentUserName ? 'text-indigo-700' : 'text-gray-800'}`}>
+                      {slot.name}
+                      {slot.name === currentUserName && <span className="ml-1.5 text-xs font-normal text-indigo-400">（我）</span>}
+                    </p>
+                    <p className="text-xs text-gray-400">
                       {slot.at ? new Date(slot.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) : ''}
                     </p>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-300">{slot.label}：未到</p>
+                  <p className="text-sm text-gray-300 flex-1">——</p>
                 )}
               </div>
             ))}
           </div>
+
+          {/* 手動簽到按鈕 */}
+          {!locked && !isCurrentUserSignedIn && hasEmptySlot && (
+            <div className="px-4 py-3 border-t border-gray-100">
+              <button
+                onClick={handleSignIn}
+                disabled={signingIn}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <UserCheck className="w-4 h-4" />
+                {signingIn ? '簽到中...' : '我已到班，點此簽到'}
+              </button>
+            </div>
+          )}
+
+          {!locked && isCurrentUserSignedIn && (
+            <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+              <p className="text-xs text-indigo-600 font-medium">已完成簽到</p>
+            </div>
+          )}
         </div>
 
         {groups.map(group => (

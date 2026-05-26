@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getOrCreateSession, signInToSession } from './actions'
+import { getOrCreateSession } from './actions'
 import { NightshiftSheet } from './NightshiftSheet'
 import { Moon } from 'lucide-react'
 
@@ -18,20 +18,6 @@ export default async function NightshiftPage() {
 
   // 取得或建立今日班次
   const session = await getOrCreateSession()
-
-  // 自動簽到（班次未結束才簽）
-  if (user && profile?.display_name && session.status !== 'completed') {
-    await signInToSession(session.id, profile.display_name)
-    // 重新取得最新 signin 資料
-    const { data: refreshed } = await supabase
-      .from('nightshift_sessions')
-      .select('signin_1_name, signin_1_at, signin_2_name, signin_2_at, signin_3_name, signin_3_at')
-      .eq('id', session.id)
-      .single()
-    if (refreshed) {
-      Object.assign(session, refreshed)
-    }
-  }
 
   // 取得固定任務清單
   const { data: templates } = await supabase
