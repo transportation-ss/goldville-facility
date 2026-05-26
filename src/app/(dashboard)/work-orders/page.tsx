@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Plus, Search, AlertTriangle } from 'lucide-react'
+import { Plus, AlertTriangle } from 'lucide-react'
 import { WorkOrdersList } from './WorkOrdersList'
 
 const statusLabel: Record<string, string> = {
@@ -22,6 +22,12 @@ export default async function WorkOrdersPage({
 }) {
   const supabase = await createClient()
   const params = await searchParams
+
+  // 取得目前使用者身分
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('user_profiles').select('role').eq('id', user?.id ?? '').single()
+  const userRole = profile?.role ?? ''
   const activeStatus = params.status ?? 'all'
   const activePriority = params.priority ?? 'all'
 
@@ -97,6 +103,7 @@ export default async function WorkOrdersPage({
         }))}
         statusLabel={statusLabel}
         statusColor={statusColor}
+        userRole={userRole}
       />
     </div>
   )

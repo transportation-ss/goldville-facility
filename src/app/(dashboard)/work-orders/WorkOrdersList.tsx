@@ -18,13 +18,17 @@ interface Order {
   status: string
 }
 
+const NIGHTSHIFT_ROLES = ['nightshift', 'frontdesk_night', 'frontdesk_day']
+
 interface Props {
   orders: Order[]
   statusLabel: Record<string, string>
   statusColor: Record<string, string>
+  userRole: string
 }
 
-export function WorkOrdersList({ orders, statusLabel, statusColor }: Props) {
+export function WorkOrdersList({ orders, statusLabel, statusColor, userRole }: Props) {
+  const canDelete = !NIGHTSHIFT_ROLES.includes(userRole)
   const router = useRouter()
   const supabase = createClient()
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['recent']))
@@ -191,14 +195,16 @@ export function WorkOrdersList({ orders, statusLabel, statusColor }: Props) {
                       onClick={() => router.push(`/work-orders/${order.id}`)}
                       className={`cursor-pointer hover:bg-emerald-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
                     >
-                      <td className="px-4 py-3 w-10" onClick={e => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectOrder(order.id)}
-                          className="w-4 h-4 rounded border-gray-300 cursor-pointer"
-                        />
-                      </td>
+                      {canDelete && (
+                        <td className="px-4 py-3 w-10" onClick={e => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectOrder(order.id)}
+                            className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
                         {new Date(order.created_at).toLocaleDateString('zh-TW')}
                       </td>
@@ -217,15 +223,17 @@ export function WorkOrdersList({ orders, statusLabel, statusColor }: Props) {
                           {statusLabel[order.status]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={() => deleteSingleOrder(order.id)}
-                          disabled={deleting}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+                      {canDelete && (
+                        <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => deleteSingleOrder(order.id)}
+                            disabled={deleting}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
@@ -240,7 +248,7 @@ export function WorkOrdersList({ orders, statusLabel, statusColor }: Props) {
   return (
     <div className="space-y-4">
       {/* Batch Delete Toolbar */}
-      {selectedOrders.size > 0 && (
+      {canDelete && selectedOrders.size > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
           <span className="text-sm font-medium text-blue-900">已選擇 {selectedOrders.size} 筆</span>
           <button
@@ -282,18 +290,20 @@ export function WorkOrdersList({ orders, statusLabel, statusColor }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="px-4 py-3 w-10">
-                      <input
-                        type="checkbox"
-                        checked={selectedOrders.size === orders.length && orders.length > 0}
-                        onChange={() => {
-                          selectedOrders.size === orders.length
-                            ? setSelectedOrders(new Set())
-                            : setSelectedOrders(new Set(orders.map(o => o.id)))
-                        }}
-                        className="w-4 h-4 rounded border-gray-300 cursor-pointer"
-                      />
-                    </th>
+                    {canDelete && (
+                      <th className="px-4 py-3 w-10">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrders.size === orders.length && orders.length > 0}
+                          onChange={() => {
+                            selectedOrders.size === orders.length
+                              ? setSelectedOrders(new Set())
+                              : setSelectedOrders(new Set(orders.map(o => o.id)))
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                        />
+                      </th>
+                    )}
                     <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">通報時間</th>
                     <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">通報單位</th>
                     <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">地點</th>
@@ -301,7 +311,7 @@ export function WorkOrdersList({ orders, statusLabel, statusColor }: Props) {
                     <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">處理人</th>
                     <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">期限</th>
                     <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">狀態</th>
-                    <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">操作</th>
+                    {canDelete && <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">操作</th>}
                   </tr>
                 </thead>
               </table>

@@ -45,7 +45,7 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
     .from('user_profiles')
     .select('id, display_name')
     .in('role', ['technician', 'manager', 'admin'])
-    .eq('is_active', true)
+    .eq('status', 'active')
 
   // 取得照片 URL
   const photosWithUrl = (order.photos ?? []).map((p: { storage_path: string; photo_type: string; file_name: string | null; id: string }) => {
