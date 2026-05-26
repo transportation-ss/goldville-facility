@@ -98,11 +98,14 @@ function TaskRow({
   }
 
   return (
-    <div className={`px-4 py-3 border-b border-gray-100 last:border-0 ${isCompleted ? 'bg-gray-50' : 'bg-white'}`}>
+    <div className={`px-4 py-3 border-b border-gray-100 last:border-0 transition-colors cursor-pointer
+      ${isCompleted ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white hover:bg-emerald-50'}`}
+      onClick={handleToggle}
+    >
       <div className="flex items-start gap-3">
         {/* Checkbox */}
         <button
-          onClick={handleToggle}
+          onClick={e => { e.stopPropagation(); handleToggle() }}
           className="mt-0.5 shrink-0 transition-transform active:scale-95"
         >
           {isCompleted
@@ -138,7 +141,7 @@ function TaskRow({
         {/* 備註按鈕 */}
         {isCompleted && (
           <button
-            onClick={() => setShowNote(o => !o)}
+            onClick={e => { e.stopPropagation(); setShowNote(o => !o) }}
             className="shrink-0 p-1 text-gray-400 hover:text-gray-600"
           >
             <MessageSquare className="w-4 h-4" />
@@ -148,7 +151,7 @@ function TaskRow({
 
       {/* 備註輸入 */}
       {showNote && isCompleted && (
-        <div className="mt-2 ml-9">
+        <div className="mt-2 ml-9" onClick={e => e.stopPropagation()}>
           <textarea
             value={noteText}
             onChange={e => setNoteText(e.target.value)}
