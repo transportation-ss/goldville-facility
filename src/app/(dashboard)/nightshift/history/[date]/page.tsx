@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, Circle, Moon } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Circle, Moon, Lock } from 'lucide-react'
+import { ReopenButton } from './ReopenButton'
 
 const TIME_SLOTS = ['22:00', '23:00', '02:00', '05:00', '06:30']
 const CATEGORY_HEADER: Record<string, string> = {
@@ -27,6 +28,11 @@ export default async function NightshiftHistoryDatePage({
     .single()
 
   if (!session) notFound()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('user_profiles').select('role').eq('id', user?.id ?? '').single()
+  const isAdmin = ['admin', 'manager'].includes(profile?.role ?? '')
 
   // 固定任務
   const { data: templates } = await supabase
@@ -109,13 +115,22 @@ export default async function NightshiftHistoryDatePage({
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-400">{done}/{total} 完成</p>
-            <div className="w-20 h-1.5 bg-gray-700 rounded-full mt-1">
-              <div
-                className="h-1.5 bg-emerald-400 rounded-full"
-                style={{ width: `${pct}%` }}
-              />
+          <div className="text-right flex items-center gap-3">
+            {isAdmin && session.status === 'completed' && (
+              <ReopenButton sessionId={session.id} />
+            )}
+            <div>
+              {session.status === 'completed' ? (
+                <div className="flex items-center gap-1 text-amber-400 justify-end">
+                  <Lock className="w-3 h-3" />
+                  <span className="text-xs">已結束</span>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">{done}/{total} 完成</p>
+              )}
+              <div className="w-20 h-1.5 bg-gray-700 rounded-full mt-1">
+                <div className="h-1.5 bg-emerald-400 rounded-full" style={{ width: `${pct}%` }} />
+              </div>
             </div>
           </div>
         </div>

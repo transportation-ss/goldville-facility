@@ -81,6 +81,32 @@ export async function saveHandoverNotes(sessionId: string, notes: string) {
   revalidatePath('/nightshift')
 }
 
+// 結束班次（鎖定）
+export async function closeSession(sessionId: string) {
+  const supabase = await createClient()
+  await supabase
+    .from('nightshift_sessions')
+    .update({ status: 'completed', ended_at: new Date().toISOString() })
+    .eq('id', sessionId)
+  revalidatePath('/nightshift')
+}
+
+// 管理員重新開啟班次
+export async function reopenSession(sessionId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('user_profiles').select('role').eq('id', user?.id ?? '').single()
+  if (!profile || !['admin', 'manager'].includes(profile.role)) {
+    throw new Error('權限不足')
+  }
+  await supabase
+    .from('nightshift_sessions')
+    .update({ status: 'active', ended_at: null })
+    .eq('id', sessionId)
+  revalidatePath('/nightshift/history')
+}
+
 // QR 到場紀錄
 export async function recordAreaCheckin(sessionId: string, areaSlug: string) {
   const supabase = await createClient()

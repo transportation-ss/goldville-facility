@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, Circle, MessageSquare, Plus, X, Moon } from 'lucide-react'
-import { toggleCompletion, saveTaskNotes, saveHandoverNotes, addExtraTask } from './actions'
+import { CheckCircle2, Circle, MessageSquare, Plus, X, Moon, Lock, AlertTriangle } from 'lucide-react'
+import { toggleCompletion, saveTaskNotes, saveHandoverNotes, addExtraTask, closeSession } from './actions'
 
 interface Completion {
   id: string
@@ -29,6 +29,7 @@ interface Session {
   session_date: string
   status: string
   handover_notes: string | null
+  ended_at: string | null
 }
 
 interface Props {
@@ -54,12 +55,14 @@ function TaskRow({
   sessionId,
   currentUserName,
   onOptimisticToggle,
+  locked,
 }: {
   task: Task
   completion: Completion | undefined
   sessionId: string
   currentUserName: string
   onOptimisticToggle: (task: Task, wasCompleted: boolean) => void
+  locked: boolean
 }) {
   const [showNote, setShowNote] = useState(false)
   const [noteText, setNoteText] = useState(completion?.notes ?? '')
@@ -68,6 +71,7 @@ function TaskRow({
   const isCompleted = !!completion
 
   const handleToggle = () => {
+    if (locked) return
     // 1. 立刻更新畫面（optimistic）
     onOptimisticToggle(task, isCompleted)
     // 2. 背景同步 server（不 await，不 block UI）
@@ -93,9 +97,10 @@ function TaskRow({
 
   return (
     <div
-      className={`px-4 py-3 border-b border-gray-100 last:border-0 transition-colors cursor-pointer select-none
-        ${isCompleted ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white hover:bg-emerald-50'}`}
-      onClick={handleToggle}
+      className={`px-4 py-3 border-b border-gray-100 last:border-0 transition-colors select-none
+        ${locked ? 'cursor-default' : 'cursor-pointer'}
+        ${isCompleted ? 'bg-gray-50 hover:bg-gray-100' : locked ? 'bg-white' : 'bg-white hover:bg-emerald-50'}`}
+      onClick={locked ? undefined : handleToggle}
     >
       <div className="flex items-start gap-3">
         {/* Checkbox */}
@@ -170,6 +175,8 @@ function TaskRow({
 }
 
 export function NightshiftSheet({ session, tasks, completions: initialCompletions, isAdmin, currentUserName }: Props) {
+  const locked = session.status === 'completed'
+
   // Optimistic state — 直接 manage，不依賴 server revalidation
   const [localCompletions, setLocalCompletions] = useState<Completion[]>(initialCompletions)
 
@@ -179,7 +186,16 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskCategory, setNewTaskCategory] = useState('巡視')
   const [newTaskSlot, setNewTaskSlot] = useState('22:00')
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [, startTransition] = useTransition()
+
+  const handleCloseSession = async () => {
+    setClosing(true)
+    await closeSession(session.id)
+    setClosing(false)
+    setShowCloseConfirm(false)
+  }
 
   // Optimistic toggle：立刻更新 localCompletions
   const handleOptimisticToggle = (task: Task, wasCompleted: boolean) => {
@@ -247,13 +263,27 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs text-gray-400">{completedCount} / {totalTasks} 完成</p>
-          <div className="w-20 h-1.5 bg-gray-700 rounded-full mt-1">
-            <div
-              className="h-1.5 bg-emerald-400 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          {locked ? (
+            <div className="flex items-center gap-1.5 text-amber-400">
+              <Lock className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">已結束</span>
+              {session.ended_at && (
+                <span className="text-xs text-gray-400 ml-1">
+                  {new Date(session.ended_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-gray-400">{completedCount} / {totalTasks} 完成</p>
+              <div className="w-20 h-1.5 bg-gray-700 rounded-full mt-1">
+                <div
+                  className="h-1.5 bg-emerald-400 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -282,6 +312,7 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
                 sessionId={session.id}
                 currentUserName={currentUserName}
                 onOptimisticToggle={handleOptimisticToggle}
+                locked={locked}
               />
             ))}
           </div>
@@ -342,24 +373,88 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
         {/* 交接說明 */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-sm font-semibold text-gray-700 mb-2">📋 交接說明</p>
-          <textarea
-            value={handover}
-            onChange={e => setHandover(e.target.value)}
-            placeholder="填寫本班交接事項、異常狀況..."
-            rows={4}
-            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
-          />
-          <button
-            onClick={handleSaveHandover}
-            disabled={savingHandover}
-            className="mt-2 w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg disabled:opacity-50"
-          >
-            {savingHandover ? '儲存中...' : '儲存交接說明'}
-          </button>
+          {locked ? (
+            <p className="text-sm text-gray-600 whitespace-pre-wrap min-h-[3rem]">
+              {session.handover_notes || <span className="text-gray-300">（無交接說明）</span>}
+            </p>
+          ) : (
+            <>
+              <textarea
+                value={handover}
+                onChange={e => setHandover(e.target.value)}
+                placeholder="填寫本班交接事項、異常狀況（選填）..."
+                rows={4}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
+              />
+              <button
+                onClick={handleSaveHandover}
+                disabled={savingHandover}
+                className="mt-2 w-full py-2.5 bg-gray-800 text-white text-sm font-medium rounded-lg disabled:opacity-50"
+              >
+                {savingHandover ? '儲存中...' : '儲存交接說明'}
+              </button>
+            </>
+          )}
         </div>
 
-        <div className="h-4" />
+        {/* 結束班次按鈕 */}
+        {!locked && (
+          <button
+            onClick={() => setShowCloseConfirm(true)}
+            className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+          >
+            <Lock className="w-4 h-4" />
+            結束班次
+          </button>
+        )}
+
+        {locked && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+            <Lock className="w-4 h-4 text-amber-500 shrink-0" />
+            <p className="text-sm text-amber-700">
+              班次已結束並鎖定。如需調整請洽管理員。
+            </p>
+          </div>
+        )}
+
+        <div className="h-8" />
       </div>
+
+      {/* 結束班次確認對話框 */}
+      {showCloseConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-gray-900">確認結束班次？</p>
+                <p className="text-xs text-gray-500 mt-0.5">{completedCount} / {totalTasks} 項任務已完成</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2.5 mb-5">
+              確認後報表鎖定，如需調整請洽管理員。
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCloseConfirm(false)}
+                disabled={closing}
+                className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleCloseSession}
+                disabled={closing}
+                className="flex-1 py-2.5 bg-rose-600 text-white text-sm font-semibold rounded-xl hover:bg-rose-700 disabled:opacity-50"
+              >
+                {closing ? '處理中...' : '確認結束'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
