@@ -118,6 +118,38 @@ export async function recordAreaCheckin(sessionId: string, areaSlug: string) {
   })
 }
 
+// 夜班自動簽到（填入第一個空槽）
+export async function signInToSession(sessionId: string, displayName: string) {
+  const supabase = await createClient()
+
+  const { data: session } = await supabase
+    .from('nightshift_sessions')
+    .select('signin_1_name, signin_2_name, signin_3_name')
+    .eq('id', sessionId)
+    .single()
+
+  if (!session) return
+
+  // 已簽到 → 不重複
+  if ([session.signin_1_name, session.signin_2_name, session.signin_3_name].includes(displayName)) return
+
+  const now = new Date().toISOString()
+  if (!session.signin_1_name) {
+    await supabase.from('nightshift_sessions')
+      .update({ signin_1_name: displayName, signin_1_at: now })
+      .eq('id', sessionId)
+  } else if (!session.signin_2_name) {
+    await supabase.from('nightshift_sessions')
+      .update({ signin_2_name: displayName, signin_2_at: now })
+      .eq('id', sessionId)
+  } else if (!session.signin_3_name) {
+    await supabase.from('nightshift_sessions')
+      .update({ signin_3_name: displayName, signin_3_at: now })
+      .eq('id', sessionId)
+  }
+  // 三個槽都滿 → 靜默忽略
+}
+
 // 管理員加派任務
 export async function addExtraTask(
   sessionId: string,

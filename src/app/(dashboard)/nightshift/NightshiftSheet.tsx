@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, Circle, MessageSquare, Plus, X, Moon, Lock, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, Circle, MessageSquare, Plus, X, Moon, Lock, AlertTriangle, UserCheck } from 'lucide-react'
 import { toggleCompletion, saveTaskNotes, saveHandoverNotes, addExtraTask, closeSession } from './actions'
 
 interface Completion {
@@ -30,6 +30,12 @@ interface Session {
   status: string
   handover_notes: string | null
   ended_at: string | null
+  signin_1_name: string | null
+  signin_1_at: string | null
+  signin_2_name: string | null
+  signin_2_at: string | null
+  signin_3_name: string | null
+  signin_3_at: string | null
 }
 
 interface Props {
@@ -289,6 +295,39 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
 
       {/* 任務清單 */}
       <div className="space-y-3 p-4">
+
+        {/* 夜班簽到 */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="px-4 py-2 bg-indigo-600 flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-white" />
+            <span className="text-xs font-bold text-white">夜班簽到</span>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {([
+              { name: session.signin_1_name, at: session.signin_1_at, label: '簽到 1' },
+              { name: session.signin_2_name, at: session.signin_2_at, label: '簽到 2' },
+              { name: session.signin_3_name, at: session.signin_3_at, label: '簽到 3' },
+            ] as { name: string | null; at: string | null; label: string }[]).map((slot, i) => (
+              <div key={i} className="px-4 py-3 flex items-center gap-3">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0
+                  ${slot.name ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-300'}`}>
+                  {i + 1}
+                </div>
+                {slot.name ? (
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{slot.name}</p>
+                    <p className="text-xs text-indigo-500">
+                      {slot.at ? new Date(slot.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-300">{slot.label}：未到</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {groups.map(group => (
           <div key={`${group.slot}-${group.category}`} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
             <div className={`px-4 py-2 flex items-center gap-2 ${CATEGORY_HEADER[group.category] ?? 'bg-gray-600'}`}>
