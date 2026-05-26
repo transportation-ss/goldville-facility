@@ -52,8 +52,14 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
     ],
   },
-  { type: 'single', label: '房間登錄',   href: '/rooms',      icon: DoorOpen },
-  { type: 'single', label: '大夜工作表', href: '/nightshift', icon: Moon     },
+  { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+  {
+    type: 'group', label: '大夜',
+    items: [
+      { label: '大夜工作表', href: '/nightshift',       icon: Moon       },
+      { label: '使用說明書', href: '/nightshift/guide', icon: HelpCircle },
+    ],
+  },
 ]
 
 /** 工務身分 */
