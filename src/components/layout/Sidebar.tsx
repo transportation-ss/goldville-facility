@@ -11,81 +11,101 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-// ─── 身分群組定義 ──────────────────────────────
-const NIGHTSHIFT_ROLES = ['nightshift', 'frontdesk_night', 'frontdesk_day']
-const ADMIN_ROLES = ['admin', 'manager']
+// ─── 身分群組 ──────────────────────────────────
+const ADMIN_ROLES      = ['admin', 'manager']
+const NIGHTSHIFT_ROLES = ['frontdesk_night']          // 大夜班限制版
+const TECHNICIAN_ROLES = ['technician']               // 工務完整版
+// 其餘（frontdesk_day, housekeeper, admin_staff, sales）→ 一般版
 
-// ─── 導航結構定義 ─────────────────────────────
-type NavItem = { label: string; href: string; icon: React.ElementType }
-type NavGroup = { type: 'group'; label: string; items: NavItem[] }
+// ─── 型別 ──────────────────────────────────────
+type NavItem   = { label: string; href: string; icon: React.ElementType }
+type NavGroup  = { type: 'group'; label: string; items: NavItem[] }
 type NavSingle = { type: 'single' } & NavItem
 
-// 一般（工務/管理/全員）導航
-const mainNav: (NavSingle | NavGroup)[] = [
+// ─── 各身分導航 ────────────────────────────────
+
+/** 管理員 */
+const adminNav: NavItem[] = [
+  { label: '帳號管理',     href: '/admin/users',       icon: Users    },
+  { label: '保養項目管理', href: '/maintenance/admin', icon: Settings  },
+  { label: '硬體設備管理', href: '/hardware/admin',    icon: Wrench   },
+  { label: '財產清單',     href: '/assets',            icon: Archive  },
+  { label: '房間登錄',     href: '/rooms',             icon: DoorOpen },
+]
+
+/** 全員主導航（admin/manager 使用） */
+const fullNav: (NavSingle | NavGroup)[] = [
+  { type: 'single', label: '總覽', href: '/dashboard', icon: LayoutDashboard },
   {
-    type: 'single',
-    label: '總覽',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    type: 'group',
-    label: '工務',
+    type: 'group', label: '工務',
     items: [
-      { label: '工務派工',   href: '/work-orders',  icon: ClipboardList },
-      { label: '保養提醒',   href: '/maintenance',  icon: CalendarCheck },
-      { label: '耗材進銷存', href: '/consumables',  icon: Package       },
-      { label: '水電紀錄',   href: '/utilities',    icon: Droplets      },
+      { label: '工務派工',   href: '/work-orders', icon: ClipboardList },
+      { label: '保養提醒',   href: '/maintenance', icon: CalendarCheck },
+      { label: '耗材進銷存', href: '/consumables', icon: Package       },
+      { label: '水電紀錄',   href: '/utilities',   icon: Droplets      },
     ],
   },
   {
-    type: 'group',
-    label: '說明書',
+    type: 'group', label: '說明書',
     items: [
       { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
       { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
     ],
   },
-  {
-    type: 'single',
-    label: '大夜工作表',
-    href: '/nightshift',
-    icon: Moon,
-  },
+  { type: 'single', label: '房間登錄',   href: '/rooms',      icon: DoorOpen },
+  { type: 'single', label: '大夜工作表', href: '/nightshift', icon: Moon     },
 ]
 
-// 大夜班導航（精簡版）
+/** 工務身分 */
+const technicianNav: (NavSingle | NavGroup)[] = [
+  {
+    type: 'group', label: '工務',
+    items: [
+      { label: '工務派工',   href: '/work-orders', icon: ClipboardList },
+      { label: '保養提醒',   href: '/maintenance', icon: CalendarCheck },
+      { label: '耗材進銷存', href: '/consumables', icon: Package       },
+      { label: '水電紀錄',   href: '/utilities',   icon: Droplets      },
+    ],
+  },
+  {
+    type: 'group', label: '說明書',
+    items: [
+      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
+      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
+    ],
+  },
+  { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+]
+
+/** 一般身分（frontdesk_day / housekeeper / admin_staff / sales） */
+const generalNav: (NavSingle | NavGroup)[] = [
+  { type: 'single', label: '工務派工', href: '/work-orders', icon: ClipboardList },
+  {
+    type: 'group', label: '說明書',
+    items: [
+      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
+      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
+    ],
+  },
+  { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+]
+
+/** 大夜班身分 */
 const nightshiftNav: (NavSingle | NavGroup)[] = [
   {
-    type: 'group',
-    label: '工務',
+    type: 'group', label: '工務',
     items: [
       { label: '工務派工', href: '/work-orders', icon: ClipboardList },
     ],
   },
   {
-    type: 'group',
-    label: '說明書',
+    type: 'group', label: '說明書',
     items: [
       { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
       { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
     ],
   },
-  {
-    type: 'single',
-    label: '大夜工作表',
-    href: '/nightshift',
-    icon: Moon,
-  },
-]
-
-// 管理員專屬
-const adminNav: NavItem[] = [
-  { label: '帳號管理',     href: '/admin/users',        icon: Users   },
-  { label: '保養項目管理', href: '/maintenance/admin',  icon: Settings },
-  { label: '硬體設備管理', href: '/hardware/admin',     icon: Wrench  },
-  { label: '財產清單',     href: '/assets',             icon: Archive  },
-  { label: '房間登錄',     href: '/rooms',              icon: DoorOpen },
+  { type: 'single', label: '大夜工作表', href: '/nightshift', icon: Moon },
 ]
 
 // ─── 子元件 ──────────────────────────────────
@@ -121,6 +141,24 @@ function SubNavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   )
 }
 
+function renderNav(nav: (NavSingle | NavGroup)[], pathname: string) {
+  return nav.map((section, i) => {
+    if (section.type === 'single') {
+      return <NavLink key={section.href} item={section} pathname={pathname} />
+    }
+    return (
+      <div key={section.label} className={i > 0 ? 'mt-1' : ''}>
+        <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+          {section.label}
+        </p>
+        {section.items.map(item => (
+          <SubNavLink key={item.href} item={item} pathname={pathname} />
+        ))}
+      </div>
+    )
+  })
+}
+
 // ─── 主元件 ──────────────────────────────────
 export function Sidebar() {
   const pathname = usePathname()
@@ -146,9 +184,15 @@ export function Sidebar() {
     router.push('/login')
   }
 
-  const isAdmin = ADMIN_ROLES.includes(role)
+  const isAdmin      = ADMIN_ROLES.includes(role)
   const isNightshift = NIGHTSHIFT_ROLES.includes(role)
-  const nav = isNightshift ? nightshiftNav : mainNav
+  const isTechnician = TECHNICIAN_ROLES.includes(role)
+
+  const nav = isAdmin      ? fullNav
+            : isNightshift ? nightshiftNav
+            : isTechnician ? technicianNav
+            : role         ? generalNav
+            : []  // 尚未載入時不顯示
 
   return (
     <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 bg-white border-r border-gray-200 flex-col z-10">
@@ -163,21 +207,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {nav.map((section, i) => {
-          if (section.type === 'single') {
-            return <NavLink key={section.href} item={section} pathname={pathname} />
-          }
-          return (
-            <div key={section.label} className={i > 0 ? 'mt-1' : ''}>
-              <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                {section.label}
-              </p>
-              {section.items.map(item => (
-                <SubNavLink key={item.href} item={item} pathname={pathname} />
-              ))}
-            </div>
-          )
-        })}
+        {renderNav(nav, pathname)}
 
         {/* 管理區（admin/manager only） */}
         {isAdmin && (
