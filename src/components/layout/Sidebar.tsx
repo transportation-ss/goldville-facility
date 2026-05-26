@@ -5,17 +5,22 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
-  Users, BookOpen, ChevronRight,
+  Users, BookOpen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+
+// ─── 身分群組定義 ──────────────────────────────
+const NIGHTSHIFT_ROLES = ['nightshift', 'frontdesk_night', 'frontdesk_day']
+const ADMIN_ROLES = ['admin', 'manager']
 
 // ─── 導航結構定義 ─────────────────────────────
 type NavItem = { label: string; href: string; icon: React.ElementType }
 type NavGroup = { type: 'group'; label: string; items: NavItem[] }
 type NavSingle = { type: 'single' } & NavItem
 
+// 一般（工務/管理/全員）導航
 const mainNav: (NavSingle | NavGroup)[] = [
   {
     type: 'single',
@@ -49,6 +54,32 @@ const mainNav: (NavSingle | NavGroup)[] = [
   },
 ]
 
+// 大夜班導航（精簡版）
+const nightshiftNav: (NavSingle | NavGroup)[] = [
+  {
+    type: 'group',
+    label: '工務',
+    items: [
+      { label: '工務派工', href: '/work-orders', icon: ClipboardList },
+    ],
+  },
+  {
+    type: 'group',
+    label: '說明書',
+    items: [
+      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
+      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
+    ],
+  },
+  {
+    type: 'single',
+    label: '大夜工作表',
+    href: '/nightshift',
+    icon: Moon,
+  },
+]
+
+// 管理員專屬
 const adminNav: NavItem[] = [
   { label: '帳號管理',     href: '/admin/users',        icon: Users   },
   { label: '保養項目管理', href: '/maintenance/admin',  icon: Settings },
@@ -95,7 +126,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [role, setRole] = useState<string>('')
 
   useEffect(() => {
     const checkRole = async () => {
@@ -104,7 +135,7 @@ export function Sidebar() {
         if (!user) return
         const { data: profile } = await supabase
           .from('user_profiles').select('role').eq('id', user.id).single()
-        setIsAdmin(!!(profile && ['admin', 'manager'].includes(profile.role)))
+        setRole(profile?.role ?? '')
       } catch {}
     }
     checkRole()
@@ -114,6 +145,10 @@ export function Sidebar() {
     await supabase.auth.signOut()
     router.push('/login')
   }
+
+  const isAdmin = ADMIN_ROLES.includes(role)
+  const isNightshift = NIGHTSHIFT_ROLES.includes(role)
+  const nav = isNightshift ? nightshiftNav : mainNav
 
   return (
     <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 bg-white border-r border-gray-200 flex-col z-10">
@@ -128,11 +163,10 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {mainNav.map((section, i) => {
+        {nav.map((section, i) => {
           if (section.type === 'single') {
             return <NavLink key={section.href} item={section} pathname={pathname} />
           }
-          // group
           return (
             <div key={section.label} className={i > 0 ? 'mt-1' : ''}>
               <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
@@ -145,7 +179,7 @@ export function Sidebar() {
           )
         })}
 
-        {/* 管理區（admin only） */}
+        {/* 管理區（admin/manager only） */}
         {isAdmin && (
           <div className="mt-1">
             <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
