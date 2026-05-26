@@ -16,6 +16,7 @@ import {
   Building2,
   Settings,
   Moon,
+  History,
   Users,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -72,6 +73,11 @@ const navItems = [
     label: '大夜工作表',
     href: '/nightshift',
     icon: Moon,
+  },
+  {
+    label: '大夜歷史紀錄',
+    href: '/nightshift/history',
+    icon: History,
   },
 ]
 
