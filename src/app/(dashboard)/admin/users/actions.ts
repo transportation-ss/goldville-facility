@@ -1,8 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
+// ─── 審核 ─────────────────────────────────────────────────
 export async function approveUser(userId: string) {
   const supabase = await createClient()
   await supabase
@@ -14,7 +16,6 @@ export async function approveUser(userId: string) {
 
 export async function rejectUser(userId: string) {
   const supabase = await createClient()
-  // 拒絕 = 設為 disabled（保留紀錄）
   await supabase
     .from('user_profiles')
     .update({ status: 'disabled' })
@@ -22,6 +23,7 @@ export async function rejectUser(userId: string) {
   revalidatePath('/admin/users')
 }
 
+// ─── 角色 / 狀態 ──────────────────────────────────────────
 export async function updateUserRole(userId: string, role: string) {
   const supabase = await createClient()
   await supabase
@@ -39,4 +41,39 @@ export async function toggleUserStatus(userId: string, currentStatus: string) {
     .update({ status: newStatus })
     .eq('id', userId)
   revalidatePath('/admin/users')
+}
+
+// ─── 管理員直接新增帳號 ────────────────────────────────────
+export async function createUser(data: {
+  email: string
+  password: string
+  display_name: string
+  role: string
+}) {
+  const admin = createAdminClient()
+
+  const { error } = await admin.auth.admin.createUser({
+    email: data.email,
+    password: data.password,
+    email_confirm: true,
+    user_metadata: {
+      display_name: data.display_name,
+      role: data.role,
+      status: 'active',
+    },
+  })
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/users')
+}
+
+// ─── 管理員重設他人密碼 ────────────────────────────────────
+export async function adminResetPassword(userId: string, newPassword: string) {
+  const admin = createAdminClient()
+
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  })
+
+  if (error) throw new Error(error.message)
 }

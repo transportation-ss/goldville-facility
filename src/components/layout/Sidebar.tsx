@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
-  Users, BookOpen,
+  Users, BookOpen, KeyRound,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -222,8 +222,19 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Logout */}
-      <div className="p-2 border-t border-gray-200">
+      {/* 底部：修改密碼 + 登出 */}
+      <div className="p-2 border-t border-gray-200 space-y-0.5">
+        <Link
+          href="/settings/password"
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            pathname === '/settings/password'
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+          }`}
+        >
+          <KeyRound className="w-4 h-4 shrink-0" />
+          修改密碼
+        </Link>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"

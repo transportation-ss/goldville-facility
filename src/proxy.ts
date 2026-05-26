@@ -8,9 +8,9 @@ const TECHNICIAN_ROLES = ['technician']
 const GENERAL_ROLES    = ['frontdesk_day', 'housekeeper', 'admin_staff', 'sales']
 
 // ─── 各身分允許的路徑前綴 ────────────────────
-const NIGHTSHIFT_ALLOWED = ['/nightshift', '/work-orders', '/manuals', '/hardware', '/api']
-const TECHNICIAN_ALLOWED = ['/work-orders', '/maintenance', '/consumables', '/utilities', '/manuals', '/hardware', '/rooms', '/api']
-const GENERAL_ALLOWED    = ['/work-orders', '/manuals', '/hardware', '/rooms', '/api']
+const NIGHTSHIFT_ALLOWED = ['/nightshift', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
+const TECHNICIAN_ALLOWED = ['/work-orders', '/maintenance', '/consumables', '/utilities', '/manuals', '/hardware', '/rooms', '/api', '/settings']
+const GENERAL_ALLOWED    = ['/work-orders', '/manuals', '/hardware', '/rooms', '/api', '/settings']
 
 // 禁止存取的子路徑（所有非 admin 均不可）
 const ADMIN_ONLY_PATHS   = ['/admin', '/maintenance/admin', '/hardware/admin', '/assets']
