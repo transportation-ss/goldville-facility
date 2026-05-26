@@ -44,10 +44,18 @@ export default function RegisterPage() {
     setLoading(true)
     const supabase = createClient()
 
-    // 1. 建立 auth 帳號
-    const { data, error: signUpError } = await supabase.auth.signUp({
+    // signUp 時把 display_name / role / status 寫進 metadata
+    // → trg_on_auth_user_created trigger 會自動建立 user_profiles
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          display_name: displayName,
+          role,
+          status: 'pending',
+        },
+      },
     })
 
     if (signUpError) {
@@ -58,30 +66,7 @@ export default function RegisterPage() {
       return
     }
 
-    const userId = data.user?.id
-    if (!userId) {
-      setError('申請失敗，請稍後再試')
-      setLoading(false)
-      return
-    }
-
-    // 2. 寫入 user_profiles（status = pending）
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .insert({
-        id: userId,
-        display_name: displayName,
-        role,
-        status: 'pending',
-      })
-
-    if (profileError) {
-      setError('建立資料失敗：' + profileError.message)
-      setLoading(false)
-      return
-    }
-
-    // 3. 登出（待審核帳號不能直接使用）
+    // 登出（待審核帳號不能直接使用）
     await supabase.auth.signOut()
     setDone(true)
     setLoading(false)
