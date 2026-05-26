@@ -5,19 +5,20 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
-  CalendarCheck, Archive, DoorOpen, Droplets, BarChart3,
+  CalendarCheck, Archive, DoorOpen, Droplets, BarChart3, Moon,
 } from 'lucide-react'
 
 const primaryNav = [
   { label: '總覽',   href: '/dashboard',   icon: LayoutDashboard },
   { label: '派工單', href: '/work-orders',  icon: ClipboardList   },
   { label: '進銷存', href: '/consumables',  icon: Package          },
-  { label: '說明書', href: '/hardware',     icon: Wrench           },
+  { label: '大夜班', href: '/nightshift',   icon: Moon             },
 ]
 
 const moreNav = [
   { label: '保養提醒', href: '/maintenance', icon: CalendarCheck },
   { label: '財產清單', href: '/assets',      icon: Archive        },
+  { label: '說明書',   href: '/hardware',    icon: Wrench         },
   { label: '房間登錄', href: '/rooms',       icon: DoorOpen       },
   { label: '水電紀錄', href: '/utilities',   icon: Droplets       },
   { label: '報表',     href: '/reports',     icon: BarChart3      },

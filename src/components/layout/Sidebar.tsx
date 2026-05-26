@@ -15,6 +15,7 @@ import {
   LogOut,
   Building2,
   Settings,
+  Moon,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -65,6 +66,11 @@ const navItems = [
     label: '報表',
     href: '/reports',
     icon: BarChart3,
+  },
+  {
+    label: '大夜工作表',
+    href: '/nightshift',
+    icon: Moon,
   },
 ]
 
