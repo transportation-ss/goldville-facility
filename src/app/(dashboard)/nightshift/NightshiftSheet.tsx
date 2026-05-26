@@ -1,8 +1,16 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, Circle, MessageSquare, Plus, X, Moon, Lock, AlertTriangle, UserCheck } from 'lucide-react'
-import { toggleCompletion, saveTaskNotes, saveHandoverNotes, addExtraTask, closeSession, signInToSession } from './actions'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import {
+  CheckCircle2, Circle, MessageSquare, Plus, X, Moon, Lock,
+  AlertTriangle, UserCheck, LockOpen, History,
+} from 'lucide-react'
+import {
+  toggleCompletion, saveTaskNotes, saveHandoverNotes,
+  addExtraTask, closeSession, signInToSession, reopenSession,
+} from './actions'
 
 interface Completion {
   id: string
@@ -30,6 +38,7 @@ interface Session {
   status: string
   handover_notes: string | null
   ended_at: string | null
+  reopened_at: string | null
   signin_1_name: string | null
   signin_1_at: string | null
   signin_2_name: string | null
@@ -78,6 +87,15 @@ function TaskRow({
 
   const handleToggle = () => {
     if (locked) return
+
+    // 防呆：取消已完成的任務需確認
+    if (isCompleted) {
+      const who = completion.completer_name ?? '某人'
+      if (!confirm(`確定要取消「${task.title}」的完成紀錄嗎？\n（${who} 的完成紀錄將被取消）`)) {
+        return
+      }
+    }
+
     // 1. 立刻更新畫面（optimistic）
     onOptimisticToggle(task, isCompleted)
     // 2. 背景同步 server（不 await，不 block UI）
@@ -181,6 +199,7 @@ function TaskRow({
 }
 
 export function NightshiftSheet({ session, tasks, completions: initialCompletions, isAdmin, currentUserName }: Props) {
+  const router = useRouter()
   const locked = session.status === 'completed'
 
   // Optimistic state — 直接 manage，不依賴 server revalidation
@@ -196,13 +215,12 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
 
   const isCurrentUserSignedIn = currentUserName
     ? signins.some(s => s.name === currentUserName)
-    : true  // 若無名稱就隱藏按鈕
+    : true
   const hasEmptySlot = signins.some(s => !s.name)
 
   const handleSignIn = async () => {
     if (!currentUserName || signingIn) return
     setSigningIn(true)
-    // Optimistic update
     const now = new Date().toISOString()
     setSignins(prev => {
       const idx = prev.findIndex(s => !s.name)
@@ -223,6 +241,7 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
   const [newTaskSlot, setNewTaskSlot] = useState('22:00')
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [reopening, setReopening] = useState(false)
   const [, startTransition] = useTransition()
 
   const handleCloseSession = async () => {
@@ -232,17 +251,24 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
     setShowCloseConfirm(false)
   }
 
-  // Optimistic toggle：立刻更新 localCompletions
+  // 管理員重新開啟（當天報表）
+  const handleReopen = async () => {
+    if (!confirm('確定要重新開啟此班次？開啟後工作人員可再次編輯。')) return
+    setReopening(true)
+    await reopenSession(session.id)
+    setReopening(false)
+    router.refresh()
+  }
+
+  // Optimistic toggle
   const handleOptimisticToggle = (task: Task, wasCompleted: boolean) => {
     if (wasCompleted) {
-      // 取消完成 → 移除
       setLocalCompletions(prev =>
         prev.filter(c =>
           task.is_extra ? c.extra_task_id !== task.id : c.template_id !== task.id
         )
       )
     } else {
-      // 標記完成 → 立刻新增暫時 record
       const optimistic: Completion = {
         id: 'opt-' + Date.now(),
         template_id: task.is_extra ? null : task.id,
@@ -289,36 +315,61 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Moon className="w-4 h-4 text-blue-300" />
-          <div>
-            <p className="text-sm font-bold">大夜工作表</p>
-            <p className="text-xs text-gray-400">{session.session_date}</p>
+      <div className="sticky top-0 z-10 bg-gray-900 text-white px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Moon className="w-4 h-4 text-blue-300" />
+            <div>
+              <p className="text-sm font-bold">大夜工作表</p>
+              <p className="text-xs text-gray-400">{session.session_date}</p>
+            </div>
           </div>
-        </div>
-        <div className="text-right">
-          {locked ? (
-            <div className="flex items-center gap-1.5 text-amber-400">
-              <Lock className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">已結束</span>
-              {session.ended_at && (
-                <span className="text-xs text-gray-400 ml-1">
-                  {new Date(session.ended_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-                </span>
+          <div className="flex items-center gap-3">
+            {/* 歷史紀錄連結 */}
+            <Link
+              href="/nightshift/history"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <History className="w-3.5 h-3.5" />
+              歷史
+            </Link>
+
+            {/* 管理員解鎖按鈕 */}
+            {locked && isAdmin && (
+              <button
+                onClick={handleReopen}
+                disabled={reopening}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                <LockOpen className="w-3.5 h-3.5" />
+                {reopening ? '處理中...' : '解鎖'}
+              </button>
+            )}
+
+            <div className="text-right">
+              {locked ? (
+                <div className="flex items-center gap-1.5 text-amber-400">
+                  <Lock className="w-3.5 h-3.5" />
+                  <span className="text-xs font-medium">已結束</span>
+                  {session.ended_at && (
+                    <span className="text-xs text-gray-400 ml-1">
+                      {new Date(session.ended_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-400">{completedCount} / {totalTasks} 完成</p>
+                  <div className="w-20 h-1.5 bg-gray-700 rounded-full mt-1">
+                    <div
+                      className="h-1.5 bg-emerald-400 rounded-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </>
               )}
             </div>
-          ) : (
-            <>
-              <p className="text-xs text-gray-400">{completedCount} / {totalTasks} 完成</p>
-              <div className="w-20 h-1.5 bg-gray-700 rounded-full mt-1">
-                <div
-                  className="h-1.5 bg-emerald-400 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </>
-          )}
+          </div>
         </div>
       </div>
 
@@ -407,7 +458,7 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
         ))}
 
         {/* 管理員加派任務 */}
-        {isAdmin && (
+        {isAdmin && !locked && (
           <div>
             {!showAddTask ? (
               <button
@@ -500,7 +551,7 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
             <Lock className="w-4 h-4 text-amber-500 shrink-0" />
             <p className="text-sm text-amber-700">
-              班次已結束並鎖定。如需調整請洽管理員。
+              班次已結束並鎖定。{isAdmin ? '你可以點擊上方「解鎖」重新開啟。' : '如需調整請洽管理員。'}
             </p>
           </div>
         )}

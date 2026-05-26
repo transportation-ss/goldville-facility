@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { getOrCreateSession } from './actions'
+import { getOrCreateSession, autoLockSession } from './actions'
+import { isInActiveWindow } from './utils'
 import { NightshiftSheet } from './NightshiftSheet'
-import { Moon } from 'lucide-react'
 
 export default async function NightshiftPage() {
   const supabase = await createClient()
@@ -17,7 +17,20 @@ export default async function NightshiftPage() {
   const isAdmin = ['admin', 'manager'].includes(profile?.role ?? '')
 
   // 取得或建立今日班次
-  const session = await getOrCreateSession()
+  let session = await getOrCreateSession()
+
+  // ─── 自動鎖定邏輯 ─────────────────────────
+  // 超過 07:30 且班次仍 active 且未被管理員重新開啟 → 自動鎖定
+  if (!isInActiveWindow() && session.status === 'active' && !session.reopened_at) {
+    await autoLockSession(session.id)
+    // 重新取得最新狀態
+    const { data: refreshed } = await supabase
+      .from('nightshift_sessions')
+      .select('*')
+      .eq('id', session.id)
+      .single()
+    if (refreshed) session = refreshed
+  }
 
   // 取得固定任務清單
   const { data: templates } = await supabase

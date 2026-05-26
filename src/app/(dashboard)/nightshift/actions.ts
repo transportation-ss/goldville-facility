@@ -102,9 +102,21 @@ export async function reopenSession(sessionId: string) {
   }
   await supabase
     .from('nightshift_sessions')
-    .update({ status: 'active', ended_at: null })
+    .update({ status: 'active', ended_at: null, reopened_at: new Date().toISOString() })
     .eq('id', sessionId)
+  revalidatePath('/nightshift')
   revalidatePath('/nightshift/history')
+}
+
+// 自動鎖定（07:30 過後、非管理員開啟的）
+export async function autoLockSession(sessionId: string) {
+  const supabase = await createClient()
+  await supabase
+    .from('nightshift_sessions')
+    .update({ status: 'completed', ended_at: new Date().toISOString() })
+    .eq('id', sessionId)
+    .eq('status', 'active')
+    .is('reopened_at', null)
 }
 
 // QR 到場紀錄

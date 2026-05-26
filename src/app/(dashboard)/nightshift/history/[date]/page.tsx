@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, Circle, Moon, Lock } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Circle, Moon, Lock, UserCheck } from 'lucide-react'
 import { ReopenButton } from './ReopenButton'
 
 const TIME_SLOTS = ['22:00', '23:00', '02:00', '05:00', '06:30']
@@ -137,6 +137,40 @@ export default async function NightshiftHistoryDatePage({
       </div>
 
       <div className="max-w-2xl mx-auto p-4 space-y-3">
+        {/* 簽到紀錄 */}
+        {(session.signin_1_name || session.signin_2_name || session.signin_3_name) && (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="px-4 py-2 bg-indigo-600 flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-white" />
+              <span className="text-xs font-bold text-white">夜班簽到</span>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {[
+                { name: session.signin_1_name, at: session.signin_1_at },
+                { name: session.signin_2_name, at: session.signin_2_at },
+                { name: session.signin_3_name, at: session.signin_3_at },
+              ].map((slot, i) => (
+                <div key={i} className="px-4 py-2.5 flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0
+                    ${slot.name ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-300'}`}>
+                    {i + 1}
+                  </div>
+                  {slot.name ? (
+                    <div>
+                      <span className="text-sm text-gray-800">{slot.name}</span>
+                      <span className="text-xs text-gray-400 ml-2">
+                        {slot.at ? new Date(slot.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-300">——</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 任務清單（唯讀） */}
         {groups.map(group => (
           <div key={`${group.slot}-${group.category}`} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
