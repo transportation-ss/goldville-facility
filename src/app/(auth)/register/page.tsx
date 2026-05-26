@@ -9,9 +9,12 @@ import { Building2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
 const ROLE_OPTIONS = [
-  { value: 'nightshift', label: '大夜班' },
-  { value: 'frontdesk',  label: '櫃台'   },
-  { value: 'technician', label: '工務'   },
+  { value: 'frontdesk_night', label: '櫃台大夜' },
+  { value: 'frontdesk_day',   label: '櫃台日班' },
+  { value: 'technician',      label: '工務'     },
+  { value: 'housekeeper',     label: '管家'     },
+  { value: 'admin_staff',     label: '行政'     },
+  { value: 'sales',           label: '業務'     },
 ]
 
 export default function RegisterPage() {
@@ -19,7 +22,7 @@ export default function RegisterPage() {
   const [password, setPassword]     = useState('')
   const [confirm, setConfirm]       = useState('')
   const [displayName, setDisplayName] = useState('')
-  const [role, setRole]             = useState('nightshift')
+  const [role, setRole]             = useState('frontdesk_day')
   const [loading, setLoading]       = useState(false)
   const [error, setError]           = useState<string | null>(null)
   const [done, setDone]             = useState(false)
@@ -184,7 +187,7 @@ export default function RegisterPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 身分
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {ROLE_OPTIONS.map(opt => (
                   <button
                     key={opt.value}

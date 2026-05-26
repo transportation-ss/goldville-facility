@@ -13,12 +13,17 @@ interface UserProfile {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  nightshift: '大夜班',
-  frontdesk:  '櫃台',
-  technician: '工務',
-  reporter:   '通報',
-  manager:    '管理者',
-  admin:      '系統管理員',
+  frontdesk_night: '櫃台大夜',
+  frontdesk_day:   '櫃台日班',
+  technician:      '工務',
+  housekeeper:     '管家',
+  admin_staff:     '行政',
+  sales:           '業務',
+  nightshift:      '大夜班',
+  frontdesk:       '櫃台',
+  reporter:        '通報',
+  manager:         '管理者',
+  admin:           '系統管理員',
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -34,12 +39,15 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const ALL_ROLES = [
-  { value: 'nightshift', label: '大夜班' },
-  { value: 'frontdesk',  label: '櫃台'   },
-  { value: 'technician', label: '工務'   },
-  { value: 'reporter',   label: '通報'   },
-  { value: 'manager',    label: '管理者' },
-  { value: 'admin',      label: '系統管理員' },
+  { value: 'frontdesk_night', label: '櫃台大夜' },
+  { value: 'frontdesk_day',   label: '櫃台日班' },
+  { value: 'technician',      label: '工務'     },
+  { value: 'housekeeper',     label: '管家'     },
+  { value: 'admin_staff',     label: '行政'     },
+  { value: 'sales',           label: '業務'     },
+  { value: 'reporter',        label: '通報'     },
+  { value: 'manager',         label: '管理者'   },
+  { value: 'admin',           label: '系統管理員' },
 ]
 
 function UserRow({ user, currentUserId, isSelf }: { user: UserProfile; currentUserId: string; isSelf: boolean }) {
