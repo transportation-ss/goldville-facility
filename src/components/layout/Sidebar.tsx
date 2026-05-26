@@ -37,6 +37,7 @@ const mainNav: (NavSingle | NavGroup)[] = [
     type: 'group',
     label: '說明書',
     items: [
+      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
       { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
     ],
   },
