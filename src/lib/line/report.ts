@@ -105,6 +105,21 @@ function slotBubble(
         type: 'text', text: '（無任務）', size: 'sm', color: '#9CA3AF',
       }],
     },
+    footer: {
+      type: 'box', layout: 'vertical',
+      paddingAll: 'sm',
+      contents: [{
+        type: 'button',
+        action: {
+          type: 'uri',
+          label: '查看大夜工作表',
+          uri: 'https://goldville-facility.vercel.app/nightshift',
+        },
+        style: 'primary',
+        color: '#10B981',
+        height: 'sm',
+      }],
+    },
   }
 }
 
@@ -229,10 +244,17 @@ function summaryBubble(
     },
     footer: {
       type: 'box', layout: 'vertical',
-      backgroundColor: '#F8FAFC', paddingAll: 'sm',
+      paddingAll: 'sm',
       contents: [{
-        type: 'text', text: '好好園館 工務管理系統',
-        size: 'xxs', color: '#CBD5E1', align: 'center',
+        type: 'button',
+        action: {
+          type: 'uri',
+          label: '查看大夜工作表',
+          uri: 'https://goldville-facility.vercel.app/nightshift',
+        },
+        style: 'primary',
+        color: '#10B981',
+        height: 'sm',
       }],
     },
   }
