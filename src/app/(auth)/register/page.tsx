@@ -12,6 +12,7 @@ const ROLE_OPTIONS = [
   { value: 'frontdesk_night', label: '櫃台大夜' },
   { value: 'frontdesk_day',   label: '櫃台日班' },
   { value: 'technician',      label: '工務'     },
+  { value: 'procurement',     label: '採購'     },
   { value: 'housekeeper',     label: '管家'     },
   { value: 'admin_staff',     label: '行政'     },
   { value: 'sales',           label: '業務'     },

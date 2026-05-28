@@ -12,9 +12,10 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 // ─── 身分群組 ──────────────────────────────────
-const ADMIN_ROLES      = ['admin', 'manager']
-const NIGHTSHIFT_ROLES = ['frontdesk_night']          // 大夜班限制版
-const TECHNICIAN_ROLES = ['technician']               // 工務完整版
+const ADMIN_ROLES       = ['admin', 'manager']
+const NIGHTSHIFT_ROLES  = ['frontdesk_night']
+const TECHNICIAN_ROLES  = ['technician']
+const PROCUREMENT_ROLES = ['procurement']
 // 其餘（frontdesk_day, housekeeper, admin_staff, sales）→ 一般版
 
 // ─── 型別 ──────────────────────────────────────
@@ -81,6 +82,22 @@ const technicianNav: (NavSingle | NavGroup)[] = [
     ],
   },
   { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+]
+
+/** 採購身分 */
+const procurementNav: (NavSingle | NavGroup)[] = [
+  { type: 'single', label: '工務派工',   href: '/work-orders', icon: ClipboardList },
+  { type: 'single', label: '耗材進銷存', href: '/consumables', icon: Package       },
+  {
+    type: 'group', label: '說明書',
+    items: [
+      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
+      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
+    ],
+  },
+  { type: 'single', label: '房間登錄',     href: '/rooms',          icon: DoorOpen },
+  { type: 'single', label: '硬體設備管理', href: '/hardware/admin', icon: Wrench   },
+  { type: 'single', label: '財產清單',     href: '/assets',         icon: Archive  },
 ]
 
 /** 一般身分（frontdesk_day / housekeeper / admin_staff / sales） */
@@ -196,14 +213,16 @@ export function Sidebar() {
     router.push('/login')
   }
 
-  const isAdmin      = ADMIN_ROLES.includes(role)
-  const isNightshift = NIGHTSHIFT_ROLES.includes(role)
-  const isTechnician = TECHNICIAN_ROLES.includes(role)
+  const isAdmin       = ADMIN_ROLES.includes(role)
+  const isNightshift  = NIGHTSHIFT_ROLES.includes(role)
+  const isTechnician  = TECHNICIAN_ROLES.includes(role)
+  const isProcurement = PROCUREMENT_ROLES.includes(role)
 
-  const nav = isAdmin      ? fullNav
-            : isNightshift ? nightshiftNav
-            : isTechnician ? technicianNav
-            : role         ? generalNav
+  const nav = isAdmin       ? fullNav
+            : isNightshift  ? nightshiftNav
+            : isTechnician  ? technicianNav
+            : isProcurement ? procurementNav
+            : role          ? generalNav
             : []  // 尚未載入時不顯示
 
   return (
