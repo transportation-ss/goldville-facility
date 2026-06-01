@@ -135,7 +135,7 @@ export function NewUtilitySessionForm({ meters, lastSessionDate }: Props) {
   }
 
   return (
-    <div className="pb-32">
+    <div className="pb-48 md:pb-32">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -232,7 +232,7 @@ export function NewUtilitySessionForm({ meters, lastSessionDate }: Props) {
       })}
 
       {/* 底部按鈕 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 z-10">
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-56 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 z-20">
         <button
           type="button"
           onClick={() => router.back()}
