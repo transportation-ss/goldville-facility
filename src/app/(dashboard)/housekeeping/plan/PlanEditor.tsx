@@ -695,7 +695,7 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
             />
           </div>
 
-          {/* 任務列表 */}
+          {/* 固定任務列表 */}
           <div className="bg-white rounded-xl border border-gray-200 mb-4 overflow-hidden">
             {urgentTasks.length > 0 && (
               <div>
@@ -734,89 +734,96 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
             )}
           </div>
 
-          {/* 臨時派工列表 */}
-          {adhocOrders.length > 0 && (
-            <div className="bg-white rounded-xl border border-orange-200 mb-4 overflow-hidden">
-              <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-orange-400" />
-                  <span className="text-sm font-semibold text-orange-800">臨時派工</span>
-                  <span className="text-xs bg-orange-200 text-orange-700 px-1.5 py-0.5 rounded-full">
-                    {adhocOrders.length}
-                  </span>
-                </div>
-              </div>
-              {adhocOrders.map(o => {
-                const done     = o.status === 'completed'
-                const isUrgent = o.priority === 'urgent'
-                const typeStyle = o.task_type ? (TASK_TYPE_COLORS[o.task_type] ?? 'bg-gray-100 text-gray-600') : ''
-                return (
-                  <div key={o.id} className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                        {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
-                        {o.task_type && (
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>
-                            {TASK_TYPE_LABELS[o.task_type]}
-                          </span>
-                        )}
-                        {done && (
-                          <span className="text-xs bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full">已完成</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                          {o.title}
-                        </span>
-                        {o.room && (
-                          <span className="text-xs text-gray-400">
-                            {o.room.floor ? `${o.room.floor} ` : ''}{o.room.name}
-                          </span>
-                        )}
-                        {o.assignee && (
-                          <span className="text-xs text-gray-400">→ {o.assignee.display_name}</span>
-                        )}
-                      </div>
-                      {o.description && (
-                        <p className="text-xs text-gray-500 mt-0.5 truncate">{o.description}</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteAdhoc(o.id)}
-                      className="p-1.5 text-gray-300 hover:text-red-400 transition-colors shrink-0"
-                      title="刪除臨時派工"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+          {/* 新增固定任務（草稿或已發布均可） */}
+          {plan.status !== 'completed' && (
+            <div className="mb-4">
+              {showAddForm
+                ? (
+                  <AddTaskForm
+                    planId={plan.id} spaces={spaces} staff={staff}
+                    currentCount={tasks.length}
+                    onDone={() => setShowAddForm(false)}
+                    onAdded={() => showToast(plan.status === 'published' ? '✅ 任務已追加' : '✅ 任務已加入')}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setShowAddForm(true)}
+                    className={`w-full py-3 border-2 border-dashed rounded-xl text-sm flex items-center justify-center gap-2 transition-colors ${
+                      plan.status === 'published'
+                        ? 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'
+                        : 'border-gray-300 text-gray-500 hover:border-emerald-400 hover:text-emerald-600'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4" />
+                    {plan.status === 'published' ? '追加固定任務' : '新增任務'}
+                  </button>
                 )
-              })}
+              }
             </div>
           )}
 
-          {/* 新增任務 */}
-          {plan.status !== 'completed' && (
-            showAddForm
-              ? (
-                <AddTaskForm
-                  planId={plan.id} spaces={spaces} staff={staff}
-                  currentCount={tasks.length}
-                  onDone={() => setShowAddForm(false)}
-                  onAdded={() => showToast(plan.status === 'published' ? '✅ 任務已追加' : '✅ 任務已加入')}
-                />
+          {/* 臨時派工列表（僅發布後顯示） */}
+          {plan.status === 'published' && (
+            <div className="bg-white rounded-xl border border-orange-200 overflow-hidden">
+              <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-orange-400" />
+                <span className="text-sm font-semibold text-orange-800">臨時派工</span>
+                {adhocOrders.length > 0 && (
+                  <span className="text-xs bg-orange-200 text-orange-700 px-1.5 py-0.5 rounded-full">
+                    {adhocOrders.length}
+                  </span>
+                )}
+              </div>
+              {adhocOrders.length === 0 ? (
+                <div className="py-6 text-center text-sm text-gray-400">今日尚無臨時派工</div>
               ) : (
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className={`w-full py-3 border-2 border-dashed rounded-xl text-sm flex items-center justify-center gap-2 transition-colors ${
-                    plan.status === 'published'
-                      ? 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'
-                      : 'border-gray-300 text-gray-500 hover:border-emerald-400 hover:text-emerald-600'
-                  }`}
-                >
-                  <Plus className="w-4 h-4" />
-                  {plan.status === 'published' ? '追加任務' : '新增任務'}
-                </button>
-              )
+                adhocOrders.map(o => {
+                  const done      = o.status === 'completed'
+                  const isUrgent  = o.priority === 'urgent'
+                  const typeStyle = o.task_type ? (TASK_TYPE_COLORS[o.task_type] ?? 'bg-gray-100 text-gray-600') : ''
+                  return (
+                    <div key={o.id} className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                          {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
+                          {o.task_type && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>
+                              {TASK_TYPE_LABELS[o.task_type]}
+                            </span>
+                          )}
+                          {done && (
+                            <span className="text-xs bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full">已完成</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                            {o.title}
+                          </span>
+                          {o.room && (
+                            <span className="text-xs text-gray-400">
+                              {o.room.floor ? `${o.room.floor} ` : ''}{o.room.name}
+                            </span>
+                          )}
+                          {o.assignee && (
+                            <span className="text-xs text-gray-400">→ {o.assignee.display_name}</span>
+                          )}
+                        </div>
+                        {o.description && (
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">{o.description}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteAdhoc(o.id)}
+                        className="p-1.5 text-gray-300 hover:text-red-400 transition-colors shrink-0"
+                        title="刪除臨時派工"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
           )}
         </>
       )}
