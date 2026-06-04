@@ -7,18 +7,20 @@ import {
   FileText, ChevronDown, ChevronUp, Pencil, X,
 } from 'lucide-react'
 import { createPlan, updatePlan, addTask, deleteTask, deletePlan, updateTask } from './actions'
+import { deleteAdhocOrder } from '../adhoc/actions'
 import {
   TASK_TYPE_LABELS, TASK_TYPE_COLORS,
-  type HousekeepingPlan, type HousekeepingTask,
+  type HousekeepingPlan, type HousekeepingTask, type HousekeepingAdhocOrder,
   type SpaceOption, type TaskType, type TaskPriority,
 } from '@/lib/types/housekeeping'
 
 interface Props {
-  today:  string
-  plan:   HousekeepingPlan | null
-  tasks:  HousekeepingTask[]
-  spaces: SpaceOption[]
-  staff:  { id: string; display_name: string }[]
+  today:        string
+  plan:         HousekeepingPlan | null
+  tasks:        HousekeepingTask[]
+  adhocOrders:  HousekeepingAdhocOrder[]
+  spaces:       SpaceOption[]
+  staff:        { id: string; display_name: string }[]
 }
 
 const FLOOR_ORDER = ['B1', '1F', '2F', '3F', '5F', '6F', '7F', '8F']
@@ -538,7 +540,7 @@ function PlanTaskRow({ task, onEdit, onDelete, canDelete }: {
 }
 
 // ── 主元件 ────────────────────────────────────────────────
-export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
+export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: Props) {
   const [, startTransition] = useTransition()
   const [showAddForm, setShowAddForm]   = useState(false)
   const [generalNotes, setGeneralNotes] = useState(plan?.general_notes ?? '')
@@ -586,6 +588,10 @@ export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
   const handleDelete = (taskId: string) => {
     startTransition(() => deleteTask(taskId))
     setEditingTask(null)
+  }
+
+  const handleDeleteAdhoc = (orderId: string) => {
+    startTransition(() => deleteAdhocOrder(orderId))
   }
 
   const handleSaveEdit = (patch: { taskType: TaskType; priority: TaskPriority; assignedTo: string | null; specialNotes: string }) => {
@@ -727,6 +733,66 @@ export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
               <div className="py-8 text-center text-sm text-gray-400">尚未加入任何任務</div>
             )}
           </div>
+
+          {/* 臨時派工列表 */}
+          {adhocOrders.length > 0 && (
+            <div className="bg-white rounded-xl border border-orange-200 mb-4 overflow-hidden">
+              <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-orange-400" />
+                  <span className="text-sm font-semibold text-orange-800">臨時派工</span>
+                  <span className="text-xs bg-orange-200 text-orange-700 px-1.5 py-0.5 rounded-full">
+                    {adhocOrders.length}
+                  </span>
+                </div>
+              </div>
+              {adhocOrders.map(o => {
+                const done     = o.status === 'completed'
+                const isUrgent = o.priority === 'urgent'
+                const typeStyle = o.task_type ? (TASK_TYPE_COLORS[o.task_type] ?? 'bg-gray-100 text-gray-600') : ''
+                return (
+                  <div key={o.id} className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                        {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
+                        {o.task_type && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>
+                            {TASK_TYPE_LABELS[o.task_type]}
+                          </span>
+                        )}
+                        {done && (
+                          <span className="text-xs bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full">已完成</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                          {o.title}
+                        </span>
+                        {o.room && (
+                          <span className="text-xs text-gray-400">
+                            {o.room.floor ? `${o.room.floor} ` : ''}{o.room.name}
+                          </span>
+                        )}
+                        {o.assignee && (
+                          <span className="text-xs text-gray-400">→ {o.assignee.display_name}</span>
+                        )}
+                      </div>
+                      {o.description && (
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">{o.description}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteAdhoc(o.id)}
+                      className="p-1.5 text-gray-300 hover:text-red-400 transition-colors shrink-0"
+                      title="刪除臨時派工"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
           {/* 新增任務 */}
           {plan.status !== 'completed' && (
