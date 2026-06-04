@@ -1,12 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
-  CalendarCheck, Archive, DoorOpen, Droplets, BarChart3, Moon, BedDouble,
+  CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
+  Users, LogOut,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const primaryNav = [
   { label: '總覽',   href: '/dashboard',   icon: LayoutDashboard },
@@ -22,12 +24,36 @@ const moreNav = [
   { label: '說明書',   href: '/hardware',     icon: Wrench         },
   { label: '房間登錄', href: '/rooms',        icon: DoorOpen       },
   { label: '水電紀錄', href: '/utilities',    icon: Droplets       },
-  { label: '報表',     href: '/reports',      icon: BarChart3      },
 ]
 
+const ADMIN_ROLES = ['admin', 'manager']
+
 export function MobileNav() {
-  const pathname = usePathname()
+  const pathname  = usePathname()
+  const router    = useRouter()
+  const supabase  = createClient()
   const [showMore, setShowMore] = useState(false)
+  const [role, setRole]         = useState<string>('')
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await supabase
+          .from('user_profiles').select('role').eq('id', user.id).single()
+        setRole(profile?.role ?? '')
+      } catch {}
+    }
+    fetchRole()
+  }, [])
+
+  const isAdmin = ADMIN_ROLES.includes(role)
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
@@ -65,6 +91,33 @@ export function MobileNav() {
                   </Link>
                 )
               })}
+
+              {/* 管理員專屬：帳號管理 */}
+              {isAdmin && (
+                <Link
+                  href="/admin/users"
+                  onClick={() => setShowMore(false)}
+                  className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors ${
+                    isActive('/admin/users') ? 'bg-emerald-50' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <Users className={`w-5 h-5 ${isActive('/admin/users') ? 'text-emerald-600' : 'text-gray-500'}`} />
+                  <span className={`text-[11px] font-medium ${isActive('/admin/users') ? 'text-emerald-600' : 'text-gray-600'}`}>
+                    帳號管理
+                  </span>
+                </Link>
+              )}
+            </div>
+
+            {/* 登出 */}
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                登出
+              </button>
             </div>
           </div>
         </div>
