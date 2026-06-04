@@ -95,6 +95,29 @@ export async function addTask(planId: string, task: {
   revalidatePath('/housekeeping/plan')
 }
 
+// ── 更新任務（編輯用）─────────────────────────────────────
+export async function updateTask(taskId: string, patch: {
+  taskType?:    TaskType
+  priority?:    TaskPriority
+  assignedTo?:  string | null
+  specialNotes?: string
+}) {
+  const supabase = await createClient()
+  const update: Record<string, unknown> = {}
+  if (patch.taskType    !== undefined) update.task_type     = patch.taskType
+  if (patch.priority    !== undefined) update.priority      = patch.priority
+  if (patch.assignedTo  !== undefined) update.assigned_to   = patch.assignedTo
+  if (patch.specialNotes !== undefined) update.special_notes = patch.specialNotes || null
+
+  const { error } = await supabase
+    .from('housekeeping_tasks')
+    .update(update)
+    .eq('id', taskId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/housekeeping')
+  revalidatePath('/housekeeping/plan')
+}
+
 // ── 刪除任務 ──────────────────────────────────────────────
 export async function deleteTask(taskId: string) {
   const supabase = await createClient()
