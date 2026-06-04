@@ -19,6 +19,20 @@ const PROCUREMENT_ROLES  = ['procurement']
 const HOUSEKEEPING_ROLES = ['housekeeping']
 // 其餘（frontdesk_day, housekeeper, admin_staff, sales）→ 一般版
 
+// ─── 身分中文標籤 ──────────────────────────────
+const ROLE_LABELS: Record<string, string> = {
+  admin:          '系統管理員',
+  manager:        '管理員',
+  technician:     '工務人員',
+  procurement:    '採購人員',
+  housekeeping:   '房務主管',
+  housekeeper:    '房務人員',
+  frontdesk_day:  '日班櫃台',
+  frontdesk_night:'大夜班',
+  admin_staff:    '行政人員',
+  sales:          '業務',
+}
+
 // ─── 型別 ──────────────────────────────────────
 type NavItem   = { label: string; href: string; icon: React.ElementType }
 type NavGroup  = { type: 'group'; label: string; items: NavItem[] }
@@ -207,7 +221,8 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [role, setRole] = useState<string>('')
+  const [role, setRole]               = useState<string>('')
+  const [displayName, setDisplayName] = useState<string>('')
 
   useEffect(() => {
     const checkRole = async () => {
@@ -215,8 +230,9 @@ export function Sidebar() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
         const { data: profile } = await supabase
-          .from('user_profiles').select('role').eq('id', user.id).single()
+          .from('user_profiles').select('role, display_name').eq('id', user.id).single()
         setRole(profile?.role ?? '')
+        setDisplayName(profile?.display_name ?? '')
       } catch {}
     }
     checkRole()
@@ -269,8 +285,22 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* 底部：修改密碼 + 登出 */}
+      {/* 底部：使用者資訊 + 修改密碼 + 登出 */}
       <div className="p-2 border-t border-gray-200 space-y-0.5">
+        {/* 登入者資訊 */}
+        {displayName && (
+          <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1">
+            <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <span className="text-xs font-bold text-emerald-700">
+                {displayName.charAt(0)}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800 truncate">{displayName}</p>
+              <p className="text-xs text-gray-400 truncate">{ROLE_LABELS[role] ?? role}</p>
+            </div>
+          </div>
+        )}
         <Link
           href="/settings/password"
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
