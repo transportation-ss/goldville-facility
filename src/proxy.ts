@@ -2,17 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // ─── 身分群組 ──────────────────────────────────
-const ADMIN_ROLES       = ['admin', 'manager']
-const NIGHTSHIFT_ROLES  = ['frontdesk_night']
-const TECHNICIAN_ROLES  = ['technician']
-const PROCUREMENT_ROLES = ['procurement']
-const GENERAL_ROLES     = ['frontdesk_day', 'housekeeper', 'admin_staff', 'sales']
+const ADMIN_ROLES        = ['admin', 'manager']
+const NIGHTSHIFT_ROLES   = ['frontdesk_night']
+const TECHNICIAN_ROLES   = ['technician']
+const PROCUREMENT_ROLES  = ['procurement']
+const HOUSEKEEPING_ROLES = ['housekeeping']
+const GENERAL_ROLES      = ['frontdesk_day', 'housekeeper', 'admin_staff', 'sales']
 
 // ─── 各身分允許的路徑前綴 ────────────────────
 const NIGHTSHIFT_ALLOWED   = ['/nightshift', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
 const TECHNICIAN_ALLOWED   = ['/work-orders', '/maintenance', '/consumables', '/utilities', '/manuals', '/hardware', '/rooms', '/api', '/settings']
 const PROCUREMENT_ALLOWED  = ['/work-orders', '/consumables', '/manuals', '/hardware', '/rooms', '/assets', '/api', '/settings']
-const GENERAL_ALLOWED      = ['/work-orders', '/manuals', '/hardware', '/rooms', '/api', '/settings']
+const HOUSEKEEPING_ALLOWED = ['/housekeeping', '/manuals', '/hardware', '/api', '/settings']
+const GENERAL_ALLOWED      = ['/work-orders', '/housekeeping', '/manuals', '/hardware', '/rooms', '/api', '/settings']
 
 // 禁止存取的子路徑（所有非 admin 均不可，採購例外）
 const ADMIN_ONLY_PATHS     = ['/admin', '/maintenance/admin', '/hardware/admin', '/assets']
@@ -76,6 +78,13 @@ export async function proxy(request: NextRequest) {
     // 非管理員、非採購都不能進 admin-only 路徑
     if (ADMIN_ONLY_PATHS.some(p => pathname.startsWith(p))) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // 房務
+    if (HOUSEKEEPING_ROLES.includes(role)) {
+      const allowed = HOUSEKEEPING_ALLOWED.some(p => pathname.startsWith(p))
+      if (!allowed) return NextResponse.redirect(new URL('/housekeeping', request.url))
+      return supabaseResponse
     }
 
     // 大夜班

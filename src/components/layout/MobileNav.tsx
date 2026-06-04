@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
-  CalendarCheck, Archive, DoorOpen, Droplets, BarChart3, Moon,
+  CalendarCheck, Archive, DoorOpen, Droplets, BarChart3, Moon, BedDouble,
 } from 'lucide-react'
 
 const primaryNav = [
@@ -16,12 +16,13 @@ const primaryNav = [
 ]
 
 const moreNav = [
-  { label: '保養提醒', href: '/maintenance', icon: CalendarCheck },
-  { label: '財產清單', href: '/assets',      icon: Archive        },
-  { label: '說明書',   href: '/hardware',    icon: Wrench         },
-  { label: '房間登錄', href: '/rooms',       icon: DoorOpen       },
-  { label: '水電紀錄', href: '/utilities',   icon: Droplets       },
-  { label: '報表',     href: '/reports',     icon: BarChart3      },
+  { label: '保養提醒', href: '/maintenance',  icon: CalendarCheck },
+  { label: '房務派工', href: '/housekeeping', icon: BedDouble      },
+  { label: '財產清單', href: '/assets',       icon: Archive        },
+  { label: '說明書',   href: '/hardware',     icon: Wrench         },
+  { label: '房間登錄', href: '/rooms',        icon: DoorOpen       },
+  { label: '水電紀錄', href: '/utilities',    icon: Droplets       },
+  { label: '報表',     href: '/reports',      icon: BarChart3      },
 ]
 
 export function MobileNav() {

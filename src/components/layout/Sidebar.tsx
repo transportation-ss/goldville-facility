@@ -5,17 +5,18 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
-  Users, BookOpen, KeyRound, HelpCircle,
+  Users, BookOpen, KeyRound, HelpCircle, BedDouble,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 // ─── 身分群組 ──────────────────────────────────
-const ADMIN_ROLES       = ['admin', 'manager']
-const NIGHTSHIFT_ROLES  = ['frontdesk_night']
-const TECHNICIAN_ROLES  = ['technician']
-const PROCUREMENT_ROLES = ['procurement']
+const ADMIN_ROLES        = ['admin', 'manager']
+const NIGHTSHIFT_ROLES   = ['frontdesk_night']
+const TECHNICIAN_ROLES   = ['technician']
+const PROCUREMENT_ROLES  = ['procurement']
+const HOUSEKEEPING_ROLES = ['housekeeping']
 // 其餘（frontdesk_day, housekeeper, admin_staff, sales）→ 一般版
 
 // ─── 型別 ──────────────────────────────────────
@@ -54,6 +55,13 @@ const fullNav: (NavSingle | NavGroup)[] = [
     ],
   },
   { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+  {
+    type: 'group', label: '房務',
+    items: [
+      { label: '今日任務', href: '/housekeeping',      icon: BedDouble    },
+      { label: '派工管理', href: '/housekeeping/plan', icon: ClipboardList },
+    ],
+  },
   {
     type: 'group', label: '大夜',
     items: [
@@ -102,7 +110,8 @@ const procurementNav: (NavSingle | NavGroup)[] = [
 
 /** 一般身分（frontdesk_day / housekeeper / admin_staff / sales） */
 const generalNav: (NavSingle | NavGroup)[] = [
-  { type: 'single', label: '工務派工', href: '/work-orders', icon: ClipboardList },
+  { type: 'single', label: '工務派工', href: '/work-orders',  icon: ClipboardList },
+  { type: 'single', label: '房務派工', href: '/housekeeping', icon: BedDouble      },
   {
     type: 'group', label: '說明書',
     items: [
@@ -111,6 +120,11 @@ const generalNav: (NavSingle | NavGroup)[] = [
     ],
   },
   { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+]
+
+/** 房務身分 */
+const housekeepingNav: (NavSingle | NavGroup)[] = [
+  { type: 'single', label: '今日任務', href: '/housekeeping', icon: BedDouble },
 ]
 
 /** 大夜班身分 */
@@ -213,16 +227,18 @@ export function Sidebar() {
     router.push('/login')
   }
 
-  const isAdmin       = ADMIN_ROLES.includes(role)
-  const isNightshift  = NIGHTSHIFT_ROLES.includes(role)
-  const isTechnician  = TECHNICIAN_ROLES.includes(role)
-  const isProcurement = PROCUREMENT_ROLES.includes(role)
+  const isAdmin        = ADMIN_ROLES.includes(role)
+  const isNightshift   = NIGHTSHIFT_ROLES.includes(role)
+  const isTechnician   = TECHNICIAN_ROLES.includes(role)
+  const isProcurement  = PROCUREMENT_ROLES.includes(role)
+  const isHousekeeping = HOUSEKEEPING_ROLES.includes(role)
 
-  const nav = isAdmin       ? fullNav
-            : isNightshift  ? nightshiftNav
-            : isTechnician  ? technicianNav
-            : isProcurement ? procurementNav
-            : role          ? generalNav
+  const nav = isAdmin        ? fullNav
+            : isNightshift   ? nightshiftNav
+            : isTechnician   ? technicianNav
+            : isProcurement  ? procurementNav
+            : isHousekeeping ? housekeepingNav
+            : role           ? generalNav
             : []  // 尚未載入時不顯示
 
   return (
