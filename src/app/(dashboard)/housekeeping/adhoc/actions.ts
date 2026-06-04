@@ -12,7 +12,8 @@ export async function getTodayAdhocOrders(date: string) {
     .select(`
       *,
       room:rooms(id, name, floor),
-      assignee:user_profiles!housekeeping_adhoc_orders_assigned_to_fkey(id, display_name)
+      assignee:user_profiles!housekeeping_adhoc_orders_assigned_to_fkey(id, display_name),
+      completer:user_profiles!housekeeping_adhoc_orders_completed_by_fkey(id, display_name)
     `)
     .eq('order_date', date)
     .order('priority', { ascending: false })
@@ -52,14 +53,19 @@ export async function createAdhocOrder(order: {
 }
 
 // ── 標記臨時派工完成 ──────────────────────────────────────
-export async function completeAdhocOrder(orderId: string) {
+export async function completeAdhocOrder(orderId: string, completionNotes?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('未登入')
 
   const { error } = await supabase
     .from('housekeeping_adhoc_orders')
-    .update({ status: 'completed', completed_by: user.id, completed_at: new Date().toISOString() })
+    .update({
+      status: 'completed',
+      completed_by: user.id,
+      completed_at: new Date().toISOString(),
+      completion_notes: completionNotes?.trim() || null,
+    })
     .eq('id', orderId)
   if (error) throw new Error(error.message)
   revalidatePath('/housekeeping')
@@ -70,7 +76,7 @@ export async function uncompleteAdhocOrder(orderId: string) {
   const supabase = await createClient()
   const { error } = await supabase
     .from('housekeeping_adhoc_orders')
-    .update({ status: 'pending', completed_by: null, completed_at: null })
+    .update({ status: 'pending', completed_by: null, completed_at: null, completion_notes: null })
     .eq('id', orderId)
   if (error) throw new Error(error.message)
   revalidatePath('/housekeeping')

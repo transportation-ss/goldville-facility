@@ -120,14 +120,19 @@ export async function deleteTask(taskId: string) {
 }
 
 // ── 標記任務完成 ──────────────────────────────────────────
-export async function completeTask(taskId: string) {
+export async function completeTask(taskId: string, completionNotes?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('未登入')
 
   const { error } = await supabase
     .from('housekeeping_tasks')
-    .update({ status: 'completed', completed_by: user.id, completed_at: new Date().toISOString() })
+    .update({
+      status: 'completed',
+      completed_by: user.id,
+      completed_at: new Date().toISOString(),
+      completion_notes: completionNotes?.trim() || null,
+    })
     .eq('id', taskId)
   if (error) throw new Error(error.message)
   revalidatePath('/housekeeping')
@@ -138,7 +143,7 @@ export async function uncompleteTask(taskId: string) {
   const supabase = await createClient()
   const { error } = await supabase
     .from('housekeeping_tasks')
-    .update({ status: 'pending', completed_by: null, completed_at: null })
+    .update({ status: 'pending', completed_by: null, completed_at: null, completion_notes: null })
     .eq('id', taskId)
   if (error) throw new Error(error.message)
   revalidatePath('/housekeeping')

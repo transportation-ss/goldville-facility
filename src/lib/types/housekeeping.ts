@@ -49,41 +49,44 @@ export interface HousekeepingPlan {
 }
 
 export interface HousekeepingTask {
-  id:            string
-  plan_id:       string
-  room_id:       string | null
-  task_type:     TaskType
-  priority:      TaskPriority
-  special_notes: string | null
-  assigned_to:   string | null
-  sort_order:    number
-  status:        TaskStatus
-  completed_by:  string | null
-  completed_at:  string | null
-  created_at:    string
+  id:                string
+  plan_id:           string
+  room_id:           string | null
+  task_type:         TaskType
+  priority:          TaskPriority
+  special_notes:     string | null
+  assigned_to:       string | null
+  sort_order:        number
+  status:            TaskStatus
+  completed_by:      string | null
+  completed_at:      string | null
+  completion_notes:  string | null
+  created_at:        string
   // joined
-  room?:         { id: string; name: string; floor: string | null; room_type: string | null }
-  assignee?:     { id: string; display_name: string } | null
-  completer?:    { id: string; display_name: string } | null
+  room?:     { id: string; name: string; floor: string | null; room_type: string | null }
+  assignee?: { id: string; display_name: string } | null
+  completer?: { id: string; display_name: string } | null
 }
 
 export interface HousekeepingAdhocOrder {
-  id:            string
-  order_date:    string
-  title:         string
-  description:   string | null
-  room_id:       string | null
-  task_type:     TaskType | null
-  priority:      TaskPriority
-  assigned_to:   string | null
-  status:        'pending' | 'completed'
-  completed_by:  string | null
-  completed_at:  string | null
-  created_by:    string | null
-  created_at:    string
+  id:                string
+  order_date:        string
+  title:             string
+  description:       string | null
+  room_id:           string | null
+  task_type:         TaskType | null
+  priority:          TaskPriority
+  assigned_to:       string | null
+  status:            'pending' | 'completed'
+  completed_by:      string | null
+  completed_at:      string | null
+  completion_notes:  string | null
+  created_by:        string | null
+  created_at:        string
   // joined
-  room?:         { id: string; name: string; floor: string | null } | null
-  assignee?:     { id: string; display_name: string } | null
+  room?:     { id: string; name: string; floor: string | null } | null
+  assignee?: { id: string; display_name: string } | null
+  completer?: { id: string; display_name: string } | null
 }
 
 // ── 選單用空間清單 ─────────────────────────────────────────
