@@ -14,7 +14,7 @@ function verifySignature(body: string, signature: string): boolean {
 }
 
 async function reply(replyToken: string, messages: any[]) {
-  await fetch('https://api.line.me/v2/bot/message/reply', {
+  const res = await fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',
@@ -22,6 +22,10 @@ async function reply(replyToken: string, messages: any[]) {
     },
     body: JSON.stringify({ replyToken, messages }),
   })
+  if (!res.ok) {
+    const errBody = await res.text()
+    console.error('[housekeeping-webhook] reply failed', res.status, errBody)
+  }
 }
 
 export async function POST(req: NextRequest) {
