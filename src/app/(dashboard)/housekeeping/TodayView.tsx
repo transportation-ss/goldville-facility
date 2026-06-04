@@ -7,11 +7,10 @@ import {
   ClipboardList, ChevronRight, Loader2, Settings, Clock,
 } from 'lucide-react'
 import { completeTask, uncompleteTask } from './plan/actions'
-import { completeAdhocOrder, uncompleteAdhocOrder, createAdhocOrder } from './adhoc/actions'
+import { completeAdhocOrder, uncompleteAdhocOrder } from './adhoc/actions'
 import {
   TASK_TYPE_LABELS, TASK_TYPE_COLORS,
   type HousekeepingPlan, type HousekeepingTask, type HousekeepingAdhocOrder,
-  type SpaceOption, type TaskType, type TaskPriority,
 } from '@/lib/types/housekeeping'
 
 interface Props {
@@ -19,8 +18,6 @@ interface Props {
   plan:          HousekeepingPlan | null
   tasks:         HousekeepingTask[]
   adhocOrders:   HousekeepingAdhocOrder[]
-  spaces:        SpaceOption[]
-  staff:         { id: string; display_name: string; role: string }[]
   canDispatch:   boolean
   currentUserId: string
 }
@@ -80,13 +77,11 @@ function CompleteModal({
   onCancel:  () => void
 }) {
   const [notes, setNotes] = useState('')
-
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center">
       <div className="bg-white w-full max-w-md rounded-t-2xl md:rounded-2xl p-5">
         <h3 className="text-base font-semibold text-gray-900 mb-1">標記完成</h3>
         <p className="text-sm text-gray-500 mb-4 truncate">{label}</p>
-
         <div>
           <label className="text-xs font-medium text-gray-600 mb-1 block">完成備註（選填）</label>
           <textarea
@@ -98,12 +93,8 @@ function CompleteModal({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
           />
         </div>
-
         <div className="flex gap-3 mt-4">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600"
-          >
+          <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600">
             取消
           </button>
           <button
@@ -118,16 +109,29 @@ function CompleteModal({
   )
 }
 
+// ── Toast 元件 ────────────────────────────────────────────
+function Toast({ message, type }: { message: string; type: 'loading' | 'success' }) {
+  return (
+    <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl">
+      {type === 'loading'
+        ? <Loader2 className="w-4 h-4 text-yellow-400 animate-spin shrink-0" />
+        : <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+      }
+      {message}
+    </div>
+  )
+}
+
 // ── Task 行 ───────────────────────────────────────────────
 function TaskRow({ task, onComplete, onUncomplete }: {
   task:         HousekeepingTask
   onComplete:   (id: string, label: string) => void
   onUncomplete: (id: string) => void
 }) {
-  const done     = task.status === 'completed'
-  const isUrgent = task.priority === 'urgent'
+  const done      = task.status === 'completed'
+  const isUrgent  = task.priority === 'urgent'
   const typeStyle = TASK_TYPE_COLORS[task.task_type] ?? 'bg-gray-100 text-gray-600'
-  const label = task.room?.name ?? '（未指定空間）'
+  const label     = task.room?.name ?? '（未指定空間）'
 
   return (
     <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${done ? 'opacity-60' : ''}`}>
@@ -140,7 +144,6 @@ function TaskRow({ task, onComplete, onUncomplete }: {
           : <Circle className={`w-5 h-5 ${isUrgent ? 'text-red-400' : 'text-gray-300'}`} />
         }
       </button>
-
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && (
@@ -156,7 +159,6 @@ function TaskRow({ task, onComplete, onUncomplete }: {
             {TASK_TYPE_LABELS[task.task_type]}
           </span>
         </div>
-
         {task.assignee && (
           <p className="text-xs text-gray-400 mt-0.5">負責：{task.assignee.display_name}</p>
         )}
@@ -205,7 +207,6 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
           : <Circle className={`w-5 h-5 ${isUrgent ? 'text-red-400' : 'text-orange-400'}`} />
         }
       </button>
-
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && (
@@ -253,163 +254,19 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
   )
 }
 
-// ── 快速新增臨時任務 Modal ─────────────────────────────────
-function AdhocModal({
-  spaces, staff, onClose, onSave,
-}: {
-  spaces: SpaceOption[]
-  staff:  { id: string; display_name: string }[]
-  onClose: () => void
-  onSave:  (data: { title: string; description: string; roomId: string | null; taskType: TaskType | null; priority: TaskPriority; assignedTo: string | null }) => void
-}) {
-  const [title, setTitle]           = useState('')
-  const [description, setDesc]      = useState('')
-  const [roomId, setRoomId]         = useState('')
-  const [taskType, setTaskType]     = useState<TaskType | ''>('')
-  const [priority, setPriority]     = useState<TaskPriority>('normal')
-  const [assignedTo, setAssignedTo] = useState('')
-
-  const guestRooms   = spaces.filter(s => s.room_type === '客房')
-  const publicSpaces = spaces.filter(s => s.room_type !== '客房')
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center">
-      <div className="bg-white w-full max-w-md rounded-t-2xl md:rounded-2xl p-5 max-h-[85vh] overflow-y-auto">
-        <h3 className="text-base font-semibold text-gray-900 mb-4">新增臨時派工</h3>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">任務名稱 *</label>
-            <input
-              type="text" value={title} onChange={e => setTitle(e.target.value)}
-              placeholder="例：102加被單、大廳急清"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">說明（選填）</label>
-            <textarea
-              value={description} onChange={e => setDesc(e.target.value)}
-              rows={2} placeholder="補充說明..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">空間（選填）</label>
-              <select
-                value={roomId} onChange={e => setRoomId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">不指定</option>
-                <optgroup label="客房">
-                  {guestRooms.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </optgroup>
-                <optgroup label="公共空間">
-                  {publicSpaces.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </optgroup>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">類型（選填）</label>
-              <select
-                value={taskType} onChange={e => setTaskType(e.target.value as TaskType | '')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">不指定</option>
-                {Object.entries(TASK_TYPE_LABELS).map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">優先度</label>
-              <div className="flex gap-2">
-                {(['normal', 'urgent'] as const).map(p => (
-                  <button
-                    key={p} type="button" onClick={() => setPriority(p)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                      priority === p
-                        ? p === 'urgent' ? 'bg-red-500 border-red-500 text-white' : 'bg-emerald-600 border-emerald-600 text-white'
-                        : 'border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    {p === 'urgent' ? '緊急' : '一般'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">指定人員（選填）</label>
-              <select
-                value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">不指定</option>
-                {staff.map(s => <option key={s.id} value={s.id}>{s.display_name}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-3 mt-5">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600">取消</button>
-          <button
-            onClick={() => {
-              if (!title.trim()) return
-              onSave({ title, description, roomId: roomId || null, taskType: (taskType || null) as TaskType | null, priority, assignedTo: assignedTo || null })
-            }}
-            className="flex-1 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-medium"
-          >
-            新增
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Toast 元件 ────────────────────────────────────────────
-function Toast({ message, type }: { message: string; type: 'loading' | 'success' }) {
-  return (
-    <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl">
-      {type === 'loading'
-        ? <Loader2 className="w-4 h-4 text-yellow-400 animate-spin shrink-0" />
-        : <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-      }
-      {message}
-    </div>
-  )
-}
-
 // ── 主元件 ────────────────────────────────────────────────
-export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canDispatch, currentUserId }: Props) {
-  const [isPending, startTransition] = useTransition()
-  const [showAdhoc, setShowAdhoc]   = useState(false)
-  const [toast, setToast]           = useState<{ message: string; type: 'loading' | 'success' } | null>(null)
+export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, currentUserId }: Props) {
+  const [, startTransition] = useTransition()
+  const [toast, setToast]  = useState<{ message: string; type: 'loading' | 'success' } | null>(null)
 
-  // 完成備註 Modal 狀態
   const [completeModal, setCompleteModal] = useState<{
-    id:    string
-    label: string
-    kind:  'task' | 'adhoc'
+    id: string; label: string; kind: 'task' | 'adhoc'
   } | null>(null)
 
-  // 取消完成確認 Modal 狀態
   const [uncompleteModal, setUncompleteModal] = useState<{
-    id:    string
-    label: string
-    kind:  'task' | 'adhoc'
+    id: string; label: string; kind: 'task' | 'adhoc'
   } | null>(null)
 
-  // Optimistic 狀態
   const [optimisticTasks, updateOptimisticTasks] = useOptimistic(
     tasks,
     (state, { id, status }: { id: string; status: 'pending' | 'completed' }) =>
@@ -426,17 +283,13 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
     if (autoDismiss > 0) setTimeout(() => setToast(null), autoDismiss)
   }, [])
 
-  // 點擊勾選（開 modal）
-  const handleClickComplete = (id: string, label: string, kind: 'task' | 'adhoc') => {
+  const handleClickComplete = (id: string, label: string, kind: 'task' | 'adhoc') =>
     setCompleteModal({ id, label, kind })
-  }
 
-  // Modal 確認完成
   const handleConfirmComplete = (notes: string) => {
     if (!completeModal) return
     const { id, kind } = completeModal
     setCompleteModal(null)
-
     startTransition(async () => {
       if (kind === 'task') {
         updateOptimisticTasks({ id, status: 'completed' })
@@ -449,7 +302,6 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
     })
   }
 
-  // 點擊已完成勾選 → 開確認 Modal
   const handleUncompleteTask = (id: string) => {
     const task = optimisticTasks.find(t => t.id === id)
     setUncompleteModal({ id, label: task?.room?.name ?? '（未指定空間）', kind: 'task' })
@@ -459,7 +311,6 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
     setUncompleteModal({ id, label: order?.title ?? '此任務', kind: 'adhoc' })
   }
 
-  // 確認移除完成
   const handleConfirmUncomplete = () => {
     if (!uncompleteModal) return
     const { id, kind } = uncompleteModal
@@ -476,19 +327,10 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
     })
   }
 
-  const handleSaveAdhoc = (data: Parameters<typeof createAdhocOrder>[0]) => {
-    setShowAdhoc(false)
-    showToast('臨時任務加入中...', 'loading')
-    startTransition(async () => {
-      await createAdhocOrder(data)
-      showToast('✅ 臨時任務已加入', 'success', 2500)
-    })
-  }
-
-  const urgentTasks  = optimisticTasks.filter(t => t.priority === 'urgent')
-  const normalTasks  = optimisticTasks.filter(t => t.priority === 'normal')
-  const urgentAdhoc  = optimisticAdhoc.filter(o => o.priority === 'urgent')
-  const normalAdhoc  = optimisticAdhoc.filter(o => o.priority === 'normal')
+  const urgentTasks = optimisticTasks.filter(t => t.priority === 'urgent')
+  const normalTasks = optimisticTasks.filter(t => t.priority === 'normal')
+  const urgentAdhoc = optimisticAdhoc.filter(o => o.priority === 'urgent')
+  const normalAdhoc = optimisticAdhoc.filter(o => o.priority === 'normal')
 
   const totalItems = optimisticTasks.length + optimisticAdhoc.length
   const doneItems  = optimisticTasks.filter(t => t.status === 'completed').length
@@ -509,26 +351,15 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
           <h1 className="text-xl font-bold text-gray-900">今日房務</h1>
           <p className="text-xs text-gray-500 mt-0.5">{dateLabel}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {canDispatch && (
-            <Link
-              href="/housekeeping/plan"
-              className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-            >
-              <Settings className="w-4 h-4" />
-              派工管理
-            </Link>
-          )}
-          {canDispatch && (
-            <button
-              onClick={() => setShowAdhoc(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600"
-            >
-              <Plus className="w-4 h-4" />
-              臨時派工
-            </button>
-          )}
-        </div>
+        {canDispatch && (
+          <Link
+            href="/housekeeping/plan"
+            className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+          >
+            <Settings className="w-4 h-4" />
+            派工管理
+          </Link>
+        )}
       </div>
 
       {/* 進度條 */}
@@ -566,15 +397,15 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
               </span>
             )}
           </div>
-          {plan ? (
+          {plan && (
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-              plan.status === 'published'  ? 'bg-emerald-100 text-emerald-700' :
-              plan.status === 'completed'  ? 'bg-gray-100 text-gray-500' :
+              plan.status === 'published' ? 'bg-emerald-100 text-emerald-700' :
+              plan.status === 'completed' ? 'bg-gray-100 text-gray-500' :
               'bg-yellow-100 text-yellow-700'
             }`}>
               {plan.status === 'published' ? '已發布' : plan.status === 'completed' ? '已完成' : '草稿'}
             </span>
-          ) : null}
+          )}
         </div>
 
         {!plan ? (
@@ -640,56 +471,37 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
         )}
       </div>
 
-      {/* 臨時派工 */}
-      {(adhocOrders.length > 0 || canDispatch) && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-orange-50">
-            <div className="flex items-center gap-2">
-              <Plus className="w-4 h-4 text-orange-400" />
-              <span className="text-sm font-semibold text-orange-800">臨時派工</span>
-              {optimisticAdhoc.length > 0 && (
-                <span className="text-xs bg-orange-200 text-orange-700 px-1.5 py-0.5 rounded-full">
-                  {optimisticAdhoc.length}
-                </span>
-              )}
-            </div>
-            {canDispatch && (
-              <button
-                onClick={() => setShowAdhoc(true)}
-                className="text-xs text-orange-600 font-medium hover:underline"
-              >
-                + 新增
-              </button>
-            )}
+      {/* 臨時派工（純顯示，可標記完成） */}
+      {adhocOrders.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-orange-50">
+            <Plus className="w-4 h-4 text-orange-400" />
+            <span className="text-sm font-semibold text-orange-800">臨時派工</span>
+            <span className="text-xs bg-orange-200 text-orange-700 px-1.5 py-0.5 rounded-full">
+              {optimisticAdhoc.length}
+            </span>
           </div>
-
-          {optimisticAdhoc.length === 0 ? (
-            <div className="px-4 py-6 text-center">
-              <p className="text-sm text-gray-400">今日無臨時派工</p>
-            </div>
-          ) : (
-            <div className="px-4">
-              {urgentAdhoc.length > 0 && (
-                <>
-                  <p className="text-xs font-semibold text-red-500 pt-3 pb-1">🔴 緊急</p>
-                  {urgentAdhoc.map(o => (
-                    <AdhocRow
-                      key={o.id} order={o}
-                      onComplete={(id, label) => handleClickComplete(id, label, 'adhoc')}
-                      onUncomplete={handleUncompleteAdhoc}
-                    />
-                  ))}
-                </>
-              )}
-              {normalAdhoc.map(o => (
-                <AdhocRow
-                  key={o.id} order={o}
-                  onComplete={(id, label) => handleClickComplete(id, label, 'adhoc')}
-                  onUncomplete={handleUncompleteAdhoc}
-                />
-              ))}
-            </div>
-          )}
+          <div className="px-4">
+            {urgentAdhoc.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-red-500 pt-3 pb-1">🔴 緊急</p>
+                {urgentAdhoc.map(o => (
+                  <AdhocRow
+                    key={o.id} order={o}
+                    onComplete={(id, label) => handleClickComplete(id, label, 'adhoc')}
+                    onUncomplete={handleUncompleteAdhoc}
+                  />
+                ))}
+              </>
+            )}
+            {normalAdhoc.map(o => (
+              <AdhocRow
+                key={o.id} order={o}
+                onComplete={(id, label) => handleClickComplete(id, label, 'adhoc')}
+                onUncomplete={handleUncompleteAdhoc}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -717,11 +529,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
           onCancel={() => setCompleteModal(null)}
         />
       )}
-      {showAdhoc && (
-        <AdhocModal spaces={spaces} staff={staff} onClose={() => setShowAdhoc(false)} onSave={handleSaveAdhoc} />
-      )}
 
-      {/* Toast 通知 */}
       {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   )
