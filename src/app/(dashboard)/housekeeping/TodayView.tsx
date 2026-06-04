@@ -34,6 +34,41 @@ function twTime(iso: string) {
   })
 }
 
+// ── 取消完成確認 Modal ────────────────────────────────────
+function UncompleteConfirmModal({
+  label,
+  onConfirm,
+  onCancel,
+}: {
+  label:     string
+  onConfirm: () => void
+  onCancel:  () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center">
+      <div className="bg-white w-full max-w-md rounded-t-2xl md:rounded-2xl p-5">
+        <h3 className="text-base font-semibold text-gray-900 mb-1">移除完成狀態？</h3>
+        <p className="text-sm text-gray-500 mb-1 truncate">{label}</p>
+        <p className="text-xs text-gray-400 mb-5">完成記錄（人員、時間、備註）將一併清除。</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600"
+          >
+            取消
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium"
+          >
+            確認移除
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── 完成備註 Modal ────────────────────────────────────────
 function CompleteModal({
   label,
@@ -367,6 +402,13 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
     kind:  'task' | 'adhoc'
   } | null>(null)
 
+  // 取消完成確認 Modal 狀態
+  const [uncompleteModal, setUncompleteModal] = useState<{
+    id:    string
+    label: string
+    kind:  'task' | 'adhoc'
+  } | null>(null)
+
   // Optimistic 狀態
   const [optimisticTasks, updateOptimisticTasks] = useOptimistic(
     tasks,
@@ -407,18 +449,30 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
     })
   }
 
+  // 點擊已完成勾選 → 開確認 Modal
   const handleUncompleteTask = (id: string) => {
-    startTransition(async () => {
-      updateOptimisticTasks({ id, status: 'pending' })
-      await uncompleteTask(id)
-      showToast('已取消完成', 'success', 2000)
-    })
+    const task = optimisticTasks.find(t => t.id === id)
+    setUncompleteModal({ id, label: task?.room?.name ?? '（未指定空間）', kind: 'task' })
   }
   const handleUncompleteAdhoc = (id: string) => {
+    const order = optimisticAdhoc.find(o => o.id === id)
+    setUncompleteModal({ id, label: order?.title ?? '此任務', kind: 'adhoc' })
+  }
+
+  // 確認移除完成
+  const handleConfirmUncomplete = () => {
+    if (!uncompleteModal) return
+    const { id, kind } = uncompleteModal
+    setUncompleteModal(null)
     startTransition(async () => {
-      updateOptimisticAdhoc({ id, status: 'pending' })
-      await uncompleteAdhocOrder(id)
-      showToast('已取消完成', 'success', 2000)
+      if (kind === 'task') {
+        updateOptimisticTasks({ id, status: 'pending' })
+        await uncompleteTask(id)
+      } else {
+        updateOptimisticAdhoc({ id, status: 'pending' })
+        await uncompleteAdhocOrder(id)
+      }
+      showToast('已移除完成狀態', 'success', 2000)
     })
   }
 
@@ -649,6 +703,13 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
       </Link>
 
       {/* Modals */}
+      {uncompleteModal && (
+        <UncompleteConfirmModal
+          label={uncompleteModal.label}
+          onConfirm={handleConfirmUncomplete}
+          onCancel={() => setUncompleteModal(null)}
+        />
+      )}
       {completeModal && (
         <CompleteModal
           label={completeModal.label}
