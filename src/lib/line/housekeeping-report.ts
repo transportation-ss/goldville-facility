@@ -85,42 +85,69 @@ function summaryBubble(
   }
 }
 
-// ── 任務群組卡（按樓層或區域）────────────────────────────
-function taskGroupBubble(
-  groupLabel: string,
-  tasks: any[],
+// ── 單一任務列（共用）────────────────────────────────────
+function taskRow(t: any): any[] {
+  const done = t.status === 'completed'
+  const isUrgent = t.priority === 'urgent'
+  const typeLabel = TASK_TYPE_LABELS[t.task_type as keyof typeof TASK_TYPE_LABELS] ?? t.task_type
+
+  const rows: any[] = [{
+    type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'sm',
+    contents: [
+      {
+        type: 'box', layout: 'horizontal', contents: [
+          { type: 'text', text: done ? '✅' : isUrgent ? '🔴' : '⬜', size: 'sm', flex: 0 },
+          { type: 'text', text: t.room?.name ?? '（未指定）', size: 'sm', color: done ? '#9CA3AF' : '#374151', flex: 1, margin: 'sm', decoration: done ? 'line-through' : 'none' },
+          { type: 'text', text: typeLabel, size: 'xxs', color: '#6B7280', align: 'end', flex: 0 },
+        ],
+      },
+      ...(t.assignee ? [{
+        type: 'text', text: `→ ${t.assignee.display_name}`, size: 'xxs', color: '#9CA3AF', margin: 'xs', offsetStart: '28px',
+      }] : []),
+      ...(t.special_notes ? [{
+        type: 'box', layout: 'vertical', margin: 'xs', offsetStart: '28px',
+        backgroundColor: '#FFFBEB', cornerRadius: '4px', paddingAll: 'xs',
+        contents: [{ type: 'text', text: `📝 ${t.special_notes}`, size: 'xxs', color: '#92400E', wrap: true }],
+      }] : []),
+    ],
+  }]
+
+  return rows
+}
+
+// ── 多樓層合併卡（客房 or 公共）────────────────────────────
+function combinedBubble(
+  title: string,
   headerColor: string,
+  byFloor: Map<string, any[]>,
+  floorOrder: string[],
+  floorIcon: string,
 ) {
-  const doneCount = tasks.filter(t => t.status === 'completed').length
-  const allDone = doneCount === tasks.length
+  const allTasks = [...byFloor.values()].flat()
+  const doneCount = allTasks.filter(t => t.status === 'completed').length
+  const allDone = doneCount === allTasks.length
 
-  const rows: any[] = []
-  for (const t of tasks) {
-    const done = t.status === 'completed'
-    const isUrgent = t.priority === 'urgent'
-    const typeLabel = TASK_TYPE_LABELS[t.task_type as keyof typeof TASK_TYPE_LABELS] ?? t.task_type
+  const contents: any[] = []
 
-    rows.push({
-      type: 'box', layout: 'vertical', margin: 'md', paddingTop: 'sm', paddingBottom: 'sm',
+  for (const floor of floorOrder) {
+    const tasks = byFloor.get(floor)
+    if (!tasks?.length) continue
+
+    // 樓層標題分隔列
+    if (contents.length > 0) contents.push({ type: 'separator', margin: 'md', color: '#E5E7EB' })
+    contents.push({
+      type: 'box', layout: 'horizontal', margin: 'md',
       contents: [
-        {
-          type: 'box', layout: 'horizontal', contents: [
-            { type: 'text', text: done ? '✅' : isUrgent ? '🔴' : '⬜', size: 'sm', flex: 0 },
-            { type: 'text', text: t.room?.name ?? '（未指定）', size: 'sm', color: done ? '#9CA3AF' : '#374151', flex: 1, margin: 'sm', decoration: done ? 'line-through' : 'none' },
-            { type: 'text', text: typeLabel, size: 'xxs', color: '#6B7280', align: 'end', flex: 0 },
-          ],
-        },
-        ...(t.assignee ? [{
-          type: 'text', text: `→ ${t.assignee.display_name}`, size: 'xxs', color: '#9CA3AF', margin: 'xs', offsetStart: '28px',
-        }] : []),
-        ...(t.special_notes ? [{
-          type: 'box', layout: 'vertical', margin: 'xs', offsetStart: '28px',
-          backgroundColor: '#FFFBEB', cornerRadius: '4px', paddingAll: 'xs',
-          contents: [{ type: 'text', text: `📝 ${t.special_notes}`, size: 'xxs', color: '#92400E', wrap: true }],
-        }] : []),
+        { type: 'text', text: `${floorIcon} ${floor}`, size: 'xs', weight: 'bold', color: '#374151', flex: 1 },
+        { type: 'text', text: `${tasks.filter(t => t.status === 'completed').length}/${tasks.length}`, size: 'xs', color: '#9CA3AF', align: 'end', flex: 0 },
       ],
     })
-    if (t !== tasks[tasks.length - 1]) rows.push({ type: 'separator', color: '#F3F4F6' })
+
+    for (let i = 0; i < tasks.length; i++) {
+      const rows = taskRow(tasks[i])
+      contents.push(...rows)
+      if (i < tasks.length - 1) contents.push({ type: 'separator', color: '#F3F4F6' })
+    }
   }
 
   return {
@@ -129,17 +156,17 @@ function taskGroupBubble(
       type: 'box', layout: 'vertical', backgroundColor: headerColor, paddingAll: 'md',
       contents: [{
         type: 'box', layout: 'horizontal', contents: [
-          { type: 'text', text: groupLabel, color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+          { type: 'text', text: title, color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
           {
             type: 'box', layout: 'vertical', flex: 0,
             backgroundColor: allDone ? '#10B981' : '#F59E0B',
             cornerRadius: '4px', paddingStart: 'sm', paddingEnd: 'sm', paddingTop: 'xs', paddingBottom: 'xs',
-            contents: [{ type: 'text', text: `${doneCount}/${tasks.length}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
+            contents: [{ type: 'text', text: `${doneCount}/${allTasks.length}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
           },
         ],
       }],
     },
-    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: rows },
+    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents },
     footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
   }
 }
@@ -240,20 +267,14 @@ export async function generateHousekeepingReport() {
     summaryBubble(today, allTasks.length, doneTasks, urgentCount, allAdhoc.length, plan.status),
   ]
 
-  // 客房卡（按樓層）
-  for (const floor of FLOOR_ORDER) {
-    const floorTasks = guestByFloor.get(floor)
-    if (floorTasks?.length) {
-      bubbles.push(taskGroupBubble(`🛏 ${floor} 客房`, floorTasks, '#1E40AF'))
-    }
+  // 客房：全部樓層合併一張
+  if (guestByFloor.size > 0) {
+    bubbles.push(combinedBubble('🛏 客房派工', '#1E40AF', guestByFloor, FLOOR_ORDER, '🛏'))
   }
 
-  // 公共空間卡（按樓層）
-  for (const floor of [...FLOOR_ORDER, '全棟']) {
-    const floorTasks = publicByFloor.get(floor)
-    if (floorTasks?.length) {
-      bubbles.push(taskGroupBubble(`🏢 ${floor} 公共`, floorTasks, '#065F46'))
-    }
+  // 公共空間：全部樓層合併一張
+  if (publicByFloor.size > 0) {
+    bubbles.push(combinedBubble('🏢 公共空間', '#065F46', publicByFloor, [...FLOOR_ORDER, '全棟'], '📍'))
   }
 
   // 臨時派工卡
