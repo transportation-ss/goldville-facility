@@ -32,6 +32,19 @@ export async function createPlan(date: string, generalNotes: string) {
   return data
 }
 
+// ── 刪除整日派工單（含所有任務）──────────────────────────
+export async function deletePlan(planId: string) {
+  const supabase = await createClient()
+  // tasks 有 ON DELETE CASCADE，刪 plan 即一併刪除
+  const { error } = await supabase
+    .from('housekeeping_daily_plans')
+    .delete()
+    .eq('id', planId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/housekeeping')
+  revalidatePath('/housekeeping/plan')
+}
+
 // ── 更新派工單備註/狀態 ────────────────────────────────────
 export async function updatePlan(planId: string, patch: { general_notes?: string; status?: string }) {
   const supabase = await createClient()

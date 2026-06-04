@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, Trash2, Loader2, CheckCircle2, Send,
   FileText, ChevronDown, ChevronUp, Pencil, X,
 } from 'lucide-react'
-import { createPlan, updatePlan, addTask, deleteTask, updateTask } from './actions'
+import { createPlan, updatePlan, addTask, deleteTask, deletePlan, updateTask } from './actions'
 import {
   TASK_TYPE_LABELS, TASK_TYPE_COLORS,
   type HousekeepingPlan, type HousekeepingTask,
@@ -475,7 +475,7 @@ function EditTaskModal({
   )
 }
 
-// ── 派工單任務列（可點進編輯）──────────────────────────────
+// ── 派工單任務列（可點進編輯 + 直接刪除）─────────────────
 function PlanTaskRow({ task, onEdit, onDelete, canDelete }: {
   task:      HousekeepingTask
   onEdit:    (task: HousekeepingTask) => void
@@ -484,21 +484,20 @@ function PlanTaskRow({ task, onEdit, onDelete, canDelete }: {
 }) {
   const typeStyle = TASK_TYPE_COLORS[task.task_type] ?? 'bg-gray-100 text-gray-600'
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors"
-      onClick={() => onEdit(task)}
-    >
-      {task.priority === 'urgent' && (
-        <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 mt-0.5" />
-      )}
-      <div className="flex-1 min-w-0">
-        {/* 첫 번째 줄: 類型 */}
+    <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+      {/* 主體：點進編輯 */}
+      <div
+        className="flex-1 min-w-0 cursor-pointer"
+        onClick={() => onEdit(task)}
+      >
         <div className="flex items-center gap-1.5 mb-0.5">
+          {task.priority === 'urgent' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+          )}
           <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>
             {TASK_TYPE_LABELS[task.task_type]}
           </span>
         </div>
-        {/* 두 번째 줄: 空間 + 人員 */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-gray-900">
             {task.room ? task.room.name : '（未指定）'}
@@ -514,7 +513,26 @@ function PlanTaskRow({ task, onEdit, onDelete, canDelete }: {
           <p className="text-xs text-amber-600 mt-0.5 truncate">{task.special_notes}</p>
         )}
       </div>
-      <Pencil className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+
+      {/* 右側按鈕 */}
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => onEdit(task)}
+          className="p-1.5 text-gray-300 hover:text-emerald-500 transition-colors"
+          title="編輯"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+        {canDelete && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            className="p-1.5 text-gray-300 hover:text-red-400 transition-colors"
+            title="刪除"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -536,6 +554,12 @@ export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
   const dateLabel = new Date(today + 'T00:00:00').toLocaleDateString('zh-TW', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
   })
+
+  const handleDeletePlan = () => {
+    if (!plan) return
+    if (!confirm(`確定要刪除「${dateLabel}」整日派工單？\n此操作無法復原，所有任務將一併刪除。`)) return
+    startTransition(() => deletePlan(plan.id))
+  }
 
   const handleCreate = () => {
     setSaving('create')
@@ -646,6 +670,14 @@ export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
                   <CheckCircle2 className="w-4 h-4" /> 已發布，LINE Bot 可查詢
                 </div>
               )}
+              {/* 刪除整日派工單 */}
+              <button
+                onClick={handleDeletePlan}
+                className="p-1.5 text-gray-300 hover:text-red-400 transition-colors ml-1"
+                title="刪除整日派工單"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
 
             {/* 備註 */}
