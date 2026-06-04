@@ -16,19 +16,20 @@ interface UserProfile {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  frontdesk_night: '櫃台大夜',
-  frontdesk_day:   '櫃台日班',
-  technician:      '工務',
-  procurement:     '採購',
-  housekeeping:    '房務',
-  housekeeper:     '管家',
-  admin_staff:     '行政',
-  sales:           '業務',
-  nightshift:      '大夜班',
-  frontdesk:       '櫃台',
-  reporter:        '通報',
-  manager:         '管理者',
-  admin:           '系統管理員',
+  frontdesk_night:   '櫃台大夜',
+  frontdesk_day:     '櫃台日班',
+  technician:        '工務',
+  procurement:       '採購',
+  housekeeping:      '房務',
+  housekeeper:       '管家',
+  tech_housekeeping: '工務＋房務',
+  admin_staff:       '行政',
+  sales:             '業務',
+  nightshift:        '大夜班',
+  frontdesk:         '櫃台',
+  reporter:          '通報',
+  manager:           '管理者',
+  admin:             '系統管理員',
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -43,16 +44,17 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const ALL_ROLES = [
-  { value: 'frontdesk_night', label: '櫃台大夜' },
-  { value: 'frontdesk_day',   label: '櫃台日班' },
-  { value: 'technician',      label: '工務'     },
-  { value: 'procurement',     label: '採購'     },
-  { value: 'housekeeping',    label: '房務'     },
-  { value: 'housekeeper',     label: '管家'     },
-  { value: 'admin_staff',     label: '行政'     },
-  { value: 'sales',           label: '業務'     },
-  { value: 'reporter',        label: '通報'     },
-  { value: 'manager',         label: '管理者'   },
+  { value: 'frontdesk_night',   label: '櫃台大夜'   },
+  { value: 'frontdesk_day',     label: '櫃台日班'   },
+  { value: 'technician',        label: '工務'       },
+  { value: 'procurement',       label: '採購'       },
+  { value: 'housekeeping',      label: '房務'       },
+  { value: 'housekeeper',       label: '管家'       },
+  { value: 'tech_housekeeping', label: '工務＋房務' },
+  { value: 'admin_staff',       label: '行政'       },
+  { value: 'sales',             label: '業務'       },
+  { value: 'reporter',          label: '通報'       },
+  { value: 'manager',           label: '管理者'     },
   { value: 'admin',           label: '系統管理員' },
 ]
 

@@ -12,25 +12,27 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 // ─── 身分群組 ──────────────────────────────────
-const ADMIN_ROLES        = ['admin', 'manager']
-const NIGHTSHIFT_ROLES   = ['frontdesk_night']
-const TECHNICIAN_ROLES   = ['technician']
-const PROCUREMENT_ROLES  = ['procurement']
-const HOUSEKEEPING_ROLES = ['housekeeping']
+const ADMIN_ROLES             = ['admin', 'manager']
+const NIGHTSHIFT_ROLES        = ['frontdesk_night']
+const TECHNICIAN_ROLES        = ['technician']
+const PROCUREMENT_ROLES       = ['procurement']
+const HOUSEKEEPING_ROLES      = ['housekeeping']
+const TECH_HOUSEKEEPING_ROLES = ['tech_housekeeping']
 // 其餘（frontdesk_day, housekeeper, admin_staff, sales）→ 一般版
 
 // ─── 身分中文標籤 ──────────────────────────────
 const ROLE_LABELS: Record<string, string> = {
-  admin:          '系統管理員',
-  manager:        '管理員',
-  technician:     '工務人員',
-  procurement:    '採購人員',
-  housekeeping:   '房務主管',
-  housekeeper:    '房務人員',
-  frontdesk_day:  '日班櫃台',
-  frontdesk_night:'大夜班',
-  admin_staff:    '行政人員',
-  sales:          '業務',
+  admin:             '系統管理員',
+  manager:           '管理員',
+  technician:        '工務人員',
+  procurement:       '採購人員',
+  housekeeping:      '房務主管',
+  housekeeper:       '房務人員',
+  tech_housekeeping: '工務＋房務',
+  frontdesk_day:     '日班櫃台',
+  frontdesk_night:   '大夜班',
+  admin_staff:       '行政人員',
+  sales:             '業務',
 }
 
 // ─── 型別 ──────────────────────────────────────
@@ -141,6 +143,33 @@ const housekeepingNav: (NavSingle | NavGroup)[] = [
   { type: 'single', label: '今日任務', href: '/housekeeping', icon: BedDouble },
 ]
 
+/** 工務＋房務組合身分 */
+const techHousekeepingNav: (NavSingle | NavGroup)[] = [
+  {
+    type: 'group', label: '工務',
+    items: [
+      { label: '工務派工',   href: '/work-orders', icon: ClipboardList },
+      { label: '保養提醒',   href: '/maintenance', icon: CalendarCheck },
+      { label: '耗材進銷存', href: '/consumables', icon: Package       },
+      { label: '水電紀錄',   href: '/utilities',   icon: Droplets      },
+    ],
+  },
+  {
+    type: 'group', label: '說明書',
+    items: [
+      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
+      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
+    ],
+  },
+  { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+  {
+    type: 'group', label: '房務',
+    items: [
+      { label: '今日任務', href: '/housekeeping', icon: BedDouble },
+    ],
+  },
+]
+
 /** 大夜班身分 */
 const nightshiftNav: (NavSingle | NavGroup)[] = [
   {
@@ -243,18 +272,20 @@ export function Sidebar() {
     router.push('/login')
   }
 
-  const isAdmin        = ADMIN_ROLES.includes(role)
-  const isNightshift   = NIGHTSHIFT_ROLES.includes(role)
-  const isTechnician   = TECHNICIAN_ROLES.includes(role)
-  const isProcurement  = PROCUREMENT_ROLES.includes(role)
-  const isHousekeeping = HOUSEKEEPING_ROLES.includes(role)
+  const isAdmin            = ADMIN_ROLES.includes(role)
+  const isNightshift       = NIGHTSHIFT_ROLES.includes(role)
+  const isTechnician       = TECHNICIAN_ROLES.includes(role)
+  const isProcurement      = PROCUREMENT_ROLES.includes(role)
+  const isHousekeeping     = HOUSEKEEPING_ROLES.includes(role)
+  const isTechHousekeeping = TECH_HOUSEKEEPING_ROLES.includes(role)
 
-  const nav = isAdmin        ? fullNav
-            : isNightshift   ? nightshiftNav
-            : isTechnician   ? technicianNav
-            : isProcurement  ? procurementNav
-            : isHousekeeping ? housekeepingNav
-            : role           ? generalNav
+  const nav = isAdmin            ? fullNav
+            : isNightshift       ? nightshiftNav
+            : isTechnician       ? technicianNav
+            : isProcurement      ? procurementNav
+            : isHousekeeping     ? housekeepingNav
+            : isTechHousekeeping ? techHousekeepingNav
+            : role               ? generalNav
             : []  // 尚未載入時不顯示
 
   return (
