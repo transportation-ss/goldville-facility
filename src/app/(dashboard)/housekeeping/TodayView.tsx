@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import {
   BedDouble, Plus, CheckCircle2, Circle, AlertTriangle,
-  ClipboardList, ChevronRight, Loader2, RotateCcw, Settings
+  ClipboardList, ChevronRight, Loader2, Settings, Clock,
 } from 'lucide-react'
 import { completeTask, uncompleteTask } from './plan/actions'
 import { completeAdhocOrder, uncompleteAdhocOrder, createAdhocOrder } from './adhoc/actions'
@@ -251,10 +251,38 @@ function AdhocModal({
   )
 }
 
+// ── Toast 元件 ────────────────────────────────────────────
+function Toast({ message, type }: { message: string; type: 'loading' | 'success' }) {
+  return (
+    <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl">
+      {type === 'loading'
+        ? <Loader2 className="w-4 h-4 text-yellow-400 animate-spin shrink-0" />
+        : <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+      }
+      {message}
+    </div>
+  )
+}
+
+// 台北時間格式化
+function twTime(iso: string) {
+  return new Date(iso).toLocaleString('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
 // ── 主元件 ────────────────────────────────────────────────
 export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canDispatch, currentUserId }: Props) {
-  const [, startTransition] = useTransition()
+  const [isPending, startTransition] = useTransition()
   const [showAdhoc, setShowAdhoc] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'loading' | 'success' } | null>(null)
+
+  const showToast = (message: string, type: 'loading' | 'success', autoDismiss = 0) => {
+    setToast({ message, type })
+    if (autoDismiss > 0) setTimeout(() => setToast(null), autoDismiss)
+  }
 
   const urgentTasks   = tasks.filter(t => t.priority === 'urgent')
   const normalTasks   = tasks.filter(t => t.priority === 'normal')
@@ -265,15 +293,33 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
   const doneItems  = tasks.filter(t => t.status === 'completed').length
                    + adhocOrders.filter(o => o.status === 'completed').length
 
-  const handleCompleteTask   = (id: string) => startTransition(() => completeTask(id))
-  const handleUncompleteTask = (id: string) => startTransition(() => uncompleteTask(id))
-  const handleCompleteAdhoc  = (id: string) => startTransition(() => completeAdhocOrder(id))
-  const handleUncompleteAdhoc= (id: string) => startTransition(() => uncompleteAdhocOrder(id))
+  const handleCompleteTask = (id: string) => {
+    showToast('標記完成中...', 'loading')
+    startTransition(async () => { await completeTask(id); showToast('✅ 已標記完成', 'success', 2000) })
+  }
+  const handleUncompleteTask = (id: string) => {
+    startTransition(async () => { await uncompleteTask(id); showToast('已取消完成', 'success', 2000) })
+  }
+  const handleCompleteAdhoc = (id: string) => {
+    showToast('標記完成中...', 'loading')
+    startTransition(async () => { await completeAdhocOrder(id); showToast('✅ 已標記完成', 'success', 2000) })
+  }
+  const handleUncompleteAdhoc = (id: string) => {
+    startTransition(async () => { await uncompleteAdhocOrder(id); showToast('已取消完成', 'success', 2000) })
+  }
 
   const handleSaveAdhoc = (data: Parameters<typeof createAdhocOrder>[0]) => {
     setShowAdhoc(false)
-    startTransition(() => createAdhocOrder(data))
+    showToast('臨時任務加入中...', 'loading')
+    startTransition(async () => {
+      await createAdhocOrder(data)
+      showToast('✅ 臨時任務已加入', 'success', 2500)
+    })
   }
+
+  // 判斷派工單是否被編輯過（updated_at 比 published_at 更新）
+  const planWasEdited = plan?.published_at && plan?.updated_at &&
+    new Date(plan.updated_at) > new Date(plan.published_at)
 
   const dateLabel = new Date(today + 'T00:00:00').toLocaleDateString('zh-TW', {
     month: 'long', day: 'numeric', weekday: 'short',
@@ -334,12 +380,19 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
       {/* 固定派工單 */}
       <div className="bg-white rounded-xl border border-gray-200 mb-4 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <ClipboardList className="w-4 h-4 text-gray-400" />
             <span className="text-sm font-semibold text-gray-800">固定派工單</span>
+            {/* 編輯時間戳 */}
+            {planWasEdited && plan?.updated_at && (
+              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                <Clock className="w-3 h-3" />
+                {twTime(plan.updated_at)} 已修改
+              </span>
+            )}
           </div>
           {plan ? (
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
               plan.status === 'published'  ? 'bg-emerald-100 text-emerald-700' :
               plan.status === 'completed'  ? 'bg-gray-100 text-gray-500' :
               'bg-yellow-100 text-yellow-700'
@@ -461,6 +514,9 @@ export function TodayView({ today, plan, tasks, adhocOrders, spaces, staff, canD
       {showAdhoc && (
         <AdhocModal spaces={spaces} staff={staff} onClose={() => setShowAdhoc(false)} onSave={handleSaveAdhoc} />
       )}
+
+      {/* Toast 通知 */}
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   )
 }

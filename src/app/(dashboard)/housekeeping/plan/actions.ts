@@ -86,6 +86,11 @@ export async function addTask(planId: string, task: {
       sort_order:    task.sortOrder,
     })
   if (error) throw new Error(error.message)
+  // 更新派工單的 updated_at（記錄最後修改時間）
+  await supabase
+    .from('housekeeping_daily_plans')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', planId)
   revalidatePath('/housekeeping')
   revalidatePath('/housekeeping/plan')
 }
@@ -93,11 +98,23 @@ export async function addTask(planId: string, task: {
 // ── 刪除任務 ──────────────────────────────────────────────
 export async function deleteTask(taskId: string) {
   const supabase = await createClient()
+  // 取得 plan_id 以便更新 updated_at
+  const { data: task } = await supabase
+    .from('housekeeping_tasks')
+    .select('plan_id')
+    .eq('id', taskId)
+    .single()
   const { error } = await supabase
     .from('housekeeping_tasks')
     .delete()
     .eq('id', taskId)
   if (error) throw new Error(error.message)
+  if (task?.plan_id) {
+    await supabase
+      .from('housekeeping_daily_plans')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', task.plan_id)
+  }
   revalidatePath('/housekeeping')
   revalidatePath('/housekeeping/plan')
 }

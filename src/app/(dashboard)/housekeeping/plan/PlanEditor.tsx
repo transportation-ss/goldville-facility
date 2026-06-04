@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, Loader2, CheckCircle2, Send, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Loader2, CheckCircle2, Send, FileText, Clock } from 'lucide-react'
 import { createPlan, updatePlan, addTask, deleteTask } from './actions'
 import {
   TASK_TYPE_LABELS, TASK_TYPE_COLORS,
@@ -21,12 +21,13 @@ interface Props {
 const FLOOR_ORDER = ['B1', '1F', '2F', '3F', '5F', '6F', '7F', '8F']
 
 // ── 新增任務表單 ──────────────────────────────────────────
-function AddTaskForm({ planId, spaces, staff, currentCount, onDone }: {
+function AddTaskForm({ planId, spaces, staff, currentCount, onDone, onAdded }: {
   planId:       string
   spaces:       SpaceOption[]
   staff:        { id: string; display_name: string }[]
   currentCount: number
   onDone:       () => void
+  onAdded:      () => void
 }) {
   const [, startTransition] = useTransition()
   const [roomId, setRoomId]         = useState('')
@@ -52,6 +53,7 @@ function AddTaskForm({ planId, spaces, staff, currentCount, onDone }: {
         sortOrder:   currentCount,
       })
       setRoomId(''); setNotes(''); setAssignedTo(''); setSaving(false)
+      onAdded()
       onDone()
     })
   }
@@ -163,6 +165,12 @@ export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [generalNotes, setGeneralNotes] = useState(plan?.general_notes ?? '')
   const [saving, setSaving] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2500)
+  }
 
   const dateLabel = new Date(today + 'T00:00:00').toLocaleDateString('zh-TW', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
@@ -311,7 +319,7 @@ export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
           {/* 新增任務 */}
           {plan.status === 'draft' && (
             showAddForm
-              ? <AddTaskForm planId={plan.id} spaces={spaces} staff={staff} currentCount={tasks.length} onDone={() => setShowAddForm(false)} />
+              ? <AddTaskForm planId={plan.id} spaces={spaces} staff={staff} currentCount={tasks.length} onDone={() => setShowAddForm(false)} onAdded={() => showToast('✅ 任務已加入')} />
               : (
                 <button
                   onClick={() => setShowAddForm(true)}
@@ -323,7 +331,7 @@ export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
           )}
           {plan.status === 'published' && (
             showAddForm
-              ? <AddTaskForm planId={plan.id} spaces={spaces} staff={staff} currentCount={tasks.length} onDone={() => setShowAddForm(false)} />
+              ? <AddTaskForm planId={plan.id} spaces={spaces} staff={staff} currentCount={tasks.length} onDone={() => setShowAddForm(false)} onAdded={() => showToast('✅ 任務已追加')} />
               : (
                 <button
                   onClick={() => setShowAddForm(true)}
@@ -334,6 +342,13 @@ export function PlanEditor({ today, plan, tasks, spaces, staff }: Props) {
               )
           )}
         </>
+      )}
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          {toast}
+        </div>
       )}
     </div>
   )
