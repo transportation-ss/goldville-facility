@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
-  Users, BookOpen, KeyRound, HelpCircle, BedDouble,
+  Users, BookOpen, KeyRound, HelpCircle, BedDouble, BarChart3, History,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -57,7 +57,7 @@ const fullNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '工務',
     items: [
-      { label: '工務派工',   href: '/work-orders', icon: ClipboardList },
+      { label: '工務任務',   href: '/work-orders', icon: ClipboardList },
       { label: '保養提醒',   href: '/maintenance', icon: CalendarCheck },
       { label: '耗材進銷存', href: '/consumables', icon: Package       },
       { label: '水電紀錄',   href: '/utilities',   icon: Droplets      },
@@ -74,8 +74,10 @@ const fullNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '房務',
     items: [
-      { label: '今日任務', href: '/housekeeping',      icon: BedDouble    },
-      { label: '派工管理', href: '/housekeeping/plan', icon: ClipboardList },
+      { label: '今日任務', href: '/housekeeping',         icon: BedDouble    },
+      { label: '今日報表', href: '/housekeeping/report',  icon: BarChart3    },
+      { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
+      { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
     ],
   },
   {
@@ -92,7 +94,7 @@ const technicianNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '工務',
     items: [
-      { label: '工務派工',   href: '/work-orders', icon: ClipboardList },
+      { label: '工務任務',   href: '/work-orders', icon: ClipboardList },
       { label: '保養提醒',   href: '/maintenance', icon: CalendarCheck },
       { label: '耗材進銷存', href: '/consumables', icon: Package       },
       { label: '水電紀錄',   href: '/utilities',   icon: Droplets      },
@@ -126,8 +128,8 @@ const procurementNav: (NavSingle | NavGroup)[] = [
 
 /** 一般身分（frontdesk_day / housekeeper / admin_staff / sales） */
 const generalNav: (NavSingle | NavGroup)[] = [
-  { type: 'single', label: '工務派工', href: '/work-orders',  icon: ClipboardList },
-  { type: 'single', label: '房務派工', href: '/housekeeping', icon: BedDouble      },
+  { type: 'single', label: '工務任務', href: '/work-orders',  icon: ClipboardList },
+  { type: 'single', label: '房務任務', href: '/housekeeping', icon: BedDouble      },
   {
     type: 'group', label: '說明書',
     items: [
@@ -140,7 +142,15 @@ const generalNav: (NavSingle | NavGroup)[] = [
 
 /** 房務身分 */
 const housekeepingNav: (NavSingle | NavGroup)[] = [
-  { type: 'single', label: '今日任務', href: '/housekeeping', icon: BedDouble },
+  {
+    type: 'group', label: '房務',
+    items: [
+      { label: '今日任務', href: '/housekeeping',         icon: BedDouble     },
+      { label: '今日報表', href: '/housekeeping/report',  icon: BarChart3     },
+      { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
+      { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
+    ],
+  },
 ]
 
 /** 工務＋房務組合身分 */
@@ -148,7 +158,7 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '工務',
     items: [
-      { label: '工務派工',   href: '/work-orders', icon: ClipboardList },
+      { label: '工務任務',   href: '/work-orders', icon: ClipboardList },
       { label: '保養提醒',   href: '/maintenance', icon: CalendarCheck },
       { label: '耗材進銷存', href: '/consumables', icon: Package       },
       { label: '水電紀錄',   href: '/utilities',   icon: Droplets      },
@@ -165,7 +175,8 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '房務',
     items: [
-      { label: '今日任務', href: '/housekeeping', icon: BedDouble },
+      { label: '今日任務', href: '/housekeeping',        icon: BedDouble },
+      { label: '今日報表', href: '/housekeeping/report', icon: BarChart3 },
     ],
   },
 ]

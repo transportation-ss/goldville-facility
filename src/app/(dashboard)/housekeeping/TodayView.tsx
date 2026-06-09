@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   BedDouble, Plus, CheckCircle2, Circle, AlertTriangle,
   ClipboardList, ChevronRight, Loader2, Settings, Clock,
+  ChevronDown, ChevronUp, BarChart3,
 } from 'lucide-react'
 import { completeTask, uncompleteTask } from './plan/actions'
 import { completeAdhocOrder, uncompleteAdhocOrder } from './adhoc/actions'
@@ -30,17 +31,17 @@ function twTime(iso: string) {
     hour: '2-digit', minute: '2-digit',
   })
 }
+function twTimeShort(iso: string) {
+  return new Date(iso).toLocaleString('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
 
 // ── 取消完成確認 Modal ────────────────────────────────────
 function UncompleteConfirmModal({
-  label,
-  onConfirm,
-  onCancel,
-}: {
-  label:     string
-  onConfirm: () => void
-  onCancel:  () => void
-}) {
+  label, onConfirm, onCancel,
+}: { label: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center">
       <div className="bg-white w-full max-w-md rounded-t-2xl md:rounded-2xl p-5">
@@ -48,18 +49,8 @@ function UncompleteConfirmModal({
         <p className="text-sm text-gray-500 mb-1 truncate">{label}</p>
         <p className="text-xs text-gray-400 mb-5">完成記錄（人員、時間、備註）將一併清除。</p>
         <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600"
-          >
-            取消
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium"
-          >
-            確認移除
-          </button>
+          <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600">取消</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium">確認移除</button>
         </div>
       </div>
     </div>
@@ -68,14 +59,8 @@ function UncompleteConfirmModal({
 
 // ── 完成備註 Modal ────────────────────────────────────────
 function CompleteModal({
-  label,
-  onConfirm,
-  onCancel,
-}: {
-  label:     string
-  onConfirm: (notes: string) => void
-  onCancel:  () => void
-}) {
+  label, onConfirm, onCancel,
+}: { label: string; onConfirm: (notes: string) => void; onCancel: () => void }) {
   const [notes, setNotes] = useState('')
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center">
@@ -85,31 +70,21 @@ function CompleteModal({
         <div>
           <label className="text-xs font-medium text-gray-600 mb-1 block">完成備註（選填）</label>
           <textarea
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            rows={3}
-            placeholder="例：補換備品、客人有特殊要求..."
-            autoFocus
+            value={notes} onChange={e => setNotes(e.target.value)}
+            rows={3} placeholder="例：補換備品、客人有特殊要求..." autoFocus
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
           />
         </div>
         <div className="flex gap-3 mt-4">
-          <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600">
-            取消
-          </button>
-          <button
-            onClick={() => onConfirm(notes)}
-            className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium"
-          >
-            確認完成
-          </button>
+          <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600">取消</button>
+          <button onClick={() => onConfirm(notes)} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium">確認完成</button>
         </div>
       </div>
     </div>
   )
 }
 
-// ── Toast 元件 ────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────
 function Toast({ message, type }: { message: string; type: 'loading' | 'success' }) {
   return (
     <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex items-center gap-2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl">
@@ -124,7 +99,7 @@ function Toast({ message, type }: { message: string; type: 'loading' | 'success'
 
 // ── Task 行 ───────────────────────────────────────────────
 function TaskRow({ task, onComplete, onUncomplete }: {
-  task:         HousekeepingTask
+  task: HousekeepingTask
   onComplete:   (id: string, label: string) => void
   onUncomplete: (id: string) => void
 }) {
@@ -135,10 +110,7 @@ function TaskRow({ task, onComplete, onUncomplete }: {
 
   return (
     <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${done ? 'opacity-60' : ''}`}>
-      <button
-        onClick={() => done ? onUncomplete(task.id) : onComplete(task.id, label)}
-        className="mt-0.5 shrink-0"
-      >
+      <button onClick={() => done ? onUncomplete(task.id) : onComplete(task.id, label)} className="mt-0.5 shrink-0">
         {done
           ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
           : <Circle className={`w-5 h-5 ${isUrgent ? 'text-red-400' : 'text-gray-300'}`} />
@@ -146,39 +118,23 @@ function TaskRow({ task, onComplete, onUncomplete }: {
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          {isUrgent && !done && (
-            <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>
-          )}
-          <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-            {label}
-          </span>
-          {task.room?.floor && (
-            <span className="text-xs text-gray-400">{task.room.floor}</span>
-          )}
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>
-            {TASK_TYPE_LABELS[task.task_type]}
-          </span>
+          {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
+          <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>{label}</span>
+          {task.room?.floor && <span className="text-xs text-gray-400">{task.room.floor}</span>}
+          <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>{TASK_TYPE_LABELS[task.task_type]}</span>
         </div>
-        {task.assignee && (
-          <p className="text-xs text-gray-400 mt-0.5">負責：{task.assignee.display_name}</p>
-        )}
-        {task.special_notes && (
-          <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1 mt-1">{task.special_notes}</p>
-        )}
+        {task.assignee && <p className="text-xs text-gray-400 mt-0.5">負責：{task.assignee.display_name}</p>}
+        {task.special_notes && <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1 mt-1">{task.special_notes}</p>}
         {done && (
           <div className="mt-1 space-y-0.5">
             {task.completer && (
               <p className="text-xs text-emerald-600">
                 ✓ {task.completer.display_name}
-                {task.completed_at && (
-                  <span className="text-gray-400 ml-1">{twTime(task.completed_at)}</span>
-                )}
+                {task.completed_at && <span className="text-gray-400 ml-1">{twTime(task.completed_at)}</span>}
               </p>
             )}
             {task.completion_notes && (
-              <p className="text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">
-                💬 {task.completion_notes}
-              </p>
+              <p className="text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">💬 {task.completion_notes}</p>
             )}
           </div>
         )}
@@ -189,7 +145,7 @@ function TaskRow({ task, onComplete, onUncomplete }: {
 
 // ── AdhocOrder 行 ─────────────────────────────────────────
 function AdhocRow({ order, onComplete, onUncomplete }: {
-  order:        HousekeepingAdhocOrder
+  order: HousekeepingAdhocOrder
   onComplete:   (id: string, label: string) => void
   onUncomplete: (id: string) => void
 }) {
@@ -198,10 +154,7 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
 
   return (
     <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${done ? 'opacity-60' : ''}`}>
-      <button
-        onClick={() => done ? onUncomplete(order.id) : onComplete(order.id, order.title)}
-        className="mt-0.5 shrink-0"
-      >
+      <button onClick={() => done ? onUncomplete(order.id) : onComplete(order.id, order.title)} className="mt-0.5 shrink-0">
         {done
           ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
           : <Circle className={`w-5 h-5 ${isUrgent ? 'text-red-400' : 'text-orange-400'}`} />
@@ -209,16 +162,10 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          {isUrgent && !done && (
-            <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>
-          )}
-          <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
-            {order.title}
-          </span>
+          {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
+          <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{order.title}</span>
           {order.room && (
-            <span className="text-xs text-gray-400">
-              {order.room.floor ? `${order.room.floor} ` : ''}{order.room.name}
-            </span>
+            <span className="text-xs text-gray-400">{order.room.floor ? `${order.room.floor} ` : ''}{order.room.name}</span>
           )}
           {order.task_type && (
             <span className={`text-xs px-1.5 py-0.5 rounded-full ${TASK_TYPE_COLORS[order.task_type]}`}>
@@ -226,26 +173,23 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
             </span>
           )}
         </div>
-        {order.description && (
-          <p className="text-xs text-gray-500 mt-0.5">{order.description}</p>
-        )}
-        {order.assignee && (
-          <p className="text-xs text-gray-400 mt-0.5">負責：{order.assignee.display_name}</p>
-        )}
+        {order.description && <p className="text-xs text-gray-500 mt-0.5">{order.description}</p>}
+        {order.assignee && <p className="text-xs text-gray-400 mt-0.5">負責：{order.assignee.display_name}</p>}
+        {/* 派工時間 */}
+        <p className="text-xs text-orange-400 mt-0.5 flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          派工：{twTimeShort(order.created_at)}
+        </p>
         {done && (
           <div className="mt-1 space-y-0.5">
             {order.completer && (
               <p className="text-xs text-emerald-600">
                 ✓ {order.completer.display_name}
-                {order.completed_at && (
-                  <span className="text-gray-400 ml-1">{twTime(order.completed_at)}</span>
-                )}
+                {order.completed_at && <span className="text-gray-400 ml-1">{twTime(order.completed_at)}</span>}
               </p>
             )}
             {order.completion_notes && (
-              <p className="text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">
-                💬 {order.completion_notes}
-              </p>
+              <p className="text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">💬 {order.completion_notes}</p>
             )}
           </div>
         )}
@@ -254,18 +198,44 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
   )
 }
 
+// ── 可折疊分類區塊 ─────────────────────────────────────────
+function CategorySection({
+  title, color, count, doneCount, defaultOpen, children,
+}: {
+  title: string
+  color: string   // header bg class
+  count: number
+  doneCount: number
+  defaultOpen: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  if (count === 0) return null
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
+      <button
+        className={`w-full flex items-center justify-between px-4 py-3 border-b border-gray-100 ${color}`}
+        onClick={() => setOpen(v => !v)}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold">{title}</span>
+          <span className="text-xs bg-white/60 px-1.5 py-0.5 rounded-full font-medium">
+            {doneCount}/{count}
+          </span>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+      </button>
+      {open && <div className="px-4">{children}</div>}
+    </div>
+  )
+}
+
 // ── 主元件 ────────────────────────────────────────────────
 export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, currentUserId }: Props) {
   const [, startTransition] = useTransition()
-  const [toast, setToast]  = useState<{ message: string; type: 'loading' | 'success' } | null>(null)
-
-  const [completeModal, setCompleteModal] = useState<{
-    id: string; label: string; kind: 'task' | 'adhoc'
-  } | null>(null)
-
-  const [uncompleteModal, setUncompleteModal] = useState<{
-    id: string; label: string; kind: 'task' | 'adhoc'
-  } | null>(null)
+  const [toast, setToast]   = useState<{ message: string; type: 'loading' | 'success' } | null>(null)
+  const [completeModal, setCompleteModal]     = useState<{ id: string; label: string; kind: 'task' | 'adhoc' } | null>(null)
+  const [uncompleteModal, setUncompleteModal] = useState<{ id: string; label: string; kind: 'task' | 'adhoc' } | null>(null)
 
   const [optimisticTasks, updateOptimisticTasks] = useOptimistic(
     tasks,
@@ -283,9 +253,6 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
     if (autoDismiss > 0) setTimeout(() => setToast(null), autoDismiss)
   }, [])
 
-  const handleClickComplete = (id: string, label: string, kind: 'task' | 'adhoc') =>
-    setCompleteModal({ id, label, kind })
-
   const handleConfirmComplete = (notes: string) => {
     if (!completeModal) return
     const { id, kind } = completeModal
@@ -300,15 +267,6 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
       }
       showToast('✅ 已標記完成', 'success', 2000)
     })
-  }
-
-  const handleUncompleteTask = (id: string) => {
-    const task = optimisticTasks.find(t => t.id === id)
-    setUncompleteModal({ id, label: task?.room?.name ?? '（未指定空間）', kind: 'task' })
-  }
-  const handleUncompleteAdhoc = (id: string) => {
-    const order = optimisticAdhoc.find(o => o.id === id)
-    setUncompleteModal({ id, label: order?.title ?? '此任務', kind: 'adhoc' })
   }
 
   const handleConfirmUncomplete = () => {
@@ -327,10 +285,14 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
     })
   }
 
-  const urgentTasks = optimisticTasks.filter(t => t.priority === 'urgent')
-  const normalTasks = optimisticTasks.filter(t => t.priority === 'normal')
-  const urgentAdhoc = optimisticAdhoc.filter(o => o.priority === 'urgent')
-  const normalAdhoc = optimisticAdhoc.filter(o => o.priority === 'normal')
+  // ── 分類 ──
+  const guestTasks  = optimisticTasks.filter(t => t.room?.room_type === '客房')
+  const publicTasks = optimisticTasks.filter(t => t.room?.room_type !== '客房')
+
+  // 每個分類：未完成在前，完成在後
+  function splitDone<T extends { status: string }>(arr: T[]) {
+    return [...arr.filter(i => i.status !== 'completed'), ...arr.filter(i => i.status === 'completed')]
+  }
 
   const totalItems = optimisticTasks.length + optimisticAdhoc.length
   const doneItems  = optimisticTasks.filter(t => t.status === 'completed').length
@@ -343,6 +305,17 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
     month: 'long', day: 'numeric', weekday: 'short',
   })
 
+  const handleComplete   = (id: string, label: string, kind: 'task' | 'adhoc') => setCompleteModal({ id, label, kind })
+  const handleUncomplete = (id: string, kind: 'task' | 'adhoc') => {
+    if (kind === 'task') {
+      const task = optimisticTasks.find(t => t.id === id)
+      setUncompleteModal({ id, label: task?.room?.name ?? '（未指定空間）', kind })
+    } else {
+      const order = optimisticAdhoc.find(o => o.id === id)
+      setUncompleteModal({ id, label: order?.title ?? '此任務', kind })
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* 頁頭 */}
@@ -351,16 +324,43 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           <h1 className="text-xl font-bold text-gray-900">今日房務</h1>
           <p className="text-xs text-gray-500 mt-0.5">{dateLabel}</p>
         </div>
-        {canDispatch && (
+        <div className="flex items-center gap-2">
           <Link
-            href="/housekeeping/plan"
+            href="/housekeeping/report"
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
           >
-            <Settings className="w-4 h-4" />
-            派工管理
+            <BarChart3 className="w-4 h-4" />
+            今日報表
           </Link>
-        )}
+          {canDispatch && (
+            <Link
+              href="/housekeeping/plan"
+              className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <Settings className="w-4 h-4" />
+              派工管理
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* 未發布提示 */}
+      {!plan ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 text-center mb-4">
+          <BedDouble className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+          <p className="text-sm text-gray-400">今日尚未設定派工單</p>
+          {canDispatch && (
+            <Link href="/housekeeping/plan" className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium">
+              <Plus className="w-4 h-4" /> 建立今日派工單
+            </Link>
+          )}
+        </div>
+      ) : plan.status === 'draft' ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
+          <p className="text-sm text-yellow-700">派工單草稿尚未發布</p>
+          {canDispatch && <Link href="/housekeeping/plan" className="text-sm text-emerald-600 underline">前往發布</Link>}
+        </div>
+      ) : null}
 
       {/* 進度條 */}
       {plan?.status === 'published' && totalItems > 0 && (
@@ -375,144 +375,92 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
               style={{ width: `${totalItems > 0 ? (doneItems / totalItems) * 100 : 0}%` }}
             />
           </div>
-          {urgentTasks.filter(t => t.status !== 'completed').length > 0 && (
-            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+          {planWasEdited && plan.updated_at && (
+            <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+              <Clock className="w-3 h-3" />{twTime(plan.updated_at)} 已修改
+            </p>
+          )}
+          {optimisticTasks.filter(t => t.priority === 'urgent' && t.status !== 'completed').length > 0 && (
+            <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" />
-              {urgentTasks.filter(t => t.status !== 'completed').length} 項緊急任務待完成
+              {optimisticTasks.filter(t => t.priority === 'urgent' && t.status !== 'completed').length} 項緊急任務待完成
             </p>
           )}
         </div>
       )}
 
-      {/* 固定派工單 */}
-      <div className="bg-white rounded-xl border border-gray-200 mb-4 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <div className="flex items-center gap-2 flex-wrap">
-            <ClipboardList className="w-4 h-4 text-gray-400" />
-            <span className="text-sm font-semibold text-gray-800">固定派工單</span>
-            {planWasEdited && plan?.updated_at && (
-              <span className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                <Clock className="w-3 h-3" />
-                {twTime(plan.updated_at)} 已修改
-              </span>
-            )}
-          </div>
-          {plan && (
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-              plan.status === 'published' ? 'bg-emerald-100 text-emerald-700' :
-              plan.status === 'completed' ? 'bg-gray-100 text-gray-500' :
-              'bg-yellow-100 text-yellow-700'
-            }`}>
-              {plan.status === 'published' ? '已發布' : plan.status === 'completed' ? '已完成' : '草稿'}
-            </span>
+      {/* 客房 */}
+      {plan?.status === 'published' && (
+        <CategorySection
+          title="客房"
+          color="bg-blue-50 text-blue-800"
+          count={guestTasks.length}
+          doneCount={guestTasks.filter(t => t.status === 'completed').length}
+          defaultOpen={true}
+        >
+          {splitDone(guestTasks).map(t => (
+            <TaskRow
+              key={t.id} task={t}
+              onComplete={(id, label) => handleComplete(id, label, 'task')}
+              onUncomplete={id => handleUncomplete(id, 'task')}
+            />
+          ))}
+          {plan.general_notes && (
+            <div className="py-3 border-t border-gray-100">
+              <p className="text-xs text-gray-400">備註：{plan.general_notes}</p>
+            </div>
           )}
-        </div>
-
-        {!plan ? (
-          <div className="px-4 py-8 text-center">
-            <BedDouble className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-400">今日尚未設定固定單</p>
-            {canDispatch && (
-              <Link
-                href="/housekeeping/plan"
-                className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"
-              >
-                <Plus className="w-4 h-4" /> 建立今日派工單
-              </Link>
-            )}
-          </div>
-        ) : plan.status === 'draft' ? (
-          <div className="px-4 py-6 text-center">
-            <p className="text-sm text-yellow-600">派工單草稿尚未發布</p>
-            {canDispatch && (
-              <Link href="/housekeeping/plan" className="text-sm text-emerald-600 underline mt-1 block">
-                前往發布
-              </Link>
-            )}
-          </div>
-        ) : optimisticTasks.length === 0 ? (
-          <div className="px-4 py-6 text-center">
-            <p className="text-sm text-gray-400">今日派工單無任務</p>
-          </div>
-        ) : (
-          <div className="px-4">
-            {urgentTasks.length > 0 && (
-              <>
-                <p className="text-xs font-semibold text-red-500 pt-3 pb-1">🔴 緊急</p>
-                {urgentTasks.map(t => (
-                  <TaskRow
-                    key={t.id} task={t}
-                    onComplete={(id, label) => handleClickComplete(id, label, 'task')}
-                    onUncomplete={handleUncompleteTask}
-                  />
-                ))}
-              </>
-            )}
-            {normalTasks.length > 0 && (
-              <>
-                {urgentTasks.length > 0 && (
-                  <p className="text-xs font-semibold text-gray-400 pt-3 pb-1">一般</p>
-                )}
-                {normalTasks.map(t => (
-                  <TaskRow
-                    key={t.id} task={t}
-                    onComplete={(id, label) => handleClickComplete(id, label, 'task')}
-                    onUncomplete={handleUncompleteTask}
-                  />
-                ))}
-              </>
-            )}
-            {plan.general_notes && (
-              <div className="py-3 border-t border-gray-100">
-                <p className="text-xs text-gray-400">備註：{plan.general_notes}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 臨時派工（純顯示，可標記完成） */}
-      {adhocOrders.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-orange-50">
-            <Plus className="w-4 h-4 text-orange-400" />
-            <span className="text-sm font-semibold text-orange-800">臨時派工</span>
-            <span className="text-xs bg-orange-200 text-orange-700 px-1.5 py-0.5 rounded-full">
-              {optimisticAdhoc.length}
-            </span>
-          </div>
-          <div className="px-4">
-            {urgentAdhoc.length > 0 && (
-              <>
-                <p className="text-xs font-semibold text-red-500 pt-3 pb-1">🔴 緊急</p>
-                {urgentAdhoc.map(o => (
-                  <AdhocRow
-                    key={o.id} order={o}
-                    onComplete={(id, label) => handleClickComplete(id, label, 'adhoc')}
-                    onUncomplete={handleUncompleteAdhoc}
-                  />
-                ))}
-              </>
-            )}
-            {normalAdhoc.map(o => (
-              <AdhocRow
-                key={o.id} order={o}
-                onComplete={(id, label) => handleClickComplete(id, label, 'adhoc')}
-                onUncomplete={handleUncompleteAdhoc}
-              />
-            ))}
-          </div>
-        </div>
+        </CategorySection>
       )}
 
-      {/* 歷史連結 */}
-      <Link
-        href="/housekeeping/history"
-        className="flex items-center justify-between mt-4 px-4 py-3 bg-white rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50"
-      >
-        查看歷史記錄
-        <ChevronRight className="w-4 h-4" />
-      </Link>
+      {/* 公共空間 */}
+      {plan?.status === 'published' && (
+        <CategorySection
+          title="公共空間"
+          color="bg-teal-50 text-teal-800"
+          count={publicTasks.length}
+          doneCount={publicTasks.filter(t => t.status === 'completed').length}
+          defaultOpen={true}
+        >
+          {splitDone(publicTasks).map(t => (
+            <TaskRow
+              key={t.id} task={t}
+              onComplete={(id, label) => handleComplete(id, label, 'task')}
+              onUncomplete={id => handleUncomplete(id, 'task')}
+            />
+          ))}
+        </CategorySection>
+      )}
+
+      {/* 臨時派工 */}
+      {plan?.status === 'published' && optimisticAdhoc.length > 0 && (
+        <CategorySection
+          title="臨時派工"
+          color="bg-orange-50 text-orange-800"
+          count={optimisticAdhoc.length}
+          doneCount={optimisticAdhoc.filter(o => o.status === 'completed').length}
+          defaultOpen={true}
+        >
+          {splitDone(optimisticAdhoc).map(o => (
+            <AdhocRow
+              key={o.id} order={o}
+              onComplete={(id, label) => handleComplete(id, label, 'adhoc')}
+              onUncomplete={id => handleUncomplete(id, 'adhoc')}
+            />
+          ))}
+        </CategorySection>
+      )}
+
+      {/* 底部連結 */}
+      <div className="flex gap-3 mt-2">
+        <Link
+          href="/housekeeping/history"
+          className="flex-1 flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50"
+        >
+          <span className="flex items-center gap-2"><ClipboardList className="w-4 h-4" /> 歷史紀錄</span>
+          <ChevronRight className="w-4 h-4" />
+        </Link>
+      </div>
 
       {/* Modals */}
       {uncompleteModal && (
@@ -529,7 +477,6 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           onCancel={() => setCompleteModal(null)}
         />
       )}
-
       {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   )

@@ -27,7 +27,7 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
       return {
         primary: [
           { label: '總覽',   href: '/dashboard',   icon: LayoutDashboard },
-          { label: '派工單', href: '/work-orders',  icon: ClipboardList   },
+          { label: '工務任務', href: '/work-orders',  icon: ClipboardList   },
           { label: '今日任務', href: '/housekeeping', icon: BedDouble      },
           { label: '大夜班', href: '/nightshift',   icon: Moon             },
         ],
@@ -65,7 +65,7 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
         primary: [
           { label: '派工單',   href: '/work-orders',  icon: ClipboardList },
           { label: '進銷存',   href: '/consumables',   icon: Package       },
-          { label: '今日任務', href: '/housekeeping',  icon: BedDouble     },
+          { label: '房務任務', href: '/housekeeping',  icon: BedDouble     },
         ],
         more: [
           { label: '保養提醒', href: '/maintenance', icon: CalendarCheck },

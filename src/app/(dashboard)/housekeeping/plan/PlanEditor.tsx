@@ -4,10 +4,10 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft, Plus, Trash2, Loader2, CheckCircle2, Send,
-  FileText, ChevronDown, ChevronUp, Pencil, X,
+  FileText, ChevronDown, ChevronUp, Pencil, X, Clock,
 } from 'lucide-react'
 import { createPlan, updatePlan, addTask, deleteTask, deletePlan, updateTask } from './actions'
-import { deleteAdhocOrder } from '../adhoc/actions'
+import { deleteAdhocOrder, createAdhocOrder } from '../adhoc/actions'
 import {
   TASK_TYPE_LABELS, TASK_TYPE_COLORS,
   type HousekeepingPlan, type HousekeepingTask, type HousekeepingAdhocOrder,
@@ -477,6 +477,146 @@ function EditTaskModal({
   )
 }
 
+// ── 臨時派工新增表單 ──────────────────────────────────────
+function AddAdhocForm({ spaces, staff, onDone, onAdded }: {
+  spaces:  SpaceOption[]
+  staff:   { id: string; display_name: string }[]
+  onDone:  () => void
+  onAdded: () => void
+}) {
+  const [, startTransition] = useTransition()
+  const [title, setTitle]         = useState('')
+  const [description, setDesc]    = useState('')
+  const [taskType, setTaskType]   = useState<TaskType | ''>('')
+  const [priority, setPriority]   = useState<TaskPriority>('normal')
+  const [roomId, setRoomId]       = useState('')
+  const [assignedTo, setAssignedTo] = useState('')
+  const [saving, setSaving]       = useState(false)
+
+  const guestRooms   = spaces.filter(s => s.room_type === '客房')
+  const publicSpaces = spaces.filter(s => s.room_type !== '客房')
+
+  const handleAdd = () => {
+    if (!title.trim()) { alert('請填寫任務名稱'); return }
+    setSaving(true)
+    startTransition(async () => {
+      await createAdhocOrder({
+        title:       title.trim(),
+        description: description.trim(),
+        roomId:      roomId || null,
+        taskType:    taskType || null,
+        priority,
+        assignedTo:  assignedTo || null,
+      })
+      setSaving(false)
+      onAdded()
+      onDone()
+    })
+  }
+
+  return (
+    <div className="bg-orange-50 rounded-xl border border-dashed border-orange-300 p-4 space-y-3">
+      <p className="text-sm font-semibold text-orange-800">新增臨時派工</p>
+
+      {/* 任務名稱 */}
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">任務名稱 *</label>
+        <input
+          type="text" value={title} onChange={e => setTitle(e.target.value)}
+          placeholder="例：507 補充備品、大廳緊急清潔..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+        />
+      </div>
+
+      {/* 類型 + 空間 */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">任務類型（選填）</label>
+          <select
+            value={taskType} onChange={e => setTaskType(e.target.value as TaskType | '')}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+          >
+            <option value="">不指定</option>
+            {Object.entries(TASK_TYPE_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">空間（選填）</label>
+          <select
+            value={roomId} onChange={e => setRoomId(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+          >
+            <option value="">不指定</option>
+            <optgroup label="── 客房 ──">
+              {guestRooms.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </optgroup>
+            {FLOOR_ORDER.map(floor => {
+              const items = publicSpaces.filter(s => s.floor === floor)
+              if (!items.length) return null
+              return (
+                <optgroup key={floor} label={`── ${floor} 公共 ──`}>
+                  {items.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </optgroup>
+              )
+            })}
+          </select>
+        </div>
+      </div>
+
+      {/* 指定人員 */}
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">指定人員（選填）</label>
+        <select
+          value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+        >
+          <option value="">不指定</option>
+          {staff.map(s => <option key={s.id} value={s.id}>{s.display_name}</option>)}
+        </select>
+      </div>
+
+      {/* 優先度 */}
+      <div className="flex gap-2">
+        {(['normal', 'urgent'] as const).map(p => (
+          <button
+            key={p} type="button" onClick={() => setPriority(p)}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              priority === p
+                ? p === 'urgent' ? 'bg-red-500 border-red-500 text-white' : 'bg-orange-500 border-orange-500 text-white'
+                : 'border-gray-300 text-gray-600 hover:border-orange-400'
+            }`}
+          >
+            {p === 'urgent' ? '🔴 緊急' : '🟢 一般'}
+          </button>
+        ))}
+      </div>
+
+      {/* 說明 */}
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">說明（選填）</label>
+        <input
+          type="text" value={description} onChange={e => setDesc(e.target.value)}
+          placeholder="額外說明..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+        />
+      </div>
+
+      <div className="flex gap-2">
+        <button onClick={onDone} className="flex-1 py-2 border border-gray-300 rounded-lg text-sm text-gray-600">取消</button>
+        <button
+          onClick={handleAdd} disabled={saving}
+          className="flex-1 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          派工
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── 派工單任務列（可點進編輯 + 直接刪除）─────────────────
 function PlanTaskRow({ task, onEdit, onDelete, canDelete }: {
   task:      HousekeepingTask
@@ -542,11 +682,12 @@ function PlanTaskRow({ task, onEdit, onDelete, canDelete }: {
 // ── 主元件 ────────────────────────────────────────────────
 export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: Props) {
   const [, startTransition] = useTransition()
-  const [showAddForm, setShowAddForm]   = useState(false)
-  const [generalNotes, setGeneralNotes] = useState(plan?.general_notes ?? '')
-  const [saving, setSaving]             = useState<string | null>(null)
-  const [toast, setToast]               = useState<string | null>(null)
-  const [editingTask, setEditingTask]   = useState<HousekeepingTask | null>(null)
+  const [showAddForm, setShowAddForm]         = useState(false)
+  const [showAddAdhocForm, setShowAddAdhocForm] = useState(false)
+  const [generalNotes, setGeneralNotes]       = useState(plan?.general_notes ?? '')
+  const [saving, setSaving]                   = useState<string | null>(null)
+  const [toast, setToast]                     = useState<string | null>(null)
+  const [editingTask, setEditingTask]         = useState<HousekeepingTask | null>(null)
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -734,8 +875,8 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
             )}
           </div>
 
-          {/* 新增固定任務（草稿或已發布均可） */}
-          {plan.status !== 'completed' && (
+          {/* 新增固定任務（僅草稿階段可新增；發布後只能編輯） */}
+          {plan.status === 'draft' && (
             <div className="mb-4">
               {showAddForm
                 ? (
@@ -743,85 +884,104 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
                     planId={plan.id} spaces={spaces} staff={staff}
                     currentCount={tasks.length}
                     onDone={() => setShowAddForm(false)}
-                    onAdded={() => showToast(plan.status === 'published' ? '✅ 任務已追加' : '✅ 任務已加入')}
+                    onAdded={() => showToast('✅ 任務已加入')}
                   />
                 ) : (
                   <button
                     onClick={() => setShowAddForm(true)}
-                    className={`w-full py-3 border-2 border-dashed rounded-xl text-sm flex items-center justify-center gap-2 transition-colors ${
-                      plan.status === 'published'
-                        ? 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'
-                        : 'border-gray-300 text-gray-500 hover:border-emerald-400 hover:text-emerald-600'
-                    }`}
+                    className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm flex items-center justify-center gap-2 text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors"
                   >
-                    <Plus className="w-4 h-4" />
-                    {plan.status === 'published' ? '追加固定任務' : '新增任務'}
+                    <Plus className="w-4 h-4" /> 新增任務
                   </button>
                 )
               }
             </div>
           )}
 
-          {/* 臨時派工列表（僅發布後顯示） */}
+          {/* 臨時派工列表（僅發布後顯示）+ 新增入口 */}
           {plan.status === 'published' && (
-            <div className="bg-white rounded-xl border border-orange-200 overflow-hidden">
-              <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
-                <Plus className="w-4 h-4 text-orange-400" />
-                <span className="text-sm font-semibold text-orange-800">臨時派工</span>
-                {adhocOrders.length > 0 && (
-                  <span className="text-xs bg-orange-200 text-orange-700 px-1.5 py-0.5 rounded-full">
-                    {adhocOrders.length}
-                  </span>
+            <div className="space-y-3">
+              <div className="bg-white rounded-xl border border-orange-200 overflow-hidden">
+                <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-orange-400" />
+                  <span className="text-sm font-semibold text-orange-800">臨時派工</span>
+                  {adhocOrders.length > 0 && (
+                    <span className="text-xs bg-orange-200 text-orange-700 px-1.5 py-0.5 rounded-full">
+                      {adhocOrders.length}
+                    </span>
+                  )}
+                </div>
+                {adhocOrders.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-gray-400">今日尚無臨時派工</div>
+                ) : (
+                  adhocOrders.map(o => {
+                    const done      = o.status === 'completed'
+                    const isUrgent  = o.priority === 'urgent'
+                    const typeStyle = o.task_type ? (TASK_TYPE_COLORS[o.task_type] ?? 'bg-gray-100 text-gray-600') : ''
+                    return (
+                      <div key={o.id} className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                            {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
+                            {o.task_type && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>
+                                {TASK_TYPE_LABELS[o.task_type]}
+                              </span>
+                            )}
+                            {done && (
+                              <span className="text-xs bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full">已完成</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                              {o.title}
+                            </span>
+                            {o.room && (
+                              <span className="text-xs text-gray-400">
+                                {o.room.floor ? `${o.room.floor} ` : ''}{o.room.name}
+                              </span>
+                            )}
+                            {o.assignee && (
+                              <span className="text-xs text-gray-400">→ {o.assignee.display_name}</span>
+                            )}
+                          </div>
+                          {o.description && (
+                            <p className="text-xs text-gray-500 mt-0.5 truncate">{o.description}</p>
+                          )}
+                          <p className="text-xs text-orange-400 mt-0.5 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            派工：{new Date(o.created_at).toLocaleString('zh-TW', {
+                              timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteAdhoc(o.id)}
+                          className="p-1.5 text-gray-300 hover:text-red-400 transition-colors shrink-0"
+                          title="刪除臨時派工"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )
+                  })
                 )}
               </div>
-              {adhocOrders.length === 0 ? (
-                <div className="py-6 text-center text-sm text-gray-400">今日尚無臨時派工</div>
+
+              {/* 新增臨時派工 */}
+              {showAddAdhocForm ? (
+                <AddAdhocForm
+                  spaces={spaces} staff={staff}
+                  onDone={() => setShowAddAdhocForm(false)}
+                  onAdded={() => showToast('✅ 臨時派工已新增')}
+                />
               ) : (
-                adhocOrders.map(o => {
-                  const done      = o.status === 'completed'
-                  const isUrgent  = o.priority === 'urgent'
-                  const typeStyle = o.task_type ? (TASK_TYPE_COLORS[o.task_type] ?? 'bg-gray-100 text-gray-600') : ''
-                  return (
-                    <div key={o.id} className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                          {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
-                          {o.task_type && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>
-                              {TASK_TYPE_LABELS[o.task_type]}
-                            </span>
-                          )}
-                          {done && (
-                            <span className="text-xs bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full">已完成</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                            {o.title}
-                          </span>
-                          {o.room && (
-                            <span className="text-xs text-gray-400">
-                              {o.room.floor ? `${o.room.floor} ` : ''}{o.room.name}
-                            </span>
-                          )}
-                          {o.assignee && (
-                            <span className="text-xs text-gray-400">→ {o.assignee.display_name}</span>
-                          )}
-                        </div>
-                        {o.description && (
-                          <p className="text-xs text-gray-500 mt-0.5 truncate">{o.description}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleDeleteAdhoc(o.id)}
-                        className="p-1.5 text-gray-300 hover:text-red-400 transition-colors shrink-0"
-                        title="刪除臨時派工"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )
-                })
+                <button
+                  onClick={() => setShowAddAdhocForm(true)}
+                  className="w-full py-3 border-2 border-dashed border-orange-300 rounded-xl text-sm flex items-center justify-center gap-2 text-orange-500 hover:bg-orange-50 transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> 新增臨時派工
+                </button>
               )}
             </div>
           )}
