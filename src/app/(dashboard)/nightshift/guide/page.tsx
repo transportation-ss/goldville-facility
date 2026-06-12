@@ -102,7 +102,7 @@ export default function NightshiftGuidePage() {
 
         {/* 4. 工務派工 */}
         <Section icon={AlertTriangle} title="四、設備故障通報" color="amber">
-          <Step n={1}>若發現設備故障或需要維修，點擊左側側欄「<strong>工務派工</strong>」。</Step>
+          <Step n={1}>若發現設備故障或需要維修，點擊左側側欄「<strong>工務任務</strong>」。</Step>
           <Step n={2}>點擊右上角「<strong>新增通報</strong>」，填寫地點、問題說明後送出。</Step>
           <Step n={3}>送出後工務同仁可以看到，會安排處理時間。</Step>
         </Section>

@@ -74,10 +74,11 @@ const fullNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '房務',
     items: [
-      { label: '今日任務', href: '/housekeeping',         icon: BedDouble    },
-      { label: '今日報表', href: '/housekeeping/report',  icon: BarChart3    },
+      { label: '今日任務', href: '/housekeeping',         icon: BedDouble     },
+      { label: '今日報表', href: '/housekeeping/report',  icon: BarChart3     },
       { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
       { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
+      { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
     ],
   },
   {
@@ -149,6 +150,7 @@ const housekeepingNav: (NavSingle | NavGroup)[] = [
       { label: '今日報表', href: '/housekeeping/report',  icon: BarChart3     },
       { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
       { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
+      { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
     ],
   },
 ]
@@ -177,6 +179,7 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
     items: [
       { label: '今日任務', href: '/housekeeping',        icon: BedDouble },
       { label: '今日報表', href: '/housekeeping/report', icon: BarChart3 },
+      { label: '使用說明', href: '/housekeeping/guide',  icon: BookOpen  },
     ],
   },
 ]
