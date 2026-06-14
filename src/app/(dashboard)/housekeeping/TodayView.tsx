@@ -11,7 +11,7 @@ import { completeTask, uncompleteTask } from './plan/actions'
 import { completeAdhocOrder, uncompleteAdhocOrder } from './adhoc/actions'
 import {
   TASK_TYPE_LABELS, TASK_TYPE_COLORS, compareByTypeFloorRoom,
-  type HousekeepingPlan, type HousekeepingTask, type HousekeepingAdhocOrder,
+  type TaskType, type HousekeepingPlan, type HousekeepingTask, type HousekeepingAdhocOrder,
 } from '@/lib/types/housekeeping'
 
 interface Props {
@@ -105,7 +105,6 @@ function TaskRow({ task, onComplete, onUncomplete }: {
 }) {
   const done      = task.status === 'completed'
   const isUrgent  = task.priority === 'urgent'
-  const typeStyle = TASK_TYPE_COLORS[task.task_type] ?? 'bg-gray-100 text-gray-600'
   const label     = task.room?.name ?? '（未指定空間）'
 
   return (
@@ -120,8 +119,6 @@ function TaskRow({ task, onComplete, onUncomplete }: {
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
           <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>{label}</span>
-          {task.room?.floor && <span className="text-xs text-gray-400">{task.room.floor}</span>}
-          <span className={`text-xs px-1.5 py-0.5 rounded-full ${typeStyle}`}>{TASK_TYPE_LABELS[task.task_type]}</span>
         </div>
         {task.assignee && <p className="text-xs text-gray-400 mt-0.5">負責：{task.assignee.display_name}</p>}
         {task.special_notes && <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1 mt-1">{task.special_notes}</p>}
@@ -165,12 +162,7 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
           {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
           <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{order.title}</span>
           {order.room && (
-            <span className="text-xs text-gray-400">{order.room.floor ? `${order.room.floor} ` : ''}{order.room.name}</span>
-          )}
-          {order.task_type && (
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${TASK_TYPE_COLORS[order.task_type]}`}>
-              {TASK_TYPE_LABELS[order.task_type]}
-            </span>
+            <span className="text-xs text-gray-400">{order.room.name}</span>
           )}
         </div>
         {order.description && <p className="text-xs text-gray-500 mt-0.5">{order.description}</p>}
@@ -213,6 +205,50 @@ function StatCard({ label, done, total, color }: {
       <p className="text-xs mt-1 opacity-60">{pct}%</p>
     </div>
   )
+}
+
+// ── 中分類（任務類型）標題 ───────────────────────────────────
+function TypeGroupHeader({ type }: { type: TaskType | null }) {
+  const label = type ? TASK_TYPE_LABELS[type] : '其他'
+  const color = type ? TASK_TYPE_COLORS[type] : 'bg-gray-100 text-gray-600'
+  return (
+    <div className={`inline-block text-xs font-semibold px-2 py-1 rounded-md mt-3 mb-1 ${color}`}>
+      {label}
+    </div>
+  )
+}
+
+// ── 小分類（樓層）標題 ───────────────────────────────────────
+function FloorGroupHeader({ floor }: { floor: string }) {
+  return <p className="text-xs font-medium text-gray-400 pl-3 pt-1">{floor}</p>
+}
+
+// ── 依「類型 → 樓層」分組（輸入需已依 compareByTypeFloorRoom 排序）──
+function groupByTypeFloor<T>(
+  items: T[],
+  getType: (item: T) => TaskType | null | undefined,
+  getFloor: (item: T) => string | null | undefined,
+) {
+  const groups: { type: TaskType | null; floors: { floor: string; items: T[] }[] }[] = []
+  for (const item of items) {
+    const type  = getType(item) ?? null
+    const floor = getFloor(item) ?? '其他'
+
+    let typeGroup = groups[groups.length - 1]
+    if (!typeGroup || typeGroup.type !== type) {
+      typeGroup = { type, floors: [] }
+      groups.push(typeGroup)
+    }
+
+    let floorGroup = typeGroup.floors[typeGroup.floors.length - 1]
+    if (!floorGroup || floorGroup.floor !== floor) {
+      floorGroup = { floor, items: [] }
+      typeGroup.floors.push(floorGroup)
+    }
+
+    floorGroup.items.push(item)
+  }
+  return groups
 }
 
 // ── 可折疊分類區塊 ─────────────────────────────────────────
@@ -306,11 +342,6 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
   const guestTasks  = optimisticTasks.filter(t => t.room?.room_type === '客房').sort(compareByTypeFloorRoom)
   const publicTasks = optimisticTasks.filter(t => t.room?.room_type !== '客房').sort(compareByTypeFloorRoom)
   const adhocTasks  = [...optimisticAdhoc].sort(compareByTypeFloorRoom)
-
-  // 每個分類：未完成在前，完成在後
-  function splitDone<T extends { status: string }>(arr: T[]) {
-    return [...arr.filter(i => i.status !== 'completed'), ...arr.filter(i => i.status === 'completed')]
-  }
 
   const totalItems = optimisticTasks.length + optimisticAdhoc.length
   const doneItems  = optimisticTasks.filter(t => t.status === 'completed').length
@@ -433,12 +464,24 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           doneCount={guestTasks.filter(t => t.status === 'completed').length}
           defaultOpen={true}
         >
-          {splitDone(guestTasks).map(t => (
-            <TaskRow
-              key={t.id} task={t}
-              onComplete={(id, label) => handleComplete(id, label, 'task')}
-              onUncomplete={id => handleUncomplete(id, 'task')}
-            />
+          {groupByTypeFloor(guestTasks, t => t.task_type, t => t.room?.floor).map(typeGroup => (
+            <div key={typeGroup.type ?? 'none'}>
+              <TypeGroupHeader type={typeGroup.type} />
+              {typeGroup.floors.map(floorGroup => (
+                <div key={floorGroup.floor}>
+                  <FloorGroupHeader floor={floorGroup.floor} />
+                  <div className="pl-3">
+                    {floorGroup.items.map(t => (
+                      <TaskRow
+                        key={t.id} task={t}
+                        onComplete={(id, label) => handleComplete(id, label, 'task')}
+                        onUncomplete={id => handleUncomplete(id, 'task')}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           ))}
           {plan.general_notes && (
             <div className="py-3 border-t border-gray-100">
@@ -457,12 +500,24 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           doneCount={publicTasks.filter(t => t.status === 'completed').length}
           defaultOpen={true}
         >
-          {splitDone(publicTasks).map(t => (
-            <TaskRow
-              key={t.id} task={t}
-              onComplete={(id, label) => handleComplete(id, label, 'task')}
-              onUncomplete={id => handleUncomplete(id, 'task')}
-            />
+          {groupByTypeFloor(publicTasks, t => t.task_type, t => t.room?.floor).map(typeGroup => (
+            <div key={typeGroup.type ?? 'none'}>
+              <TypeGroupHeader type={typeGroup.type} />
+              {typeGroup.floors.map(floorGroup => (
+                <div key={floorGroup.floor}>
+                  <FloorGroupHeader floor={floorGroup.floor} />
+                  <div className="pl-3">
+                    {floorGroup.items.map(t => (
+                      <TaskRow
+                        key={t.id} task={t}
+                        onComplete={(id, label) => handleComplete(id, label, 'task')}
+                        onUncomplete={id => handleUncomplete(id, 'task')}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           ))}
         </CategorySection>
       )}
@@ -476,12 +531,24 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           doneCount={adhocTasks.filter(o => o.status === 'completed').length}
           defaultOpen={true}
         >
-          {splitDone(adhocTasks).map(o => (
-            <AdhocRow
-              key={o.id} order={o}
-              onComplete={(id, label) => handleComplete(id, label, 'adhoc')}
-              onUncomplete={id => handleUncomplete(id, 'adhoc')}
-            />
+          {groupByTypeFloor(adhocTasks, o => o.task_type, o => o.room?.floor).map(typeGroup => (
+            <div key={typeGroup.type ?? 'none'}>
+              <TypeGroupHeader type={typeGroup.type} />
+              {typeGroup.floors.map(floorGroup => (
+                <div key={floorGroup.floor}>
+                  <FloorGroupHeader floor={floorGroup.floor} />
+                  <div className="pl-3">
+                    {floorGroup.items.map(o => (
+                      <AdhocRow
+                        key={o.id} order={o}
+                        onComplete={(id, label) => handleComplete(id, label, 'adhoc')}
+                        onUncomplete={id => handleUncomplete(id, 'adhoc')}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           ))}
         </CategorySection>
       )}
