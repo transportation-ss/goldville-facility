@@ -207,13 +207,27 @@ function StatCard({ label, done, total, color }: {
   )
 }
 
-// ── 中分類（任務類型）標題 ───────────────────────────────────
-function TypeGroupHeader({ type }: { type: TaskType | null }) {
+// ── 中分類（任務類型）：可折疊 ─────────────────────────────────
+function TypeGroup({ type, items, children }: {
+  type: TaskType | null
+  items: { status: string }[]
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(true)
   const label = type ? TASK_TYPE_LABELS[type] : '其他'
   const color = type ? TASK_TYPE_COLORS[type] : 'bg-gray-100 text-gray-600'
+  const done  = items.filter(i => i.status === 'completed').length
+
   return (
-    <div className={`inline-block text-xs font-semibold px-2 py-1 rounded-md mt-3 mb-1 ${color}`}>
-      {label}
+    <div className="mt-3">
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between">
+        <span className={`inline-block text-[13px] font-semibold px-2 py-1 rounded-md ${color}`}>{label}</span>
+        <span className="flex items-center gap-1 text-xs text-gray-400">
+          {done}/{items.length}
+          {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </span>
+      </button>
+      {open && <div className="mb-1">{children}</div>}
     </div>
   )
 }
@@ -465,8 +479,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           defaultOpen={true}
         >
           {groupByTypeFloor(guestTasks, t => t.task_type, t => t.room?.floor).map(typeGroup => (
-            <div key={typeGroup.type ?? 'none'}>
-              <TypeGroupHeader type={typeGroup.type} />
+            <TypeGroup key={typeGroup.type ?? 'none'} type={typeGroup.type} items={typeGroup.floors.flatMap(f => f.items)}>
               {typeGroup.floors.map(floorGroup => (
                 <div key={floorGroup.floor}>
                   <FloorGroupHeader floor={floorGroup.floor} />
@@ -481,7 +494,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
                   </div>
                 </div>
               ))}
-            </div>
+            </TypeGroup>
           ))}
           {plan.general_notes && (
             <div className="py-3 border-t border-gray-100">
@@ -501,8 +514,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           defaultOpen={true}
         >
           {groupByTypeFloor(publicTasks, t => t.task_type, t => t.room?.floor).map(typeGroup => (
-            <div key={typeGroup.type ?? 'none'}>
-              <TypeGroupHeader type={typeGroup.type} />
+            <TypeGroup key={typeGroup.type ?? 'none'} type={typeGroup.type} items={typeGroup.floors.flatMap(f => f.items)}>
               {typeGroup.floors.map(floorGroup => (
                 <div key={floorGroup.floor}>
                   <FloorGroupHeader floor={floorGroup.floor} />
@@ -517,7 +529,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
                   </div>
                 </div>
               ))}
-            </div>
+            </TypeGroup>
           ))}
         </CategorySection>
       )}
@@ -532,8 +544,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           defaultOpen={true}
         >
           {groupByTypeFloor(adhocTasks, o => o.task_type, o => o.room?.floor).map(typeGroup => (
-            <div key={typeGroup.type ?? 'none'}>
-              <TypeGroupHeader type={typeGroup.type} />
+            <TypeGroup key={typeGroup.type ?? 'none'} type={typeGroup.type} items={typeGroup.floors.flatMap(f => f.items)}>
               {typeGroup.floors.map(floorGroup => (
                 <div key={floorGroup.floor}>
                   <FloorGroupHeader floor={floorGroup.floor} />
@@ -548,7 +559,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
                   </div>
                 </div>
               ))}
-            </div>
+            </TypeGroup>
           ))}
         </CategorySection>
       )}
