@@ -9,7 +9,7 @@ import {
 import { createPlan, updatePlan, addTask, deleteTask, deletePlan, updateTask } from './actions'
 import { deleteAdhocOrder, createAdhocOrder } from '../adhoc/actions'
 import {
-  TASK_TYPE_LABELS, TASK_TYPE_COLORS,
+  TASK_TYPE_LABELS, TASK_TYPE_COLORS, FLOOR_ORDER, compareByTypeFloorRoom,
   type HousekeepingPlan, type HousekeepingTask, type HousekeepingAdhocOrder,
   type SpaceOption, type TaskType, type TaskPriority,
 } from '@/lib/types/housekeeping'
@@ -22,8 +22,6 @@ interface Props {
   spaces:       SpaceOption[]
   staff:        { id: string; display_name: string }[]
 }
-
-const FLOOR_ORDER = ['B1', '1F', '2F', '3F', '5F', '6F', '7F', '8F']
 
 // ── 批次空間選擇器 ─────────────────────────────────────────
 function BatchRoomPicker({
@@ -749,8 +747,7 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
     setEditingTask(null)
   }
 
-  const urgentTasks = tasks.filter(t => t.priority === 'urgent')
-  const normalTasks = tasks.filter(t => t.priority === 'normal')
+  const sortedTasks = [...tasks].sort(compareByTypeFloorRoom)
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -838,38 +835,14 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
 
           {/* 固定任務列表 */}
           <div className="bg-white rounded-xl border border-gray-200 mb-4 overflow-hidden">
-            {urgentTasks.length > 0 && (
-              <div>
-                <div className="px-4 py-2 bg-red-50 border-b border-gray-100">
-                  <p className="text-xs font-semibold text-red-600">🔴 緊急 ({urgentTasks.length})</p>
-                </div>
-                {urgentTasks.map(t => (
-                  <PlanTaskRow
-                    key={t.id} task={t}
-                    onEdit={setEditingTask}
-                    onDelete={() => handleDelete(t.id)}
-                    canDelete={plan.status !== 'completed'}
-                  />
-                ))}
-              </div>
-            )}
-            {normalTasks.length > 0 && (
-              <div>
-                {urgentTasks.length > 0 && (
-                  <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
-                    <p className="text-xs font-semibold text-gray-500">一般 ({normalTasks.length})</p>
-                  </div>
-                )}
-                {normalTasks.map(t => (
-                  <PlanTaskRow
-                    key={t.id} task={t}
-                    onEdit={setEditingTask}
-                    onDelete={() => handleDelete(t.id)}
-                    canDelete={plan.status !== 'completed'}
-                  />
-                ))}
-              </div>
-            )}
+            {sortedTasks.map(t => (
+              <PlanTaskRow
+                key={t.id} task={t}
+                onEdit={setEditingTask}
+                onDelete={() => handleDelete(t.id)}
+                canDelete={plan.status !== 'completed'}
+              />
+            ))}
             {tasks.length === 0 && (
               <div className="py-8 text-center text-sm text-gray-400">尚未加入任何任務</div>
             )}

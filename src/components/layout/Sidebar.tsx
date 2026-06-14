@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
-  Users, BookOpen, KeyRound, HelpCircle, BedDouble, BarChart3, History,
+  Users, BookOpen, KeyRound, HelpCircle, BedDouble, History,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -18,7 +18,9 @@ const TECHNICIAN_ROLES        = ['technician']
 const PROCUREMENT_ROLES       = ['procurement']
 const HOUSEKEEPING_ROLES      = ['housekeeping']
 const TECH_HOUSEKEEPING_ROLES = ['tech_housekeeping']
-// 其餘（frontdesk_day, housekeeper, admin_staff, sales）→ 一般版
+const HOUSEKEEPER_ROLES       = ['housekeeper']
+const FRONTDESK_DAY_ROLES     = ['frontdesk_day']
+// 其餘（admin_staff, sales）→ 一般版
 
 // ─── 身分中文標籤 ──────────────────────────────
 const ROLE_LABELS: Record<string, string> = {
@@ -75,7 +77,6 @@ const fullNav: (NavSingle | NavGroup)[] = [
     type: 'group', label: '房務',
     items: [
       { label: '今日任務', href: '/housekeeping',         icon: BedDouble     },
-      { label: '今日報表', href: '/housekeeping/report',  icon: BarChart3     },
       { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
       { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
       { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
@@ -127,10 +128,52 @@ const procurementNav: (NavSingle | NavGroup)[] = [
   { type: 'single', label: '財產清單',     href: '/assets',         icon: Archive  },
 ]
 
-/** 一般身分（frontdesk_day / housekeeper / admin_staff / sales） */
+/** 一般身分（admin_staff / sales） */
 const generalNav: (NavSingle | NavGroup)[] = [
   { type: 'single', label: '工務任務', href: '/work-orders',  icon: ClipboardList },
   { type: 'single', label: '房務任務', href: '/housekeeping', icon: BedDouble      },
+  {
+    type: 'group', label: '說明書',
+    items: [
+      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
+      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
+    ],
+  },
+  { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+]
+
+/** 房務人員身分 */
+const housekeeperNav: (NavSingle | NavGroup)[] = [
+  { type: 'single', label: '工務任務', href: '/work-orders', icon: ClipboardList },
+  {
+    type: 'group', label: '房務',
+    items: [
+      { label: '今日任務', href: '/housekeeping',       icon: BedDouble },
+      { label: '使用說明', href: '/housekeeping/guide', icon: BookOpen  },
+    ],
+  },
+  {
+    type: 'group', label: '說明書',
+    items: [
+      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
+      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
+    ],
+  },
+  { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
+]
+
+/** 櫃台日班身分 */
+const frontdeskDayNav: (NavSingle | NavGroup)[] = [
+  { type: 'single', label: '工務任務', href: '/work-orders', icon: ClipboardList },
+  {
+    type: 'group', label: '房務',
+    items: [
+      { label: '今日任務', href: '/housekeeping',         icon: BedDouble     },
+      { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
+      { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
+      { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
+    ],
+  },
   {
     type: 'group', label: '說明書',
     items: [
@@ -147,7 +190,6 @@ const housekeepingNav: (NavSingle | NavGroup)[] = [
     type: 'group', label: '房務',
     items: [
       { label: '今日任務', href: '/housekeeping',         icon: BedDouble     },
-      { label: '今日報表', href: '/housekeeping/report',  icon: BarChart3     },
       { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
       { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
       { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
@@ -178,7 +220,6 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
     type: 'group', label: '房務',
     items: [
       { label: '今日任務', href: '/housekeeping',        icon: BedDouble },
-      { label: '今日報表', href: '/housekeeping/report', icon: BarChart3 },
       { label: '使用說明', href: '/housekeeping/guide',  icon: BookOpen  },
     ],
   },
@@ -292,6 +333,8 @@ export function Sidebar() {
   const isProcurement      = PROCUREMENT_ROLES.includes(role)
   const isHousekeeping     = HOUSEKEEPING_ROLES.includes(role)
   const isTechHousekeeping = TECH_HOUSEKEEPING_ROLES.includes(role)
+  const isHousekeeper      = HOUSEKEEPER_ROLES.includes(role)
+  const isFrontdeskDay     = FRONTDESK_DAY_ROLES.includes(role)
 
   const nav = isAdmin            ? fullNav
             : isNightshift       ? nightshiftNav
@@ -299,6 +342,8 @@ export function Sidebar() {
             : isProcurement      ? procurementNav
             : isHousekeeping     ? housekeepingNav
             : isTechHousekeeping ? techHousekeepingNav
+            : isHousekeeper      ? housekeeperNav
+            : isFrontdeskDay     ? frontdeskDayNav
             : role               ? generalNav
             : []  // 尚未載入時不顯示
 

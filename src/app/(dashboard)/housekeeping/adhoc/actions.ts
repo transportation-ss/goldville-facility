@@ -11,7 +11,7 @@ export async function getTodayAdhocOrders(date: string) {
     .from('housekeeping_adhoc_orders')
     .select(`
       *,
-      room:rooms(id, name, floor),
+      room:rooms(id, name, floor, sort_order),
       assignee:user_profiles!housekeeping_adhoc_orders_assigned_to_fkey(id, display_name),
       completer:user_profiles!housekeeping_adhoc_orders_completed_by_fkey(id, display_name)
     `)

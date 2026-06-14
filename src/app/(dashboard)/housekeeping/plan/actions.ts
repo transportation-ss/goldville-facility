@@ -67,7 +67,7 @@ export async function getPlanTasks(planId: string) {
     .from('housekeeping_tasks')
     .select(`
       *,
-      room:rooms(id, name, floor, room_type),
+      room:rooms(id, name, floor, room_type, sort_order),
       assignee:user_profiles!housekeeping_tasks_assigned_to_fkey(id, display_name),
       completer:user_profiles!housekeeping_tasks_completed_by_fkey(id, display_name)
     `)

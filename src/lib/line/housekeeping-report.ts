@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { TASK_TYPE_LABELS } from '@/lib/types/housekeeping'
+import { TASK_TYPE_LABELS, compareByTypeFloorRoom, type TaskType } from '@/lib/types/housekeeping'
 
 function todayTW(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
@@ -11,6 +11,21 @@ function textMsg(text: string) {
 
 const NIGHTSHIFT_URL = 'https://goldville-facility.vercel.app/housekeeping'
 
+// ── 任務類型對應顏色（呼應 web TASK_TYPE_COLORS）─────────────
+const TASK_TYPE_LINE_COLORS: Record<TaskType, string> = {
+  checkout:         '#3B82F6',
+  stay_over:        '#10B981',
+  vacant:           '#9CA3AF',
+  late_checkout:    '#F97316',
+  deep_clean:       '#A855F7',
+  vip:              '#F59E0B',
+  dnd:              '#DC2626',
+  extra_bed:        '#EC4899',
+  maintenance_hold: '#64748B',
+  routine:          '#14B8A6',
+  spot_clean:       '#06B6D4',
+}
+
 function viewButton() {
   return {
     type: 'button',
@@ -21,84 +36,35 @@ function viewButton() {
   }
 }
 
-// ── 摘要卡 ────────────────────────────────────────────────
-function summaryBubble(
-  date: string,
-  totalTasks: number,
-  doneTasks: number,
-  urgentCount: number,
-  adhocCount: number,
-  status: string,
-) {
-  const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0
-  const statusLabel = status === 'published' ? '已發布' : status === 'completed' ? '已完成' : '草稿'
-  const statusColor = status === 'published' ? '#10B981' : status === 'completed' ? '#6B7280' : '#F59E0B'
-
-  const body: any[] = [
-    {
-      type: 'box', layout: 'horizontal', contents: [
-        { type: 'text', text: '工作進度', size: 'xs', color: '#9CA3AF', weight: 'bold', flex: 1 },
-        { type: 'text', text: `${doneTasks}/${totalTasks} (${pct}%)`, size: 'xs', color: '#10B981', weight: 'bold', align: 'end' },
-      ],
-    },
-    {
-      type: 'box', layout: 'vertical', margin: 'sm',
-      height: '6px', backgroundColor: '#E5E7EB', cornerRadius: '3px',
-      contents: [{ type: 'box', layout: 'vertical', width: `${Math.max(pct, 2)}%`, height: '6px', backgroundColor: '#10B981', cornerRadius: '3px', contents: [] }],
-    },
-  ]
-
-  if (urgentCount > 0) {
-    body.push({ type: 'separator', margin: 'md' })
-    body.push({ type: 'text', text: `🔴 緊急任務：${urgentCount} 項`, size: 'sm', color: '#DC2626', weight: 'bold', margin: 'md' })
-  }
-
-  if (adhocCount > 0) {
-    body.push({ type: 'separator', margin: 'md' })
-    body.push({ type: 'text', text: `📋 臨時派工：${adhocCount} 項`, size: 'sm', color: '#EA580C', margin: 'md' })
-  }
-
-  body.push({ type: 'text', text: '← 左右滑動查看各區任務', size: 'xxs', color: '#9CA3AF', margin: 'lg' })
-
+// ── 任務類型分組標頭 ──────────────────────────────────────
+function typeGroupHeader(taskType: string | null, groupItems: any[]) {
+  const typeLabel = taskType ? (TASK_TYPE_LABELS[taskType as TaskType] ?? taskType) : '未分類'
+  const typeColor = taskType ? (TASK_TYPE_LINE_COLORS[taskType as TaskType] ?? '#9CA3AF') : '#9CA3AF'
   return {
-    type: 'bubble', size: 'mega',
-    header: {
-      type: 'box', layout: 'vertical', backgroundColor: '#0F172A', paddingAll: 'lg',
-      contents: [
-        { type: 'text', text: '🏨 好好園館', color: '#64748B', size: 'xs' },
-        { type: 'text', text: '今日房務安排', color: '#FFFFFF', weight: 'bold', size: 'xl', margin: 'xs' },
-        {
-          type: 'box', layout: 'horizontal', margin: 'sm',
-          contents: [
-            { type: 'text', text: date, color: '#94A3B8', size: 'sm', flex: 1 },
-            {
-              type: 'box', layout: 'vertical', flex: 0, backgroundColor: statusColor, cornerRadius: '4px',
-              paddingStart: 'sm', paddingEnd: 'sm', paddingTop: 'xs', paddingBottom: 'xs',
-              contents: [{ type: 'text', text: statusLabel, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
-            },
-          ],
-        },
-      ],
-    },
-    body: { type: 'box', layout: 'vertical', paddingAll: 'lg', contents: body },
-    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
+    type: 'box', layout: 'horizontal', margin: 'md', alignItems: 'center',
+    contents: [
+      { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0 },
+      { type: 'text', text: typeLabel, size: 'xs', weight: 'bold', color: '#374151', flex: 1, margin: 'sm' },
+      { type: 'text', text: `${groupItems.filter(x => x.status === 'completed').length}/${groupItems.length}`, size: 'xs', color: '#9CA3AF', align: 'end', flex: 0 },
+    ],
   }
 }
 
-// ── 單一任務列（共用）────────────────────────────────────
+// ── 客房／公共空間任務列 ──────────────────────────────────
 function taskRow(t: any): any[] {
   const done = t.status === 'completed'
   const isUrgent = t.priority === 'urgent'
-  const typeLabel = TASK_TYPE_LABELS[t.task_type as keyof typeof TASK_TYPE_LABELS] ?? t.task_type
+  const floor = t.room?.floor
+  const name  = t.room?.name ?? '（未指定）'
+  const label = floor ? `${floor} ${name}` : name
 
-  const rows: any[] = [{
+  return [{
     type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'sm',
     contents: [
       {
         type: 'box', layout: 'horizontal', contents: [
           { type: 'text', text: done ? '✅' : isUrgent ? '🔴' : '⬜', size: 'sm', flex: 0 },
-          { type: 'text', text: t.room?.name ?? '（未指定）', size: 'sm', color: done ? '#9CA3AF' : '#374151', flex: 1, margin: 'sm', decoration: done ? 'line-through' : 'none' },
-          { type: 'text', text: typeLabel, size: 'xxs', color: '#6B7280', align: 'end', flex: 0 },
+          { type: 'text', text: label, size: 'sm', color: done ? '#9CA3AF' : '#374151', flex: 1, margin: 'sm', decoration: done ? 'line-through' : 'none' },
         ],
       },
       ...(t.assignee ? [{
@@ -111,44 +77,64 @@ function taskRow(t: any): any[] {
       }] : []),
     ],
   }]
-
-  return rows
 }
 
-// ── 多樓層合併卡（客房 or 公共）────────────────────────────
-function combinedBubble(
-  title: string,
-  headerColor: string,
-  byFloor: Map<string, any[]>,
-  floorOrder: string[],
-  floorIcon: string,
-) {
-  const allTasks = [...byFloor.values()].flat()
-  const doneCount = allTasks.filter(t => t.status === 'completed').length
-  const allDone = doneCount === allTasks.length
+// ── 臨時派工任務列 ────────────────────────────────────────
+function adhocRow(o: any): any[] {
+  const done = o.status === 'completed'
+  const isUrgent = o.priority === 'urgent'
+  const location = o.room ? (o.room.floor ? `${o.room.floor} ${o.room.name}` : o.room.name) : null
 
+  return [{
+    type: 'box', layout: 'vertical', paddingTop: 'sm', paddingBottom: 'sm',
+    contents: [
+      {
+        type: 'box', layout: 'horizontal', contents: [
+          { type: 'text', text: done ? '✅' : isUrgent ? '🔴' : '📋', size: 'sm', flex: 0 },
+          { type: 'text', text: o.title, size: 'sm', color: done ? '#9CA3AF' : '#374151', flex: 1, margin: 'sm', wrap: true, decoration: done ? 'line-through' : 'none' },
+        ],
+      },
+      ...(location ? [{ type: 'text', text: location, size: 'xxs', color: '#6B7280', margin: 'xs', offsetStart: '28px' }] : []),
+      ...(o.description ? [{ type: 'text', text: o.description, size: 'xxs', color: '#6B7280', margin: 'xs', wrap: true, offsetStart: '28px' }] : []),
+      ...(o.assignee ? [{ type: 'text', text: `→ ${o.assignee.display_name}`, size: 'xxs', color: '#9CA3AF', margin: 'xs', offsetStart: '28px' }] : []),
+    ],
+  }]
+}
+
+// ── 任務類別分組卡身（共用：客房／公共空間／臨時派工）──────
+function groupedContents(items: any[], emptyText: string, rowFn: (t: any) => any[]): any[] {
+  if (items.length === 0) {
+    return [{ type: 'text', text: emptyText, size: 'sm', color: '#9CA3AF', align: 'center', margin: 'xl' }]
+  }
+
+  const sorted = [...items].sort(compareByTypeFloorRoom)
   const contents: any[] = []
+  let currentType: string | null | undefined = undefined
+  let firstGroup = true
 
-  for (const floor of floorOrder) {
-    const tasks = byFloor.get(floor)
-    if (!tasks?.length) continue
-
-    // 樓層標題分隔列
-    if (contents.length > 0) contents.push({ type: 'separator', margin: 'md', color: '#E5E7EB' })
-    contents.push({
-      type: 'box', layout: 'horizontal', margin: 'md',
-      contents: [
-        { type: 'text', text: `${floorIcon} ${floor}`, size: 'xs', weight: 'bold', color: '#374151', flex: 1 },
-        { type: 'text', text: `${tasks.filter(t => t.status === 'completed').length}/${tasks.length}`, size: 'xs', color: '#9CA3AF', align: 'end', flex: 0 },
-      ],
-    })
-
-    for (let i = 0; i < tasks.length; i++) {
-      const rows = taskRow(tasks[i])
-      contents.push(...rows)
-      if (i < tasks.length - 1) contents.push({ type: 'separator', color: '#F3F4F6' })
+  for (let i = 0; i < sorted.length; i++) {
+    const item = sorted[i]
+    if (i === 0 || item.task_type !== currentType) {
+      currentType = item.task_type
+      const groupItems = sorted.filter(x => x.task_type === currentType)
+      if (!firstGroup) contents.push({ type: 'separator', margin: 'md', color: '#E5E7EB' })
+      firstGroup = false
+      contents.push(typeGroupHeader(currentType ?? null, groupItems))
+    }
+    contents.push(...rowFn(item))
+    if (i < sorted.length - 1 && sorted[i + 1].task_type === currentType) {
+      contents.push({ type: 'separator', color: '#F3F4F6' })
     }
   }
+
+  return contents
+}
+
+// ── 客房／公共空間卡 ──────────────────────────────────────
+function combinedBubble(title: string, headerColor: string, tasks: any[], emptyText: string) {
+  const doneCount = tasks.filter(t => t.status === 'completed').length
+  const allDone   = tasks.length > 0 && doneCount === tasks.length
+  const badgeColor = tasks.length === 0 ? '#9CA3AF' : allDone ? '#10B981' : '#F59E0B'
 
   return {
     type: 'bubble', size: 'mega',
@@ -158,52 +144,45 @@ function combinedBubble(
         type: 'box', layout: 'horizontal', contents: [
           { type: 'text', text: title, color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
           {
-            type: 'box', layout: 'vertical', flex: 0,
-            backgroundColor: allDone ? '#10B981' : '#F59E0B',
+            type: 'box', layout: 'vertical', flex: 0, backgroundColor: badgeColor,
             cornerRadius: '4px', paddingStart: 'sm', paddingEnd: 'sm', paddingTop: 'xs', paddingBottom: 'xs',
-            contents: [{ type: 'text', text: `${doneCount}/${allTasks.length}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
+            contents: [{ type: 'text', text: `${doneCount}/${tasks.length}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
           },
         ],
       }],
     },
-    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents },
+    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(tasks, emptyText, taskRow) },
     footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
   }
 }
 
 // ── 臨時派工卡 ────────────────────────────────────────────
 function adhocBubble(orders: any[]) {
-  const rows: any[] = []
-  for (const o of orders) {
-    const done = o.status === 'completed'
-    rows.push({
-      type: 'box', layout: 'vertical', margin: 'md',
-      contents: [
-        {
-          type: 'box', layout: 'horizontal', contents: [
-            { type: 'text', text: done ? '✅' : o.priority === 'urgent' ? '🔴' : '📋', size: 'sm', flex: 0 },
-            { type: 'text', text: o.title, size: 'sm', color: done ? '#9CA3AF' : '#374151', flex: 1, margin: 'sm', wrap: true, decoration: done ? 'line-through' : 'none' },
-          ],
-        },
-        ...(o.description ? [{ type: 'text', text: o.description, size: 'xxs', color: '#6B7280', margin: 'xs', wrap: true, offsetStart: '28px' }] : []),
-        ...(o.assignee ? [{ type: 'text', text: `→ ${o.assignee.display_name}`, size: 'xxs', color: '#9CA3AF', margin: 'xs', offsetStart: '28px' }] : []),
-      ],
-    })
-    if (o !== orders[orders.length - 1]) rows.push({ type: 'separator', color: '#F3F4F6' })
-  }
+  const doneCount = orders.filter(o => o.status === 'completed').length
+  const allDone   = orders.length > 0 && doneCount === orders.length
+  const badgeColor = orders.length === 0 ? '#9CA3AF' : allDone ? '#10B981' : '#F59E0B'
 
   return {
     type: 'bubble', size: 'mega',
     header: {
       type: 'box', layout: 'vertical', backgroundColor: '#EA580C', paddingAll: 'md',
-      contents: [{ type: 'text', text: '📋 臨時派工', color: '#FFFFFF', weight: 'bold', size: 'lg' }],
+      contents: [{
+        type: 'box', layout: 'horizontal', contents: [
+          { type: 'text', text: '📋 臨時派工', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+          {
+            type: 'box', layout: 'vertical', flex: 0, backgroundColor: badgeColor,
+            cornerRadius: '4px', paddingStart: 'sm', paddingEnd: 'sm', paddingTop: 'xs', paddingBottom: 'xs',
+            contents: [{ type: 'text', text: `${doneCount}/${orders.length}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
+          },
+        ],
+      }],
     },
-    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: rows },
+    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(orders, '目前無臨時派工', adhocRow) },
     footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
   }
 }
 
-// ── 主函式 ────────────────────────────────────────────────
+// ── 主函式：今日任務 ──────────────────────────────────────
 export async function generateHousekeepingReport() {
   const supabase = createAdminClient()
   const today = todayTW()
@@ -220,71 +199,131 @@ export async function generateHousekeepingReport() {
   const { data: tasks } = await supabase
     .from('housekeeping_tasks')
     .select(`
-      *, room:rooms(id, name, floor, room_type),
+      *, room:rooms(id, name, floor, room_type, sort_order),
       assignee:user_profiles!housekeeping_tasks_assigned_to_fkey(id, display_name)
     `)
     .eq('plan_id', plan.id)
-    .order('priority', { ascending: false })
-    .order('sort_order')
 
   const { data: adhocOrders } = await supabase
     .from('housekeeping_adhoc_orders')
     .select(`
-      *, room:rooms(id, name, floor),
+      *, room:rooms(id, name, floor, sort_order),
       assignee:user_profiles!housekeeping_adhoc_orders_assigned_to_fkey(id, display_name)
     `)
     .eq('order_date', today)
-    .order('priority', { ascending: false })
-    .order('created_at')
 
-  const allTasks     = tasks     ?? []
-  const allAdhoc     = adhocOrders ?? []
-  const urgentCount  = allTasks.filter(t => t.priority === 'urgent').length
-  const doneTasks    = allTasks.filter(t => t.status === 'completed').length
+  const allTasks = tasks ?? []
+  const allAdhoc = adhocOrders ?? []
 
-  // 按樓層分組
-  const FLOOR_ORDER = ['B1', '1F', '2F', '3F', '5F', '6F', '7F', '8F']
-  const guestTasks   = allTasks.filter(t => t.room?.room_type === '客房')
-  const publicTasks  = allTasks.filter(t => t.room?.room_type !== '客房')
+  const guestTasks  = allTasks.filter(t => t.room?.room_type === '客房')
+  const publicTasks = allTasks.filter(t => t.room?.room_type !== '客房')
 
-  // 客房按樓層分組
-  const guestByFloor = new Map<string, typeof allTasks>()
-  for (const t of guestTasks) {
-    const floor = t.room?.floor ?? '其他'
-    if (!guestByFloor.has(floor)) guestByFloor.set(floor, [])
-    guestByFloor.get(floor)!.push(t)
-  }
-
-  // 公共空間按樓層分組
-  const publicByFloor = new Map<string, typeof allTasks>()
-  for (const t of publicTasks) {
-    const floor = t.room?.floor ?? '全棟'
-    if (!publicByFloor.has(floor)) publicByFloor.set(floor, [])
-    publicByFloor.get(floor)!.push(t)
-  }
-
-  const bubbles: any[] = [
-    summaryBubble(today, allTasks.length, doneTasks, urgentCount, allAdhoc.length, plan.status),
+  const bubbles = [
+    combinedBubble('🛏 客房派工', '#1E40AF', guestTasks, '今日無客房任務'),
+    combinedBubble('🏢 公共空間', '#065F46', publicTasks, '今日無公共空間任務'),
+    adhocBubble(allAdhoc),
   ]
 
-  // 客房：全部樓層合併一張
-  if (guestByFloor.size > 0) {
-    bubbles.push(combinedBubble('🛏 客房派工', '#1E40AF', guestByFloor, FLOOR_ORDER, '🛏'))
-  }
+  const totalCount  = allTasks.length + allAdhoc.length
+  const urgentCount = allTasks.filter(t => t.priority === 'urgent').length
+                     + allAdhoc.filter(o => o.priority === 'urgent').length
 
-  // 公共空間：全部樓層合併一張
-  if (publicByFloor.size > 0) {
-    bubbles.push(combinedBubble('🏢 公共空間', '#065F46', publicByFloor, [...FLOOR_ORDER, '全棟'], '📍'))
+  return {
+    type: 'flex',
+    altText: `今日房務安排 ${today}（${totalCount} 項${urgentCount > 0 ? ` / ${urgentCount} 緊急` : ''}）`,
+    contents: { type: 'carousel', contents: bubbles },
   }
+}
 
-  // 臨時派工卡
-  if (allAdhoc.length > 0) {
-    bubbles.push(adhocBubble(allAdhoc))
+// ── 主函式：今日完成 ──────────────────────────────────────
+export async function generateCompletionReport() {
+  const supabase = createAdminClient()
+  const today = todayTW()
+
+  const { data: plan } = await supabase
+    .from('housekeeping_daily_plans')
+    .select('*')
+    .eq('plan_date', today)
+    .maybeSingle()
+
+  if (!plan || plan.status === 'draft') return textMsg('今日工單尚未安排。')
+
+  const { data: tasks } = await supabase
+    .from('housekeeping_tasks')
+    .select('*, room:rooms(id, name, floor, room_type, sort_order)')
+    .eq('plan_id', plan.id)
+
+  const { data: adhocOrders } = await supabase
+    .from('housekeeping_adhoc_orders')
+    .select('*, room:rooms(id, name, floor, sort_order)')
+    .eq('order_date', today)
+
+  const allTasks = tasks ?? []
+  const allAdhoc = adhocOrders ?? []
+  const all = [...allTasks, ...allAdhoc]
+
+  const total = all.length
+  const done  = all.filter(i => i.status === 'completed').length
+  const pct   = total > 0 ? Math.round((done / total) * 100) : 0
+  const incomplete = all.filter(i => i.status !== 'completed').sort(compareByTypeFloorRoom)
+
+  const contents: any[] = [
+    {
+      type: 'box', layout: 'horizontal', contents: [
+        { type: 'text', text: '今日完成度', size: 'sm', color: '#9CA3AF', weight: 'bold', flex: 1 },
+        { type: 'text', text: `${done}/${total} (${pct}%)`, size: 'sm', color: '#10B981', weight: 'bold', align: 'end' },
+      ],
+    },
+    {
+      type: 'box', layout: 'vertical', margin: 'sm',
+      height: '6px', backgroundColor: '#E5E7EB', cornerRadius: '3px',
+      contents: [{
+        type: 'box', layout: 'vertical', width: `${total > 0 ? Math.max(pct, 2) : 0}%`,
+        height: '6px', backgroundColor: '#10B981', cornerRadius: '3px', contents: [],
+      }],
+    },
+  ]
+
+  if (incomplete.length === 0) {
+    contents.push({ type: 'text', text: '🎉 今日任務已全部完成', size: 'md', color: '#10B981', weight: 'bold', align: 'center', margin: 'xl' })
+  } else {
+    contents.push({ type: 'separator', margin: 'lg' })
+    contents.push({ type: 'text', text: '未完成項目', size: 'xs', color: '#9CA3AF', weight: 'bold', margin: 'md' })
+    for (const item of incomplete) {
+      const taskType  = (item as any).task_type as TaskType | null
+      const typeLabel = taskType ? (TASK_TYPE_LABELS[taskType] ?? taskType) : '臨時'
+      const typeColor = taskType ? (TASK_TYPE_LINE_COLORS[taskType] ?? '#9CA3AF') : '#9CA3AF'
+      const isAdhoc = typeof (item as any).title === 'string'
+      const room  = (item as any).room
+      const name  = isAdhoc ? (item as any).title : (room?.name ?? '（未指定）')
+      const label = !isAdhoc && room?.floor ? `${room.floor} ${name}` : name
+
+      contents.push({
+        type: 'box', layout: 'horizontal', margin: 'sm', alignItems: 'center',
+        contents: [
+          { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0 },
+          { type: 'text', text: label, size: 'sm', color: '#374151', flex: 1, margin: 'sm', wrap: true },
+          { type: 'text', text: typeLabel, size: 'xxs', color: '#9CA3AF', align: 'end', flex: 0 },
+        ],
+      })
+    }
   }
 
   return {
     type: 'flex',
-    altText: `今日房務安排 ${today}（${allTasks.length} 項 / ${urgentCount} 緊急）`,
-    contents: { type: 'carousel', contents: bubbles.slice(0, 12) },
+    altText: `今日完成度 ${done}/${total}（${pct}%）`,
+    contents: {
+      type: 'bubble', size: 'mega',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#0F172A', paddingAll: 'lg',
+        contents: [
+          { type: 'text', text: '🏨 好好園館', color: '#64748B', size: 'xs' },
+          { type: 'text', text: '✅ 今日完成度', color: '#FFFFFF', weight: 'bold', size: 'xl', margin: 'xs' },
+          { type: 'text', text: today, color: '#94A3B8', size: 'sm', margin: 'sm' },
+        ],
+      },
+      body: { type: 'box', layout: 'vertical', paddingAll: 'lg', contents },
+      footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
+    },
   }
 }

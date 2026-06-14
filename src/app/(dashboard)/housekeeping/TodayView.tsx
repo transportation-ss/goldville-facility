@@ -5,12 +5,12 @@ import Link from 'next/link'
 import {
   BedDouble, Plus, CheckCircle2, Circle, AlertTriangle,
   ClipboardList, ChevronRight, Loader2, Settings, Clock,
-  ChevronDown, ChevronUp, BarChart3,
+  ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { completeTask, uncompleteTask } from './plan/actions'
 import { completeAdhocOrder, uncompleteAdhocOrder } from './adhoc/actions'
 import {
-  TASK_TYPE_LABELS, TASK_TYPE_COLORS,
+  TASK_TYPE_LABELS, TASK_TYPE_COLORS, compareByTypeFloorRoom,
   type HousekeepingPlan, type HousekeepingTask, type HousekeepingAdhocOrder,
 } from '@/lib/types/housekeeping'
 
@@ -198,6 +198,23 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
   )
 }
 
+// ── 統計卡 ────────────────────────────────────────────────
+function StatCard({ label, done, total, color }: {
+  label: string; done: number; total: number; color: string
+}) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0
+  return (
+    <div className={`flex-1 rounded-xl p-3 ${color}`}>
+      <p className="text-xs font-semibold mb-1 opacity-70">{label}</p>
+      <p className="text-2xl font-bold leading-none">{done}<span className="text-sm font-medium opacity-60">/{total}</span></p>
+      <div className="mt-2 w-full bg-white/40 rounded-full h-1.5">
+        <div className="bg-white h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs mt-1 opacity-60">{pct}%</p>
+    </div>
+  )
+}
+
 // ── 可折疊分類區塊 ─────────────────────────────────────────
 function CategorySection({
   title, color, count, doneCount, defaultOpen, children,
@@ -286,8 +303,9 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
   }
 
   // ── 分類 ──
-  const guestTasks  = optimisticTasks.filter(t => t.room?.room_type === '客房')
-  const publicTasks = optimisticTasks.filter(t => t.room?.room_type !== '客房')
+  const guestTasks  = optimisticTasks.filter(t => t.room?.room_type === '客房').sort(compareByTypeFloorRoom)
+  const publicTasks = optimisticTasks.filter(t => t.room?.room_type !== '客房').sort(compareByTypeFloorRoom)
+  const adhocTasks  = [...optimisticAdhoc].sort(compareByTypeFloorRoom)
 
   // 每個分類：未完成在前，完成在後
   function splitDone<T extends { status: string }>(arr: T[]) {
@@ -325,13 +343,6 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           <p className="text-xs text-gray-500 mt-0.5">{dateLabel}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/housekeeping/report"
-            className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
-          >
-            <BarChart3 className="w-4 h-4" />
-            今日報表
-          </Link>
           {canDispatch && (
             <Link
               href="/housekeeping/plan"
@@ -361,6 +372,30 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           {canDispatch && <Link href="/housekeeping/plan" className="text-sm text-emerald-600 underline">前往發布</Link>}
         </div>
       ) : null}
+
+      {/* 分區統計卡 */}
+      {plan?.status === 'published' && totalItems > 0 && (
+        <div className="flex gap-3 mb-4">
+          <StatCard
+            label="客房"
+            done={guestTasks.filter(t => t.status === 'completed').length}
+            total={guestTasks.length}
+            color="bg-blue-500 text-white"
+          />
+          <StatCard
+            label="公共空間"
+            done={publicTasks.filter(t => t.status === 'completed').length}
+            total={publicTasks.length}
+            color="bg-teal-500 text-white"
+          />
+          <StatCard
+            label="臨時任務"
+            done={adhocTasks.filter(o => o.status === 'completed').length}
+            total={adhocTasks.length}
+            color="bg-orange-400 text-white"
+          />
+        </div>
+      )}
 
       {/* 進度條 */}
       {plan?.status === 'published' && totalItems > 0 && (
@@ -433,15 +468,15 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
       )}
 
       {/* 臨時派工 */}
-      {plan?.status === 'published' && optimisticAdhoc.length > 0 && (
+      {plan?.status === 'published' && adhocTasks.length > 0 && (
         <CategorySection
           title="臨時派工"
           color="bg-orange-50 text-orange-800"
-          count={optimisticAdhoc.length}
-          doneCount={optimisticAdhoc.filter(o => o.status === 'completed').length}
+          count={adhocTasks.length}
+          doneCount={adhocTasks.filter(o => o.status === 'completed').length}
           defaultOpen={true}
         >
-          {splitDone(optimisticAdhoc).map(o => (
+          {splitDone(adhocTasks).map(o => (
             <AdhocRow
               key={o.id} order={o}
               onComplete={(id, label) => handleComplete(id, label, 'adhoc')}

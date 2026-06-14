@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, HelpCircle,
+  Users, LogOut, BookOpen, HelpCircle, History,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -109,6 +109,7 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
           { label: '今日任務', href: '/housekeeping', icon: BedDouble },
         ],
         more: [
+          { label: '使用說明', href: '/housekeeping/guide', icon: BookOpen },
           { label: '說明書',   href: '/manuals',  icon: BookOpen },
           { label: '緊急維修', href: '/hardware', icon: Wrench   },
         ],
@@ -129,7 +130,24 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
         ],
       }
 
-    // ── 日班櫃台 / 行政 / 業務 / frontdesk ──
+    // ── 日班櫃台 ──
+    case 'frontdesk_day':
+      return {
+        primary: [
+          { label: '工務任務', href: '/work-orders',  icon: ClipboardList },
+          { label: '今日任務', href: '/housekeeping', icon: BedDouble     },
+        ],
+        more: [
+          { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
+          { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
+          { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
+          { label: '說明書',   href: '/manuals',  icon: BookOpen },
+          { label: '緊急維修', href: '/hardware', icon: Wrench   },
+          { label: '房間登錄', href: '/rooms',    icon: DoorOpen },
+        ],
+      }
+
+    // ── 行政 / 業務 ──
     default:
       return {
         primary: [

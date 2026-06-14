@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as crypto from 'crypto'
-import { generateHousekeepingReport } from '@/lib/line/housekeeping-report'
+import { generateHousekeepingReport, generateCompletionReport } from '@/lib/line/housekeeping-report'
 
 const CHANNEL_SECRET       = process.env.LINE_HOUSEKEEPING_CHANNEL_SECRET ?? ''
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_HOUSEKEEPING_CHANNEL_ACCESS_TOKEN ?? ''
 
+const COMPLETION_KEYWORDS = ['今日完成', '完成度', '完成狀況']
 const KEYWORDS = ['今日任務', '任務', '今天任務', '今日派工', '派工']
 
 function verifySignature(body: string, signature: string): boolean {
@@ -45,11 +46,14 @@ export async function POST(req: NextRequest) {
     const text       = (event.message.text as string).trim()
     const replyToken = event.replyToken
 
-    const isKeyword = KEYWORDS.some(k => text.includes(k))
-    if (!isKeyword) continue
+    const isCompletion = COMPLETION_KEYWORDS.some(k => text.includes(k))
+    const isKeyword    = KEYWORDS.some(k => text.includes(k))
+    if (!isCompletion && !isKeyword) continue
 
     try {
-      const message = await generateHousekeepingReport()
+      const message = isCompletion
+        ? await generateCompletionReport()
+        : await generateHousekeepingReport()
       await reply(replyToken, [message])
     } catch (e) {
       await reply(replyToken, [{ type: 'text', text: '發生錯誤，請稍後再試。' }])

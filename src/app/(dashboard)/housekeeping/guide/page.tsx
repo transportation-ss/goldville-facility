@@ -54,11 +54,9 @@ export default function HousekeepingGuidePage() {
           <Tip>若臨時派工沒有出現在你的清單上，請聯絡管理員確認指派對象。</Tip>
         </Section>
 
-        {/* 5. 今日報表 */}
-        <Section icon={BarChart3} title="五、今日報表" color="teal">
-          <Step n={1}>點擊頁面右上角「<strong>今日報表</strong>」，可查看今日整體統計。</Step>
-          <Step n={2}>上方三張統計卡分別顯示<strong>客房、公共空間、臨時任務</strong>的完成數／總數與百分比。</Step>
-          <Step n={3}>下方三張明細卡可展開查看每筆任務的<strong>負責人</strong>與<strong>完成人／完成時間</strong>。</Step>
+        {/* 5. 統計卡 */}
+        <Section icon={BarChart3} title="五、今日統計" color="teal">
+          <Step n={1}>「今日任務」頁面最上方會顯示三張統計卡，分別是<strong>客房、公共空間、臨時任務</strong>的完成數／總數與百分比，一目了然今日整體進度。</Step>
         </Section>
 
         {/* 6. 歷史紀錄 */}

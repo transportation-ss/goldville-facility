@@ -35,6 +35,30 @@ export const TASK_TYPE_COLORS: Record<TaskType, string> = {
   spot_clean:       'bg-cyan-100 text-cyan-700',
 }
 
+export const TASK_TYPE_ORDER = Object.keys(TASK_TYPE_LABELS) as TaskType[]
+
+export const FLOOR_ORDER = ['B1', '1F', '2F', '3F', '5F', '6F', '7F', '8F']
+
+// ── 共用排序：類型 → 樓層 → 房號(sort_order) ──────────────────
+export function compareByTypeFloorRoom(
+  a: { task_type?: TaskType | null; room?: { floor: string | null; sort_order?: number | null } | null },
+  b: { task_type?: TaskType | null; room?: { floor: string | null; sort_order?: number | null } | null },
+): number {
+  const aType = a.task_type ? TASK_TYPE_ORDER.indexOf(a.task_type) : TASK_TYPE_ORDER.length
+  const bType = b.task_type ? TASK_TYPE_ORDER.indexOf(b.task_type) : TASK_TYPE_ORDER.length
+  if (aType !== bType) return aType - bType
+
+  const aFloor = a.room?.floor ? FLOOR_ORDER.indexOf(a.room.floor) : FLOOR_ORDER.length
+  const bFloor = b.room?.floor ? FLOOR_ORDER.indexOf(b.room.floor) : FLOOR_ORDER.length
+  const aFloorIdx = aFloor === -1 ? FLOOR_ORDER.length : aFloor
+  const bFloorIdx = bFloor === -1 ? FLOOR_ORDER.length : bFloor
+  if (aFloorIdx !== bFloorIdx) return aFloorIdx - bFloorIdx
+
+  const aSort = a.room?.sort_order ?? Number.MAX_SAFE_INTEGER
+  const bSort = b.room?.sort_order ?? Number.MAX_SAFE_INTEGER
+  return aSort - bSort
+}
+
 // ── 資料庫 row 型別 ──────────────────────────────────────
 
 export interface HousekeepingPlan {
@@ -63,7 +87,7 @@ export interface HousekeepingTask {
   completion_notes:  string | null
   created_at:        string
   // joined
-  room?:     { id: string; name: string; floor: string | null; room_type: string | null }
+  room?:     { id: string; name: string; floor: string | null; room_type: string | null; sort_order?: number | null }
   assignee?: { id: string; display_name: string } | null
   completer?: { id: string; display_name: string } | null
 }
@@ -84,7 +108,7 @@ export interface HousekeepingAdhocOrder {
   created_by:        string | null
   created_at:        string
   // joined
-  room?:     { id: string; name: string; floor: string | null } | null
+  room?:     { id: string; name: string; floor: string | null; sort_order?: number | null } | null
   assignee?: { id: string; display_name: string } | null
   completer?: { id: string; display_name: string } | null
 }
