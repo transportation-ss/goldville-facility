@@ -43,7 +43,7 @@ function typeGroupHeader(taskType: string | null, groupItems: any[]) {
   return {
     type: 'box', layout: 'horizontal', margin: 'md', alignItems: 'center',
     contents: [
-      { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0 },
+      { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0, contents: [] },
       { type: 'text', text: typeLabel, size: 'xs', weight: 'bold', color: '#374151', flex: 1, margin: 'sm' },
       { type: 'text', text: `${groupItems.filter(x => x.status === 'completed').length}/${groupItems.length}`, size: 'xs', color: '#9CA3AF', align: 'end', flex: 0 },
     ],
@@ -301,7 +301,7 @@ export async function generateCompletionReport() {
       contents.push({
         type: 'box', layout: 'horizontal', margin: 'sm', alignItems: 'center',
         contents: [
-          { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0 },
+          { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0, contents: [] },
           { type: 'text', text: label, size: 'sm', color: '#374151', flex: 1, margin: 'sm', wrap: true },
           { type: 'text', text: typeLabel, size: 'xxs', color: '#9CA3AF', align: 'end', flex: 0 },
         ],
