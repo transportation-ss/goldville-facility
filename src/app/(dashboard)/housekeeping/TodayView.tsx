@@ -7,8 +7,8 @@ import {
   ClipboardList, ChevronRight, Loader2, Settings, Clock,
   ChevronDown, ChevronUp,
 } from 'lucide-react'
-import { completeTask, uncompleteTask } from './plan/actions'
-import { completeAdhocOrder, uncompleteAdhocOrder } from './adhoc/actions'
+import { completeTask, uncompleteTask, updateTaskNotes } from './plan/actions'
+import { completeAdhocOrder, uncompleteAdhocOrder, updateAdhocNotes } from './adhoc/actions'
 import {
   TASK_TYPE_LABELS, TASK_TYPE_COLORS, compareByTypeFloorRoom,
   type TaskType, type HousekeepingPlan, type HousekeepingTask, type HousekeepingAdhocOrder,
@@ -57,27 +57,24 @@ function UncompleteConfirmModal({
   )
 }
 
-// ── 完成備註 Modal ────────────────────────────────────────
-function CompleteModal({
-  label, onConfirm, onCancel,
-}: { label: string; onConfirm: (notes: string) => void; onCancel: () => void }) {
-  const [notes, setNotes] = useState('')
+// ── 備註 Modal（已完成後補填/修改備註）────────────────────
+function NotesModal({
+  label, initialNotes, onSave, onCancel,
+}: { label: string; initialNotes: string; onSave: (notes: string) => void; onCancel: () => void }) {
+  const [notes, setNotes] = useState(initialNotes)
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center">
       <div className="bg-white w-full max-w-md rounded-t-2xl md:rounded-2xl p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-1">標記完成</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-1">完成備註</h3>
         <p className="text-sm text-gray-500 mb-4 truncate">{label}</p>
-        <div>
-          <label className="text-xs font-medium text-gray-600 mb-1 block">完成備註（選填）</label>
-          <textarea
-            value={notes} onChange={e => setNotes(e.target.value)}
-            rows={3} placeholder="例：補換備品、客人有特殊要求..." autoFocus
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-          />
-        </div>
+        <textarea
+          value={notes} onChange={e => setNotes(e.target.value)}
+          rows={3} placeholder="例：補換備品、客人有特殊要求..." autoFocus
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+        />
         <div className="flex gap-3 mt-4">
           <button onClick={onCancel} className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-600">取消</button>
-          <button onClick={() => onConfirm(notes)} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium">確認完成</button>
+          <button onClick={() => onSave(notes)} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium">儲存備註</button>
         </div>
       </div>
     </div>
@@ -98,24 +95,37 @@ function Toast({ message, type }: { message: string; type: 'loading' | 'success'
 }
 
 // ── Task 行 ───────────────────────────────────────────────
-function TaskRow({ task, onComplete, onUncomplete }: {
+function TaskRow({ task, onComplete, onUncomplete, onEditNotes }: {
   task: HousekeepingTask
   onComplete:   (id: string, label: string) => void
   onUncomplete: (id: string) => void
+  onEditNotes:  (id: string, label: string, current: string) => void
 }) {
-  const done      = task.status === 'completed'
-  const isUrgent  = task.priority === 'urgent'
-  const label     = task.room?.name ?? '（未指定空間）'
+  const done     = task.status === 'completed'
+  const isUrgent = task.priority === 'urgent'
+  const label    = task.room?.name ?? '（未指定空間）'
 
   return (
     <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${done ? 'opacity-60' : ''}`}>
-      <button onClick={() => done ? onUncomplete(task.id) : onComplete(task.id, label)} className="mt-0.5 shrink-0">
-        {done
-          ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-          : <Circle className={`w-5 h-5 ${isUrgent ? 'text-red-400' : 'text-gray-300'}`} />
-        }
-      </button>
-      <div className="flex-1 min-w-0">
+      {done
+        ? (
+          <button onClick={() => onUncomplete(task.id)} className="mt-0.5 shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          </button>
+        ) : (
+          <button
+            onClick={() => onComplete(task.id, label)}
+            className={`mt-0.5 shrink-0 text-xs font-semibold px-2 py-1 rounded-md border ${isUrgent ? 'border-red-300 text-red-600 bg-red-50' : 'border-emerald-300 text-emerald-700 bg-emerald-50'}`}
+          >
+            完成
+          </button>
+        )
+      }
+      <div
+        className="flex-1 min-w-0"
+        onClick={() => done ? onEditNotes(task.id, label, task.completion_notes ?? '') : undefined}
+        style={done ? { cursor: 'pointer' } : undefined}
+      >
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
           <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>{label}</span>
@@ -130,9 +140,9 @@ function TaskRow({ task, onComplete, onUncomplete }: {
                 {task.completed_at && <span className="text-gray-400 ml-1">{twTime(task.completed_at)}</span>}
               </p>
             )}
-            {task.completion_notes && (
-              <p className="text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">💬 {task.completion_notes}</p>
-            )}
+            <p className="text-xs text-gray-400">
+              {task.completion_notes ? `💬 ${task.completion_notes}` : '點此新增備註…'}
+            </p>
           </div>
         )}
       </div>
@@ -141,23 +151,36 @@ function TaskRow({ task, onComplete, onUncomplete }: {
 }
 
 // ── AdhocOrder 行 ─────────────────────────────────────────
-function AdhocRow({ order, onComplete, onUncomplete }: {
+function AdhocRow({ order, onComplete, onUncomplete, onEditNotes }: {
   order: HousekeepingAdhocOrder
   onComplete:   (id: string, label: string) => void
   onUncomplete: (id: string) => void
+  onEditNotes:  (id: string, label: string, current: string) => void
 }) {
   const done     = order.status === 'completed'
   const isUrgent = order.priority === 'urgent'
 
   return (
     <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${done ? 'opacity-60' : ''}`}>
-      <button onClick={() => done ? onUncomplete(order.id) : onComplete(order.id, order.title)} className="mt-0.5 shrink-0">
-        {done
-          ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-          : <Circle className={`w-5 h-5 ${isUrgent ? 'text-red-400' : 'text-orange-400'}`} />
-        }
-      </button>
-      <div className="flex-1 min-w-0">
+      {done
+        ? (
+          <button onClick={() => onUncomplete(order.id)} className="mt-0.5 shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          </button>
+        ) : (
+          <button
+            onClick={() => onComplete(order.id, order.title)}
+            className={`mt-0.5 shrink-0 text-xs font-semibold px-2 py-1 rounded-md border ${isUrgent ? 'border-red-300 text-red-600 bg-red-50' : 'border-emerald-300 text-emerald-700 bg-emerald-50'}`}
+          >
+            完成
+          </button>
+        )
+      }
+      <div
+        className="flex-1 min-w-0"
+        onClick={() => done ? onEditNotes(order.id, order.title, order.completion_notes ?? '') : undefined}
+        style={done ? { cursor: 'pointer' } : undefined}
+      >
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
           <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{order.title}</span>
@@ -167,7 +190,6 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
         </div>
         {order.description && <p className="text-xs text-gray-500 mt-0.5">{order.description}</p>}
         {order.assignee && <p className="text-xs text-gray-400 mt-0.5">負責：{order.assignee.display_name}</p>}
-        {/* 派工時間 */}
         <p className="text-xs text-orange-400 mt-0.5 flex items-center gap-1">
           <Clock className="w-3 h-3" />
           派工：{twTimeShort(order.created_at)}
@@ -180,9 +202,9 @@ function AdhocRow({ order, onComplete, onUncomplete }: {
                 {order.completed_at && <span className="text-gray-400 ml-1">{twTime(order.completed_at)}</span>}
               </p>
             )}
-            {order.completion_notes && (
-              <p className="text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">💬 {order.completion_notes}</p>
-            )}
+            <p className="text-xs text-gray-400">
+              {order.completion_notes ? `💬 ${order.completion_notes}` : '點此新增備註…'}
+            </p>
           </div>
         )}
       </div>
@@ -300,9 +322,9 @@ function CategorySection({
 // ── 主元件 ────────────────────────────────────────────────
 export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, currentUserId }: Props) {
   const [, startTransition] = useTransition()
-  const [toast, setToast]   = useState<{ message: string; type: 'loading' | 'success' } | null>(null)
-  const [completeModal, setCompleteModal]     = useState<{ id: string; label: string; kind: 'task' | 'adhoc' } | null>(null)
+  const [toast, setToast]           = useState<{ message: string; type: 'loading' | 'success' } | null>(null)
   const [uncompleteModal, setUncompleteModal] = useState<{ id: string; label: string; kind: 'task' | 'adhoc' } | null>(null)
+  const [notesModal, setNotesModal] = useState<{ id: string; label: string; current: string; kind: 'task' | 'adhoc' } | null>(null)
 
   const [optimisticTasks, updateOptimisticTasks] = useOptimistic(
     tasks,
@@ -320,19 +342,27 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
     if (autoDismiss > 0) setTimeout(() => setToast(null), autoDismiss)
   }, [])
 
-  const handleConfirmComplete = (notes: string) => {
-    if (!completeModal) return
-    const { id, kind } = completeModal
-    setCompleteModal(null)
+  const handleComplete = (id: string, _label: string, kind: 'task' | 'adhoc') => {
     startTransition(async () => {
       if (kind === 'task') {
         updateOptimisticTasks({ id, status: 'completed' })
-        await completeTask(id, notes)
+        await completeTask(id)
       } else {
         updateOptimisticAdhoc({ id, status: 'completed' })
-        await completeAdhocOrder(id, notes)
+        await completeAdhocOrder(id)
       }
       showToast('✅ 已標記完成', 'success', 2000)
+    })
+  }
+
+  const handleSaveNotes = (notes: string) => {
+    if (!notesModal) return
+    const { id, kind } = notesModal
+    setNotesModal(null)
+    startTransition(async () => {
+      if (kind === 'task') await updateTaskNotes(id, notes)
+      else await updateAdhocNotes(id, notes)
+      showToast('備註已儲存', 'success', 2000)
     })
   }
 
@@ -368,7 +398,9 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
     month: 'long', day: 'numeric', weekday: 'short',
   })
 
-  const handleComplete   = (id: string, label: string, kind: 'task' | 'adhoc') => setCompleteModal({ id, label, kind })
+  const handleEditNotes  = (id: string, label: string, current: string, kind: 'task' | 'adhoc') =>
+    setNotesModal({ id, label, current, kind })
+
   const handleUncomplete = (id: string, kind: 'task' | 'adhoc') => {
     if (kind === 'task') {
       const task = optimisticTasks.find(t => t.id === id)
@@ -489,6 +521,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
                         key={t.id} task={t}
                         onComplete={(id, label) => handleComplete(id, label, 'task')}
                         onUncomplete={id => handleUncomplete(id, 'task')}
+                        onEditNotes={(id, label, cur) => handleEditNotes(id, label, cur, 'task')}
                       />
                     ))}
                   </div>
@@ -524,6 +557,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
                         key={t.id} task={t}
                         onComplete={(id, label) => handleComplete(id, label, 'task')}
                         onUncomplete={id => handleUncomplete(id, 'task')}
+                        onEditNotes={(id, label, cur) => handleEditNotes(id, label, cur, 'task')}
                       />
                     ))}
                   </div>
@@ -554,6 +588,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
                         key={o.id} order={o}
                         onComplete={(id, label) => handleComplete(id, label, 'adhoc')}
                         onUncomplete={id => handleUncomplete(id, 'adhoc')}
+                        onEditNotes={(id, label, cur) => handleEditNotes(id, label, cur, 'adhoc')}
                       />
                     ))}
                   </div>
@@ -583,11 +618,12 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           onCancel={() => setUncompleteModal(null)}
         />
       )}
-      {completeModal && (
-        <CompleteModal
-          label={completeModal.label}
-          onConfirm={handleConfirmComplete}
-          onCancel={() => setCompleteModal(null)}
+      {notesModal && (
+        <NotesModal
+          label={notesModal.label}
+          initialNotes={notesModal.current}
+          onSave={handleSaveNotes}
+          onCancel={() => setNotesModal(null)}
         />
       )}
       {toast && <Toast message={toast.message} type={toast.type} />}

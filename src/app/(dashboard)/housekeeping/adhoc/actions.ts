@@ -83,6 +83,17 @@ export async function deleteAdhocOrder(orderId: string) {
   revalidatePath('/housekeeping/plan')
 }
 
+// ── 更新備註（不改狀態）──────────────────────────────────
+export async function updateAdhocNotes(orderId: string, notes: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('housekeeping_adhoc_orders')
+    .update({ completion_notes: notes.trim() || null })
+    .eq('id', orderId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/housekeeping')
+}
+
 // ── 取消完成臨時派工 ──────────────────────────────────────
 export async function uncompleteAdhocOrder(orderId: string) {
   const supabase = await createClient()

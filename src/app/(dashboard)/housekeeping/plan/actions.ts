@@ -174,6 +174,17 @@ export async function completeTask(taskId: string, completionNotes?: string) {
   revalidatePath('/housekeeping')
 }
 
+// ── 更新備註（不改狀態）──────────────────────────────────
+export async function updateTaskNotes(taskId: string, notes: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('housekeeping_tasks')
+    .update({ completion_notes: notes.trim() || null })
+    .eq('id', taskId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/housekeeping')
+}
+
 // ── 取消完成（還原 pending）──────────────────────────────
 export async function uncompleteTask(taskId: string) {
   const supabase = await createClient()
