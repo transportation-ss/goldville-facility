@@ -236,7 +236,7 @@ export async function generateHousekeepingReport() {
 }
 
 // ── 主函式：今日完成 ──────────────────────────────────────
-export async function generateCompletionReport() {
+export async function generateEODReport() {
   const supabase = createAdminClient()
   const today = todayTW()
 
@@ -311,14 +311,14 @@ export async function generateCompletionReport() {
 
   return {
     type: 'flex',
-    altText: `今日完成度 ${done}/${total}（${pct}%）`,
+    altText: `收工確認 ${done}/${total} 完成（${pct}%）`,
     contents: {
       type: 'bubble', size: 'mega',
       header: {
         type: 'box', layout: 'vertical', backgroundColor: '#0F172A', paddingAll: 'lg',
         contents: [
           { type: 'text', text: '🏨 好好園館', color: '#64748B', size: 'xs' },
-          { type: 'text', text: '✅ 今日完成度', color: '#FFFFFF', weight: 'bold', size: 'xl', margin: 'xs' },
+          { type: 'text', text: '🔔 收工確認', color: '#FFFFFF', weight: 'bold', size: 'xl', margin: 'xs' },
           { type: 'text', text: today, color: '#94A3B8', size: 'sm', margin: 'sm' },
         ],
       },

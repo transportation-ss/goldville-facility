@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as crypto from 'crypto'
-import { generateHousekeepingReport, generateCompletionReport } from '@/lib/line/housekeeping-report'
+import { generateHousekeepingReport, generateEODReport } from '@/lib/line/housekeeping-report'
 
 const CHANNEL_SECRET       = process.env.LINE_HOUSEKEEPING_CHANNEL_SECRET ?? ''
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_HOUSEKEEPING_CHANNEL_ACCESS_TOKEN ?? ''
 
-const COMPLETION_KEYWORDS = ['今日完成', '完成度', '完成狀況']
-const KEYWORDS = ['今日任務', '任務', '今天任務', '今日派工', '派工']
+const EOD_KEYWORDS  = ['收工', '下班', '收工確認']
+const KEYWORDS      = ['今日任務', '任務', '今天任務', '今日派工', '派工']
 
 function verifySignature(body: string, signature: string): boolean {
   const hmac = crypto.createHmac('SHA256', CHANNEL_SECRET)
@@ -46,13 +46,13 @@ export async function POST(req: NextRequest) {
     const text       = (event.message.text as string).trim()
     const replyToken = event.replyToken
 
-    const isCompletion = COMPLETION_KEYWORDS.some(k => text.includes(k))
-    const isKeyword    = KEYWORDS.some(k => text.includes(k))
-    if (!isCompletion && !isKeyword) continue
+    const isEOD     = EOD_KEYWORDS.some(k => text.includes(k))
+    const isKeyword = KEYWORDS.some(k => text.includes(k))
+    if (!isEOD && !isKeyword) continue
 
     try {
-      const message = isCompletion
-        ? await generateCompletionReport()
+      const message = isEOD
+        ? await generateEODReport()
         : await generateHousekeepingReport()
       await reply(replyToken, [message])
     } catch (e) {
