@@ -107,20 +107,12 @@ function TaskRow({ task, onComplete, onUncomplete, onEditNotes }: {
 
   return (
     <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${done ? 'opacity-60' : ''}`}>
-      {done
-        ? (
-          <button onClick={() => onUncomplete(task.id)} className="mt-0.5 shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-          </button>
-        ) : (
-          <button
-            onClick={() => onComplete(task.id, label)}
-            className={`mt-0.5 shrink-0 text-xs font-semibold px-2 py-1 rounded-md border ${isUrgent ? 'border-red-300 text-red-600 bg-red-50' : 'border-emerald-300 text-emerald-700 bg-emerald-50'}`}
-          >
-            完成
-          </button>
-        )
-      }
+      <button onClick={() => done ? onUncomplete(task.id) : onComplete(task.id, label)} className="mt-0.5 shrink-0">
+        {done
+          ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          : <Circle className={`w-5 h-5 ${isUrgent ? 'text-red-400' : 'text-gray-300'}`} />
+        }
+      </button>
       <div
         className="flex-1 min-w-0"
         onClick={() => done ? onEditNotes(task.id, label, task.completion_notes ?? '') : undefined}
@@ -162,20 +154,12 @@ function AdhocRow({ order, onComplete, onUncomplete, onEditNotes }: {
 
   return (
     <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${done ? 'opacity-60' : ''}`}>
-      {done
-        ? (
-          <button onClick={() => onUncomplete(order.id)} className="mt-0.5 shrink-0">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-          </button>
-        ) : (
-          <button
-            onClick={() => onComplete(order.id, order.title)}
-            className={`mt-0.5 shrink-0 text-xs font-semibold px-2 py-1 rounded-md border ${isUrgent ? 'border-red-300 text-red-600 bg-red-50' : 'border-emerald-300 text-emerald-700 bg-emerald-50'}`}
-          >
-            完成
-          </button>
-        )
-      }
+      <button onClick={() => done ? onUncomplete(order.id) : onComplete(order.id, order.title)} className="mt-0.5 shrink-0">
+        {done
+          ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          : <Circle className={`w-5 h-5 ${isUrgent ? 'text-red-400' : 'text-orange-400'}`} />
+        }
+      </button>
       <div
         className="flex-1 min-w-0"
         onClick={() => done ? onEditNotes(order.id, order.title, order.completion_notes ?? '') : undefined}
