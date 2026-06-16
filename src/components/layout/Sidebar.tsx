@@ -189,10 +189,9 @@ const housekeepingNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '房務',
     items: [
-      { label: '今日任務', href: '/housekeeping',         icon: BedDouble     },
-      { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
-      { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
-      { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
+      { label: '今日任務', href: '/housekeeping',         icon: BedDouble },
+      { label: '歷史紀錄', href: '/housekeeping/history', icon: History   },
+      { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen  },
     ],
   },
 ]
