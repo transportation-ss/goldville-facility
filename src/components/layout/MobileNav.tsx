@@ -96,10 +96,15 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
     case 'housekeeping':
       return {
         primary: [
-          { label: '今日任務', href: '/housekeeping',      icon: BedDouble     },
-          { label: '派工管理', href: '/housekeeping/plan', icon: ClipboardList },
+          { label: '工務派工', href: '/work-orders',  icon: ClipboardList },
+          { label: '今日任務', href: '/housekeeping', icon: BedDouble     },
         ],
-        more: [],
+        more: [
+          { label: '歷史紀錄', href: '/housekeeping/history', icon: History  },
+          { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen },
+          { label: '說明書',   href: '/manuals',              icon: BookOpen },
+          { label: '緊急維修', href: '/hardware',             icon: Wrench   },
+        ],
       }
 
     // ── 房務人員 ──

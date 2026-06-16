@@ -13,7 +13,7 @@ const GENERAL_ROLES      = ['frontdesk_day', 'housekeeper', 'admin_staff', 'sale
 const NIGHTSHIFT_ALLOWED   = ['/nightshift', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
 const TECHNICIAN_ALLOWED   = ['/work-orders', '/maintenance', '/consumables', '/utilities', '/manuals', '/hardware', '/rooms', '/api', '/settings']
 const PROCUREMENT_ALLOWED  = ['/work-orders', '/consumables', '/manuals', '/hardware', '/rooms', '/assets', '/api', '/settings']
-const HOUSEKEEPING_ALLOWED   = ['/housekeeping', '/manuals', '/hardware', '/api', '/settings']
+const HOUSEKEEPING_ALLOWED   = ['/housekeeping', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
 const HOUSEKEEPING_FORBIDDEN = ['/housekeeping/plan']
 const GENERAL_ALLOWED      = ['/work-orders', '/housekeeping', '/manuals', '/hardware', '/rooms', '/api', '/settings']
 

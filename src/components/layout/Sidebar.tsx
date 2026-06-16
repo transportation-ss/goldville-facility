@@ -186,6 +186,7 @@ const frontdeskDayNav: (NavSingle | NavGroup)[] = [
 
 /** 房務身分 */
 const housekeepingNav: (NavSingle | NavGroup)[] = [
+  { type: 'single', label: '工務派工', href: '/work-orders', icon: ClipboardList },
   {
     type: 'group', label: '房務',
     items: [
