@@ -179,16 +179,16 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
     if (form.password !== form.confirm) { setError('兩次密碼不一致'); return }
 
     startTransition(async () => {
-      try {
-        await createUser({
-          email:        form.email.trim(),
-          password:     form.password,
-          display_name: form.display_name.trim(),
-          role:         form.role,
-        })
+      const result = await createUser({
+        email:        form.email.trim(),
+        password:     form.password,
+        display_name: form.display_name.trim(),
+        role:         form.role,
+      })
+      if ('error' in result) {
+        setError(result.error)
+      } else {
         setDone(true)
-      } catch (e: any) {
-        setError(e.message ?? '新增失敗')
       }
     })
   }

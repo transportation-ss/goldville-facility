@@ -49,22 +49,27 @@ export async function createUser(data: {
   password: string
   display_name: string
   role: string
-}) {
-  const admin = createAdminClient()
+}): Promise<{ error: string } | { success: true }> {
+  try {
+    const admin = createAdminClient()
 
-  const { error } = await admin.auth.admin.createUser({
-    email: data.email,
-    password: data.password,
-    email_confirm: true,
-    user_metadata: {
-      display_name: data.display_name,
-      role: data.role,
-      status: 'active',
-    },
-  })
+    const { error } = await admin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: {
+        display_name: data.display_name,
+        role: data.role,
+        status: 'active',
+      },
+    })
 
-  if (error) throw new Error(error.message)
-  revalidatePath('/admin/users')
+    if (error) return { error: error.message }
+    revalidatePath('/admin/users')
+    return { success: true }
+  } catch (e: any) {
+    return { error: e.message ?? '新增失敗（未知錯誤）' }
+  }
 }
 
 // ─── 管理員重設他人密碼 ────────────────────────────────────
