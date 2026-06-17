@@ -182,6 +182,61 @@ function adhocBubble(orders: any[]) {
   }
 }
 
+// ── 優先處理卡（緊急任務彙總）────────────────────────────
+function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
+  const all = [...urgentTasks, ...urgentAdhoc].sort(compareByTypeFloorRoom)
+  const done = all.filter(i => i.status === 'completed').length
+
+  const rows: any[] = []
+  for (const item of all) {
+    const isAdhoc = typeof item.title === 'string' && !item.room?.room_type
+    const isDone  = item.status === 'completed'
+    const floor   = item.room?.floor
+    const name    = isAdhoc ? item.title : (item.room?.name ?? '（未指定）')
+    const label   = floor ? `${floor} ${name}` : name
+    rows.push({
+      type: 'box', layout: 'horizontal', paddingTop: 'sm', paddingBottom: 'sm',
+      contents: [
+        { type: 'text', text: isDone ? '✅' : '🔴', size: 'sm', flex: 0 },
+        { type: 'text', text: label, size: 'sm', color: isDone ? '#9CA3AF' : '#111827', flex: 1, margin: 'sm', decoration: isDone ? 'line-through' : 'none', wrap: true },
+      ],
+    })
+    if (rows.length < all.length) rows.push({ type: 'separator', color: '#FEE2E2' })
+  }
+
+  return {
+    type: 'bubble', size: 'mega',
+    header: {
+      type: 'box', layout: 'vertical', backgroundColor: '#B91C1C', paddingAll: 'md',
+      contents: [{
+        type: 'box', layout: 'horizontal', contents: [
+          { type: 'text', text: '⚡ 優先處理', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+          {
+            type: 'box', layout: 'vertical', flex: 0, backgroundColor: done === all.length ? '#10B981' : '#F59E0B',
+            cornerRadius: '4px', paddingStart: 'sm', paddingEnd: 'sm', paddingTop: 'xs', paddingBottom: 'xs',
+            contents: [{ type: 'text', text: `${done}/${all.length}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
+          },
+        ],
+      }],
+    },
+    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: rows },
+    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
+  }
+}
+
+// ── 推送今日任務給主管 ─────────────────────────────────────
+export async function pushReportToManager(report: any) {
+  const userId = process.env.MANAGER_LINE_USER_ID
+  const token  = process.env.LINE_HOUSEKEEPING_CHANNEL_ACCESS_TOKEN
+  if (!userId || !token) return
+
+  await fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ to: userId, messages: [report] }),
+  })
+}
+
 // ── 主函式：今日任務 ──────────────────────────────────────
 export async function generateHousekeepingReport() {
   const supabase = createAdminClient()
@@ -218,15 +273,18 @@ export async function generateHousekeepingReport() {
   const guestTasks  = allTasks.filter(t => t.room?.room_type === '客房')
   const publicTasks = allTasks.filter(t => t.room?.room_type !== '客房')
 
+  const urgentTasks = allTasks.filter(t => t.priority === 'urgent')
+  const urgentAdhoc = allAdhoc.filter(o => o.priority === 'urgent')
+  const urgentCount = urgentTasks.length + urgentAdhoc.length
+
   const bubbles = [
+    ...(urgentCount > 0 ? [urgentBubble(urgentTasks, urgentAdhoc)] : []),
     combinedBubble('🛏 客房派工', '#1E40AF', guestTasks, '今日無客房任務'),
     combinedBubble('🏢 公共空間', '#065F46', publicTasks, '今日無公共空間任務'),
     adhocBubble(allAdhoc),
   ]
 
-  const totalCount  = allTasks.length + allAdhoc.length
-  const urgentCount = allTasks.filter(t => t.priority === 'urgent').length
-                     + allAdhoc.filter(o => o.priority === 'urgent').length
+  const totalCount = allTasks.length + allAdhoc.length
 
   return {
     type: 'flex',

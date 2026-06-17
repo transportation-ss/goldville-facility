@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, Trash2, Loader2, CheckCircle2, Send,
   FileText, ChevronDown, ChevronUp, Pencil, X, Clock,
 } from 'lucide-react'
-import { createPlan, updatePlan, addTask, deleteTask, deletePlan, updateTask } from './actions'
+import { createPlan, updatePlan, publishPlan, addTask, deleteTask, deletePlan, updateTask } from './actions'
 import { deleteAdhocOrder, createAdhocOrder } from '../adhoc/actions'
 import {
   TASK_TYPE_LABELS, TASK_TYPE_COLORS, FLOOR_ORDER, compareByTypeFloorRoom,
@@ -714,7 +714,7 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
     if (!plan) return
     setSaving('publish')
     startTransition(async () => {
-      await updatePlan(plan.id, { status: 'published' })
+      await publishPlan(plan.id)
       setSaving(null)
     })
   }
