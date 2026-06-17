@@ -182,26 +182,86 @@ function adhocBubble(orders: any[]) {
   }
 }
 
-// ── 優先處理卡（緊急任務彙總）────────────────────────────
+// ── 優先處理卡（緊急任務彙總，四層分組）─────────────────
 function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
-  const all = [...urgentTasks, ...urgentAdhoc].sort(compareByTypeFloorRoom)
-  const done = all.filter(i => i.status === 'completed').length
+  const total = urgentTasks.length + urgentAdhoc.length
+  const done  = [...urgentTasks, ...urgentAdhoc].filter(i => i.status === 'completed').length
 
-  const rows: any[] = []
-  for (const item of all) {
-    const isAdhoc = typeof item.title === 'string' && !item.room?.room_type
-    const isDone  = item.status === 'completed'
-    const floor   = item.room?.floor
-    const name    = isAdhoc ? item.title : (item.room?.name ?? '（未指定）')
-    const label   = floor ? `${floor} ${name}` : name
-    rows.push({
-      type: 'box', layout: 'horizontal', paddingTop: 'sm', paddingBottom: 'sm',
-      contents: [
-        { type: 'text', text: isDone ? '✅' : '🔴', size: 'sm', flex: 0 },
-        { type: 'text', text: label, size: 'sm', color: isDone ? '#9CA3AF' : '#111827', flex: 1, margin: 'sm', decoration: isDone ? 'line-through' : 'none', wrap: true },
-      ],
+  // 第一層：大範圍分類
+  const categories = [
+    { label: '🛏 客房',    items: urgentTasks.filter(t => t.room?.room_type === '客房') },
+    { label: '🏢 公共空間', items: urgentTasks.filter(t => t.room?.room_type !== '客房') },
+    { label: '📋 臨時任務', items: urgentAdhoc as any[] },
+  ].filter(c => c.items.length > 0)
+
+  const contents: any[] = []
+
+  for (let ci = 0; ci < categories.length; ci++) {
+    const { label, items } = categories[ci]
+    const isAdhoc = label.startsWith('📋')
+
+    if (ci > 0) contents.push({ type: 'separator', margin: 'lg', color: '#FCA5A5' })
+
+    // Level 1 header
+    contents.push({
+      type: 'text', text: label, size: 'sm', weight: 'bold', color: '#7F1D1D',
+      margin: ci === 0 ? 'none' : 'md',
     })
-    if (rows.length < all.length) rows.push({ type: 'separator', color: '#FEE2E2' })
+
+    // 第二層：任務類型分組（sort 後依序輸出）
+    const sorted = [...items].sort(compareByTypeFloorRoom)
+    const typesSeen: (string | null)[] = []
+    for (const item of sorted) {
+      const taskType = (item.task_type as TaskType | null) ?? null
+      if (!typesSeen.includes(taskType)) typesSeen.push(taskType)
+    }
+
+    for (const taskType of typesSeen) {
+      const typeItems = sorted.filter(i => (i.task_type ?? null) === taskType)
+      const typeLabel = taskType ? (TASK_TYPE_LABELS[taskType as TaskType] ?? taskType) : (isAdhoc ? '臨時' : '未分類')
+      const typeColor = taskType ? (TASK_TYPE_LINE_COLORS[taskType as TaskType] ?? '#9CA3AF') : '#9CA3AF'
+
+      // Level 2 header
+      contents.push({
+        type: 'box', layout: 'horizontal', margin: 'sm', alignItems: 'center',
+        paddingStart: '8px', contents: [
+          { type: 'box', layout: 'vertical', width: '8px', height: '8px', backgroundColor: typeColor, cornerRadius: '4px', flex: 0, contents: [] },
+          { type: 'text', text: typeLabel, size: 'xxs', weight: 'bold', color: '#6B7280', margin: 'sm', flex: 1 },
+        ],
+      })
+
+      // 第三層：樓層分組
+      const floorsSeen: (string | null)[] = []
+      for (const item of typeItems) {
+        const floor = item.room?.floor ?? null
+        if (!floorsSeen.includes(floor)) floorsSeen.push(floor)
+      }
+
+      for (const floor of floorsSeen) {
+        const floorItems = typeItems.filter(i => (i.room?.floor ?? null) === floor)
+
+        // Level 3 header（只在有樓層資訊時才顯示）
+        if (floor) {
+          contents.push({
+            type: 'text', text: floor, size: 'xxs', color: '#9CA3AF', margin: 'xs', paddingStart: '20px',
+          })
+        }
+
+        // 第四層：房號/位置
+        for (const item of floorItems) {
+          const isDone = item.status === 'completed'
+          const name   = isAdhoc ? item.title : (item.room?.name ?? '（未指定）')
+          contents.push({
+            type: 'box', layout: 'horizontal', margin: 'xs', paddingStart: '20px', alignItems: 'center',
+            contents: [
+              { type: 'text', text: isDone ? '✅' : '🔴', size: 'xs', flex: 0 },
+              { type: 'text', text: name, size: 'sm', color: isDone ? '#9CA3AF' : '#111827', flex: 1, margin: 'sm', decoration: isDone ? 'line-through' : 'none', wrap: true },
+              ...(item.assignee ? [{ type: 'text', text: item.assignee.display_name, size: 'xxs', color: '#9CA3AF', flex: 0, align: 'end' as const }] : []),
+            ],
+          })
+        }
+      }
+    }
   }
 
   return {
@@ -212,14 +272,14 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
         type: 'box', layout: 'horizontal', contents: [
           { type: 'text', text: '⚡ 優先處理', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
           {
-            type: 'box', layout: 'vertical', flex: 0, backgroundColor: done === all.length ? '#10B981' : '#F59E0B',
+            type: 'box', layout: 'vertical', flex: 0, backgroundColor: done === total ? '#10B981' : '#F59E0B',
             cornerRadius: '4px', paddingStart: 'sm', paddingEnd: 'sm', paddingTop: 'xs', paddingBottom: 'xs',
-            contents: [{ type: 'text', text: `${done}/${all.length}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
+            contents: [{ type: 'text', text: `${done}/${total}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
           },
         ],
       }],
     },
-    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: rows },
+    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents },
     footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
   }
 }
