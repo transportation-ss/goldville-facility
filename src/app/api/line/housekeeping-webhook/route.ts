@@ -46,6 +46,12 @@ export async function POST(req: NextRequest) {
     const text       = (event.message.text as string).trim()
     const replyToken = event.replyToken
 
+    // 臨時：查詢自己的 LINE userId
+    if (text === '我的ID' || text === 'myid') {
+      await reply(replyToken, [{ type: 'text', text: `您的 LINE userId：\n${event.source?.userId ?? '無法取得'}` }])
+      continue
+    }
+
     const isEOD     = EOD_KEYWORDS.some(k => text.includes(k))
     const isKeyword = KEYWORDS.some(k => text.includes(k))
     if (!isEOD && !isKeyword) continue
