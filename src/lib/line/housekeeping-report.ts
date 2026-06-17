@@ -243,7 +243,7 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
         // Level 3 header（只在有樓層資訊時才顯示）
         if (floor) {
           contents.push({
-            type: 'text', text: floor, size: 'xxs', color: '#9CA3AF', margin: 'xs', paddingStart: '20px',
+            type: 'text', text: floor, size: 'xxs', color: '#9CA3AF', margin: 'xs', offsetStart: '16px',
           })
         }
 
@@ -253,10 +253,10 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
           const name    = isAdhoc ? item.title : (item.room?.name ?? '（未指定）')
           const notes   = isAdhoc ? item.description : item.special_notes
           contents.push({
-            type: 'box', layout: 'vertical', margin: 'xs', paddingStart: '20px',
+            type: 'box', layout: 'vertical', margin: 'xs',
             contents: [
               {
-                type: 'box', layout: 'horizontal', alignItems: 'center',
+                type: 'box', layout: 'horizontal', alignItems: 'center', offsetStart: '16px',
                 contents: [
                   { type: 'text', text: isDone ? '✅' : '🔴', size: 'xs', flex: 0 },
                   { type: 'text', text: name, size: 'sm', color: isDone ? '#9CA3AF' : '#111827', flex: 1, margin: 'sm', decoration: isDone ? 'line-through' : 'none', wrap: true },
@@ -264,9 +264,9 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
                 ],
               },
               ...(notes ? [{
-                type: 'box', layout: 'vertical', margin: 'xs', paddingStart: '20px', paddingEnd: '4px',
+                type: 'box', layout: 'vertical', margin: 'xs',
                 backgroundColor: '#FFFBEB', cornerRadius: '4px', paddingAll: 'xs',
-                contents: [{ type: 'text', text: `📝 ${notes}`, size: 'xxs', color: '#92400E', wrap: true }],
+                contents: [{ type: 'text', text: `📝 ${notes}`, size: 'xxs', color: '#92400E', wrap: true, offsetStart: '16px' }],
               }] : []),
             ],
           })
