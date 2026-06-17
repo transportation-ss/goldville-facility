@@ -249,14 +249,25 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
 
         // 第四層：房號/位置
         for (const item of floorItems) {
-          const isDone = item.status === 'completed'
-          const name   = isAdhoc ? item.title : (item.room?.name ?? '（未指定）')
+          const isDone  = item.status === 'completed'
+          const name    = isAdhoc ? item.title : (item.room?.name ?? '（未指定）')
+          const notes   = isAdhoc ? item.description : item.special_notes
           contents.push({
-            type: 'box', layout: 'horizontal', margin: 'xs', paddingStart: '20px', alignItems: 'center',
+            type: 'box', layout: 'vertical', margin: 'xs', paddingStart: '20px',
             contents: [
-              { type: 'text', text: isDone ? '✅' : '🔴', size: 'xs', flex: 0 },
-              { type: 'text', text: name, size: 'sm', color: isDone ? '#9CA3AF' : '#111827', flex: 1, margin: 'sm', decoration: isDone ? 'line-through' : 'none', wrap: true },
-              ...(item.assignee ? [{ type: 'text', text: item.assignee.display_name, size: 'xxs', color: '#9CA3AF', flex: 0, align: 'end' as const }] : []),
+              {
+                type: 'box', layout: 'horizontal', alignItems: 'center',
+                contents: [
+                  { type: 'text', text: isDone ? '✅' : '🔴', size: 'xs', flex: 0 },
+                  { type: 'text', text: name, size: 'sm', color: isDone ? '#9CA3AF' : '#111827', flex: 1, margin: 'sm', decoration: isDone ? 'line-through' : 'none', wrap: true },
+                  ...(item.assignee ? [{ type: 'text', text: item.assignee.display_name, size: 'xxs', color: '#9CA3AF', flex: 0, align: 'end' as const }] : []),
+                ],
+              },
+              ...(notes ? [{
+                type: 'box', layout: 'vertical', margin: 'xs', paddingStart: '20px', paddingEnd: '4px',
+                backgroundColor: '#FFFBEB', cornerRadius: '4px', paddingAll: 'xs',
+                contents: [{ type: 'text', text: `📝 ${notes}`, size: 'xxs', color: '#92400E', wrap: true }],
+              }] : []),
             ],
           })
         }
@@ -330,18 +341,22 @@ export async function generateHousekeepingReport() {
   const allTasks = tasks ?? []
   const allAdhoc = adhocOrders ?? []
 
-  const guestTasks  = allTasks.filter(t => t.room?.room_type === '客房')
-  const publicTasks = allTasks.filter(t => t.room?.room_type !== '客房')
-
   const urgentTasks = allTasks.filter(t => t.priority === 'urgent')
   const urgentAdhoc = allAdhoc.filter(o => o.priority === 'urgent')
+
+  // 緊急任務已在「優先處理」卡顯示，其他卡排除
+  const normalTasks = allTasks.filter(t => t.priority !== 'urgent')
+  const normalAdhoc = allAdhoc.filter(o => o.priority !== 'urgent')
+
+  const guestTasks  = normalTasks.filter(t => t.room?.room_type === '客房')
+  const publicTasks = normalTasks.filter(t => t.room?.room_type !== '客房')
   const urgentCount = urgentTasks.length + urgentAdhoc.length
 
   const bubbles = [
     ...(urgentCount > 0 ? [urgentBubble(urgentTasks, urgentAdhoc)] : []),
     combinedBubble('🛏 客房派工', '#1E40AF', guestTasks, '今日無客房任務'),
     combinedBubble('🏢 公共空間', '#065F46', publicTasks, '今日無公共空間任務'),
-    adhocBubble(allAdhoc),
+    adhocBubble(normalAdhoc),
   ]
 
   const totalCount = allTasks.length + allAdhoc.length
