@@ -163,7 +163,18 @@ function combinedBubble(title: string, headerColor: string, tasks: any[], emptyT
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(tasks, emptyText, taskRow) },
-    footer: { type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm', contents: [refreshButton(), viewButton()] },
+    footer: {
+      type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm',
+      contents: [
+        viewButton(),
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            refreshButton(),
+            { type: 'box', layout: 'vertical', flex: 2, contents: [] },
+          ],
+        },
+      ],
+    },
   }
 }
 
@@ -189,7 +200,18 @@ function adhocBubble(orders: any[]) {
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(orders, '目前無臨時派工', adhocRow) },
-    footer: { type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm', contents: [refreshButton(), viewButton()] },
+    footer: {
+      type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm',
+      contents: [
+        viewButton(),
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            refreshButton(),
+            { type: 'box', layout: 'vertical', flex: 2, contents: [] },
+          ],
+        },
+      ],
+    },
   }
 }
 
@@ -302,7 +324,18 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents },
-    footer: { type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm', contents: [refreshButton(), viewButton()] },
+    footer: {
+      type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm',
+      contents: [
+        viewButton(),
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            refreshButton(),
+            { type: 'box', layout: 'vertical', flex: 2, contents: [] },
+          ],
+        },
+      ],
+    },
   }
 }
 
@@ -467,7 +500,18 @@ export async function generateEODReport() {
         ],
       },
       body: { type: 'box', layout: 'vertical', paddingAll: 'lg', contents },
-      footer: { type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm', contents: [refreshButton(), viewButton()] },
+      footer: {
+      type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm',
+      contents: [
+        viewButton(),
+        {
+          type: 'box', layout: 'horizontal', contents: [
+            refreshButton(),
+            { type: 'box', layout: 'vertical', flex: 2, contents: [] },
+          ],
+        },
+      ],
+    },
     },
   }
 }
