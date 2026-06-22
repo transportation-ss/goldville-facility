@@ -4,38 +4,33 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function UnlockPage() {
-  const videoRef  = useRef<HTMLVideoElement>(null)
-  const router    = useRouter()
-  const [started, setStarted] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const router   = useRouter()
+  const [flash, setFlash] = useState(false)
 
-  function handleTap() {
-    const v = videoRef.current
-    if (!v) return
-    setStarted(true)
-    v.play()
-    v.onended = () => router.replace('/housekeeping')
+  function handleEnded() {
+    setFlash(true)
+    setTimeout(() => router.replace('/login'), 400)
   }
 
   return (
-    <div
-      onClick={handleTap}
-      style={{ position: 'fixed', inset: 0, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-    >
+    <div style={{ position: 'fixed', inset: 0, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <video
         ref={videoRef}
         src="/unlock.mp4"
+        autoPlay
+        muted
         playsInline
+        onEnded={handleEnded}
         style={{ maxWidth: '100%', maxHeight: '100%' }}
       />
-      {!started && (
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: '16px',
-        }}>
-          <div style={{ fontSize: '64px' }}>🔓</div>
-          <div style={{ color: '#fff', fontSize: '20px', fontWeight: 'bold', letterSpacing: '0.05em' }}>點擊解除封印</div>
-        </div>
-      )}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: '#fff',
+        opacity: flash ? 1 : 0,
+        transition: flash ? 'opacity 0.3s ease-in' : 'none',
+        pointerEvents: 'none',
+      }} />
     </div>
   )
 }
