@@ -36,6 +36,15 @@ function viewButton() {
   }
 }
 
+function refreshButton() {
+  return {
+    type: 'button',
+    action: { type: 'message', label: '🔄 重新整理', text: '今日任務' },
+    style: 'secondary',
+    height: 'sm',
+  }
+}
+
 // ── 任務類型分組標頭 ──────────────────────────────────────
 function typeGroupHeader(taskType: string | null, groupItems: any[]) {
   const typeLabel = taskType ? (TASK_TYPE_LABELS[taskType as TaskType] ?? taskType) : '未分類'
@@ -152,7 +161,7 @@ function combinedBubble(title: string, headerColor: string, tasks: any[], emptyT
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(tasks, emptyText, taskRow) },
-    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
+    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm', contents: [viewButton(), refreshButton()] },
   }
 }
 
@@ -178,7 +187,7 @@ function adhocBubble(orders: any[]) {
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(orders, '目前無臨時派工', adhocRow) },
-    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
+    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm', contents: [viewButton(), refreshButton()] },
   }
 }
 
@@ -291,7 +300,7 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents },
-    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
+    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm', contents: [viewButton(), refreshButton()] },
   }
 }
 
@@ -461,7 +470,7 @@ export async function generateEODReport() {
         ],
       },
       body: { type: 'box', layout: 'vertical', paddingAll: 'lg', contents },
-      footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', contents: [viewButton()] },
+      footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm', contents: [viewButton(), refreshButton()] },
     },
   }
 }
