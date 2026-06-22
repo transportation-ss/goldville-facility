@@ -11,6 +11,7 @@ function textMsg(text: string) {
 
 const NIGHTSHIFT_URL = 'https://goldville-facility.vercel.app/housekeeping'
 const UNLOCK_URL     = 'https://goldville-facility.vercel.app/unlock'
+const UNLOCK2_URL    = 'https://goldville-facility.vercel.app/unlock2'
 
 // ── 任務類型對應顏色（呼應 web TASK_TYPE_COLORS）─────────────
 const TASK_TYPE_LINE_COLORS: Record<TaskType, string> = {
@@ -499,4 +500,22 @@ export async function generateUnlockReport() {
   }
 
   return { ...report, altText: '🔓 封印解除！今日房務安排' }
+}
+
+export async function generateUnlock2Report() {
+  const report = await generateHousekeepingReport()
+  if (report.type !== 'flex') return report
+
+  const carousel = (report as any).contents
+  const firstBubble = carousel?.contents?.[0]
+  if (firstBubble?.footer?.contents) {
+    for (const item of firstBubble.footer.contents) {
+      if (item?.action?.uri === NIGHTSHIFT_URL) {
+        item.action.uri = UNLOCK2_URL
+        item.action.label = '🌙 進入系統'
+      }
+    }
+  }
+
+  return { ...report, altText: '🌙 月光變身！今日房務安排' }
 }

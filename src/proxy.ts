@@ -50,7 +50,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // 未登入 → 導向登入頁
-  if (!user && !pathname.startsWith('/login') && !pathname.startsWith('/register') && !pathname.startsWith('/api') && !pathname.startsWith('/unlock')) {
+  if (!user && !pathname.startsWith('/login') && !pathname.startsWith('/register') && !pathname.startsWith('/api') && !pathname.startsWith('/unlock') && !pathname.startsWith('/unlock2')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
