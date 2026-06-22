@@ -47,6 +47,13 @@ function refreshButton() {
   }
 }
 
+function footer() {
+  return {
+    type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm',
+    contents: [refreshButton(), viewButton()],
+  }
+}
+
 // ── 任務類型分組標頭 ──────────────────────────────────────
 function typeGroupHeader(taskType: string | null, groupItems: any[]) {
   const typeLabel = taskType ? (TASK_TYPE_LABELS[taskType as TaskType] ?? taskType) : '未分類'
@@ -142,7 +149,7 @@ function groupedContents(items: any[], emptyText: string, rowFn: (t: any) => any
 }
 
 // ── 客房／公共空間卡 ──────────────────────────────────────
-function combinedBubble(title: string, headerColor: string, tasks: any[], emptyText: string) {
+function combinedBubble(title: string, headerColor: string, tasks: any[], emptyText: string, showFooter = false) {
   const doneCount = tasks.filter(t => t.status === 'completed').length
   const allDone   = tasks.length > 0 && doneCount === tasks.length
   const badgeColor = tasks.length === 0 ? '#9CA3AF' : allDone ? '#10B981' : '#F59E0B'
@@ -163,23 +170,12 @@ function combinedBubble(title: string, headerColor: string, tasks: any[], emptyT
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(tasks, emptyText, taskRow) },
-    footer: {
-      type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm',
-      contents: [
-        viewButton(),
-        {
-          type: 'box', layout: 'horizontal', contents: [
-            refreshButton(),
-            { type: 'box', layout: 'vertical', flex: 2, contents: [] },
-          ],
-        },
-      ],
-    },
+    ...(showFooter ? { footer: footer() } : {}),
   }
 }
 
 // ── 臨時派工卡 ────────────────────────────────────────────
-function adhocBubble(orders: any[]) {
+function adhocBubble(orders: any[], showFooter = false) {
   const doneCount = orders.filter(o => o.status === 'completed').length
   const allDone   = orders.length > 0 && doneCount === orders.length
   const badgeColor = orders.length === 0 ? '#9CA3AF' : allDone ? '#10B981' : '#F59E0B'
@@ -200,23 +196,12 @@ function adhocBubble(orders: any[]) {
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(orders, '目前無臨時派工', adhocRow) },
-    footer: {
-      type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm',
-      contents: [
-        viewButton(),
-        {
-          type: 'box', layout: 'horizontal', contents: [
-            refreshButton(),
-            { type: 'box', layout: 'vertical', flex: 2, contents: [] },
-          ],
-        },
-      ],
-    },
+    ...(showFooter ? { footer: footer() } : {}),
   }
 }
 
 // ── 優先處理卡（緊急任務彙總，四層分組）─────────────────
-function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
+function urgentBubble(urgentTasks: any[], urgentAdhoc: any[], showFooter = false) {
   const total = urgentTasks.length + urgentAdhoc.length
   const done  = [...urgentTasks, ...urgentAdhoc].filter(i => i.status === 'completed').length
 
@@ -324,18 +309,7 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents },
-    footer: {
-      type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm',
-      contents: [
-        viewButton(),
-        {
-          type: 'box', layout: 'horizontal', contents: [
-            refreshButton(),
-            { type: 'box', layout: 'vertical', flex: 2, contents: [] },
-          ],
-        },
-      ],
-    },
+    ...(showFooter ? { footer: footer() } : {}),
   }
 }
 
@@ -396,9 +370,10 @@ export async function generateHousekeepingReport() {
   const publicTasks = normalTasks.filter(t => t.room?.room_type !== '客房')
   const urgentCount = urgentTasks.length + urgentAdhoc.length
 
+  const hasUrgent = urgentCount > 0
   const bubbles = [
-    ...(urgentCount > 0 ? [urgentBubble(urgentTasks, urgentAdhoc)] : []),
-    combinedBubble('🛏 客房派工', '#1E40AF', guestTasks, '今日無客房任務'),
+    ...(hasUrgent ? [urgentBubble(urgentTasks, urgentAdhoc, true)] : []),
+    combinedBubble('🛏 客房派工', '#1E40AF', guestTasks, '今日無客房任務', !hasUrgent),
     combinedBubble('🏢 公共空間', '#065F46', publicTasks, '今日無公共空間任務'),
     adhocBubble(normalAdhoc),
   ]
@@ -500,18 +475,7 @@ export async function generateEODReport() {
         ],
       },
       body: { type: 'box', layout: 'vertical', paddingAll: 'lg', contents },
-      footer: {
-      type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm',
-      contents: [
-        viewButton(),
-        {
-          type: 'box', layout: 'horizontal', contents: [
-            refreshButton(),
-            { type: 'box', layout: 'vertical', flex: 2, contents: [] },
-          ],
-        },
-      ],
-    },
+      footer: footer(),
     },
   }
 }
