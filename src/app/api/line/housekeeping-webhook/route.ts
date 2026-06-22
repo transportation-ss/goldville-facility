@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as crypto from 'crypto'
-import { generateHousekeepingReport, generateEODReport } from '@/lib/line/housekeeping-report'
+import { generateHousekeepingReport, generateEODReport, generateUnlockReport } from '@/lib/line/housekeeping-report'
 
 const CHANNEL_SECRET       = process.env.LINE_HOUSEKEEPING_CHANNEL_SECRET ?? ''
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_HOUSEKEEPING_CHANNEL_ACCESS_TOKEN ?? ''
 
-const EOD_KEYWORDS  = ['收工', '下班', '收工確認']
-const KEYWORDS      = ['今日任務', '任務', '今天任務', '今日派工', '派工']
+const EOD_KEYWORDS    = ['收工', '下班', '收工確認']
+const UNLOCK_KEYWORDS = ['封印解除']
+const KEYWORDS        = ['今日任務', '任務', '今天任務', '今日派工', '派工']
 
 function verifySignature(body: string, signature: string): boolean {
   const hmac = crypto.createHmac('SHA256', CHANNEL_SECRET)
@@ -47,13 +48,16 @@ export async function POST(req: NextRequest) {
     const replyToken = event.replyToken
 
 const isEOD     = EOD_KEYWORDS.some(k => text.includes(k))
+    const isUnlock  = UNLOCK_KEYWORDS.some(k => text.includes(k))
     const isKeyword = KEYWORDS.some(k => text.includes(k))
-    if (!isEOD && !isKeyword) continue
+    if (!isEOD && !isUnlock && !isKeyword) continue
 
     try {
       const message = isEOD
         ? await generateEODReport()
-        : await generateHousekeepingReport()
+        : isUnlock
+          ? await generateUnlockReport()
+          : await generateHousekeepingReport()
       await reply(replyToken, [message])
     } catch (e) {
       await reply(replyToken, [{ type: 'text', text: '發生錯誤，請稍後再試。' }])

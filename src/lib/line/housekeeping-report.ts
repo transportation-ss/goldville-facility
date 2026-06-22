@@ -10,6 +10,7 @@ function textMsg(text: string) {
 }
 
 const NIGHTSHIFT_URL = 'https://goldville-facility.vercel.app/housekeeping'
+const UNLOCK_URL     = 'https://goldville-facility.vercel.app/unlock'
 
 // ── 任務類型對應顏色（呼應 web TASK_TYPE_COLORS）─────────────
 const TASK_TYPE_LINE_COLORS: Record<TaskType, string> = {
@@ -478,4 +479,24 @@ export async function generateEODReport() {
       footer: footer(),
     },
   }
+}
+
+// ── 封印解除（搞笑入口）──────────────────────────────────
+export async function generateUnlockReport() {
+  const report = await generateHousekeepingReport()
+  if (report.type !== 'flex') return report
+
+  // 把 carousel 第一張卡的「查看詳細派工單」按鈕換成 unlock URL
+  const carousel = (report as any).contents
+  const firstBubble = carousel?.contents?.[0]
+  if (firstBubble?.footer?.contents) {
+    for (const item of firstBubble.footer.contents) {
+      if (item?.action?.uri === NIGHTSHIFT_URL) {
+        item.action.uri = UNLOCK_URL
+        item.action.label = '🔓 進入系統'
+      }
+    }
+  }
+
+  return { ...report, altText: '🔓 封印解除！今日房務安排' }
 }
