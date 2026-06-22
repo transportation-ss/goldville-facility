@@ -33,15 +33,17 @@ function viewButton() {
     style: 'primary',
     color: '#10B981',
     height: 'sm',
+    flex: 2,
   }
 }
 
 function refreshButton() {
   return {
     type: 'button',
-    action: { type: 'message', label: '🔄 重新整理', text: '今日任務' },
+    action: { type: 'message', label: '🔄 更新', text: '今日任務' },
     style: 'secondary',
     height: 'sm',
+    flex: 1,
   }
 }
 
@@ -161,7 +163,7 @@ function combinedBubble(title: string, headerColor: string, tasks: any[], emptyT
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(tasks, emptyText, taskRow) },
-    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm', contents: [viewButton(), refreshButton()] },
+    footer: { type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm', contents: [refreshButton(), viewButton()] },
   }
 }
 
@@ -187,7 +189,7 @@ function adhocBubble(orders: any[]) {
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: groupedContents(orders, '目前無臨時派工', adhocRow) },
-    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm', contents: [viewButton(), refreshButton()] },
+    footer: { type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm', contents: [refreshButton(), viewButton()] },
   }
 }
 
@@ -300,7 +302,7 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[]) {
       }],
     },
     body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents },
-    footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm', contents: [viewButton(), refreshButton()] },
+    footer: { type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm', contents: [refreshButton(), viewButton()] },
   }
 }
 
@@ -374,11 +376,6 @@ export async function generateHousekeepingReport() {
     type: 'flex',
     altText: `今日房務安排 ${today}（${totalCount} 項${urgentCount > 0 ? ` / ${urgentCount} 緊急` : ''}）`,
     contents: { type: 'carousel', contents: bubbles },
-    quickReply: {
-      items: [
-        { type: 'action', action: { type: 'message', label: '今日任務', text: '今日任務' } },
-      ],
-    },
   }
 }
 
@@ -470,7 +467,7 @@ export async function generateEODReport() {
         ],
       },
       body: { type: 'box', layout: 'vertical', paddingAll: 'lg', contents },
-      footer: { type: 'box', layout: 'vertical', paddingAll: 'sm', spacing: 'sm', contents: [viewButton(), refreshButton()] },
+      footer: { type: 'box', layout: 'horizontal', paddingAll: 'sm', spacing: 'sm', contents: [refreshButton(), viewButton()] },
     },
   }
 }
