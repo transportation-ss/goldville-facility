@@ -6,7 +6,7 @@ const CHANNEL_SECRET       = process.env.LINE_HOUSEKEEPING_CHANNEL_SECRET ?? ''
 const CHANNEL_ACCESS_TOKEN = process.env.LINE_HOUSEKEEPING_CHANNEL_ACCESS_TOKEN ?? ''
 
 const EOD_KEYWORDS    = ['收工', '下班', '收工確認']
-const UNLOCK_KEYWORDS = ['封印解除']
+const UNLOCK_KEYWORDS = ['封印解除', '月光變身']
 const KEYWORDS        = ['今日任務', '任務', '今天任務', '今日派工', '派工']
 
 function verifySignature(body: string, signature: string): boolean {
