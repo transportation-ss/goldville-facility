@@ -365,6 +365,11 @@ export async function generateHousekeepingReport() {
     type: 'flex',
     altText: `今日房務安排 ${today}（${totalCount} 項${urgentCount > 0 ? ` / ${urgentCount} 緊急` : ''}）`,
     contents: { type: 'carousel', contents: bubbles },
+    quickReply: {
+      items: [
+        { type: 'action', action: { type: 'message', label: '今日任務', text: '今日任務' } },
+      ],
+    },
   }
 }
 
