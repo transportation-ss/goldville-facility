@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function UnlockPage() {
@@ -8,9 +8,13 @@ export default function UnlockPage() {
   const router   = useRouter()
   const [flash, setFlash] = useState(false)
 
+  useEffect(() => {
+    router.prefetch('/login')
+  }, [router])
+
   function handleEnded() {
     setFlash(true)
-    setTimeout(() => router.replace('/login'), 400)
+    router.replace('/login')
   }
 
   return (
