@@ -64,15 +64,13 @@ export async function updatePlan(planId: string, patch: { general_notes?: string
 export async function publishPlan(planId: string) {
   await updatePlan(planId, { status: 'published' })
 
-  // 非同步推送，不阻塞發布流程
-  import('@/lib/line/housekeeping-report').then(async ({ generateHousekeepingReport, pushReportToManager }) => {
-    try {
-      const report = await generateHousekeepingReport()
-      await pushReportToManager(report)
-    } catch (e) {
-      console.error('[publishPlan] LINE push failed', e)
-    }
-  })
+  try {
+    const { generateHousekeepingReport, pushReportToManager } = await import('@/lib/line/housekeeping-report')
+    const report = await generateHousekeepingReport()
+    await pushReportToManager(report)
+  } catch (e) {
+    console.error('[publishPlan] LINE push failed', e)
+  }
 }
 
 // ── 取得派工單任務 ────────────────────────────────────────
