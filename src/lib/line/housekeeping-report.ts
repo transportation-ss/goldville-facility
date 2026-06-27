@@ -150,7 +150,57 @@ function groupedContents(items: any[], emptyText: string, rowFn: (t: any) => any
   return contents
 }
 
-// ── 客房／公共空間卡 ──────────────────────────────────────
+// ── 客房派工卡（分清潔／保養兩段）────────────────────────
+function guestBubble(tasks: any[], showFooter = false) {
+  const cleanTasks       = tasks.filter(t => t.task_type !== 'vacant')
+  const maintenanceTasks = tasks.filter(t => t.task_type === 'vacant')
+  const doneCount = tasks.filter(t => t.status === 'completed').length
+  const allDone   = tasks.length > 0 && doneCount === tasks.length
+  const badgeColor = tasks.length === 0 ? '#9CA3AF' : allDone ? '#10B981' : '#F59E0B'
+
+  const sectionHeader = (label: string) => ({
+    type: 'box', layout: 'horizontal', margin: 'lg', paddingBottom: 'xs',
+    borderWidth: '1px', borderColor: '#E5E7EB',
+    contents: [
+      { type: 'text', text: label, size: 'xs', color: '#6B7280', weight: 'bold' },
+    ],
+  })
+
+  const body: any[] = []
+  if (cleanTasks.length > 0) {
+    body.push(sectionHeader('清潔'))
+    body.push(...groupedContents(cleanTasks, '', taskRow))
+  }
+  if (maintenanceTasks.length > 0) {
+    if (cleanTasks.length > 0) body.push({ type: 'separator', margin: 'lg', color: '#D1D5DB' })
+    body.push(sectionHeader('保養'))
+    body.push(...groupedContents(maintenanceTasks, '', taskRow))
+  }
+  if (tasks.length === 0) {
+    body.push({ type: 'text', text: '今日無客房任務', size: 'sm', color: '#9CA3AF', align: 'center', margin: 'xl' })
+  }
+
+  return {
+    type: 'bubble', size: 'mega',
+    header: {
+      type: 'box', layout: 'vertical', backgroundColor: '#1E40AF', paddingAll: 'md',
+      contents: [{
+        type: 'box', layout: 'horizontal', contents: [
+          { type: 'text', text: '🛏 客房派工', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+          {
+            type: 'box', layout: 'vertical', flex: 0, backgroundColor: badgeColor,
+            cornerRadius: '4px', paddingStart: 'sm', paddingEnd: 'sm', paddingTop: 'xs', paddingBottom: 'xs',
+            contents: [{ type: 'text', text: `${doneCount}/${tasks.length}`, color: '#FFFFFF', size: 'xs', weight: 'bold' }],
+          },
+        ],
+      }],
+    },
+    body: { type: 'box', layout: 'vertical', paddingAll: 'md', contents: body },
+    ...(showFooter ? { footer: footer() } : {}),
+  }
+}
+
+// ── 公共空間卡 ────────────────────────────────────────────
 function combinedBubble(title: string, headerColor: string, tasks: any[], emptyText: string, showFooter = false) {
   const doneCount = tasks.filter(t => t.status === 'completed').length
   const allDone   = tasks.length > 0 && doneCount === tasks.length
@@ -362,12 +412,11 @@ export async function generateHousekeepingReport() {
   const allAdhoc = adhocOrders ?? []
 
   const urgentTasks = allTasks.filter(t => t.priority === 'urgent')
-  const urgentAdhoc = allAdhoc.filter(o => o.priority === 'urgent')
+  // 所有臨時任務現在都是緊急，全部進優先處理卡
+  const urgentAdhoc = allAdhoc
 
-  // 緊急任務已在「優先處理」卡顯示，其他卡排除
+  // 緊急任務已在「優先處理」卡顯示，客房/公共空間排除緊急
   const normalTasks = allTasks.filter(t => t.priority !== 'urgent')
-  const normalAdhoc = allAdhoc.filter(o => o.priority !== 'urgent')
-
   const guestTasks  = normalTasks.filter(t => t.room?.room_type === '客房')
   const publicTasks = normalTasks.filter(t => t.room?.room_type !== '客房')
   const urgentCount = urgentTasks.length + urgentAdhoc.length
@@ -375,9 +424,8 @@ export async function generateHousekeepingReport() {
   const hasUrgent = urgentCount > 0
   const bubbles = [
     ...(hasUrgent ? [urgentBubble(urgentTasks, urgentAdhoc, true)] : []),
-    combinedBubble('🛏 客房派工', '#1E40AF', guestTasks, '今日無客房任務', !hasUrgent),
+    guestBubble(guestTasks, !hasUrgent),
     combinedBubble('🏢 公共空間', '#065F46', publicTasks, '今日無公共空間任務'),
-    adhocBubble(normalAdhoc),
   ]
 
   const totalCount = allTasks.length + allAdhoc.length

@@ -44,7 +44,7 @@ export async function createAdhocOrder(order: {
       description: order.description || null,
       room_id:     order.roomId || null,
       task_type:   order.taskType || null,
-      priority:    order.priority,
+      priority:    'urgent',
       assigned_to: order.assignedTo || null,
       created_by:  user.id,
     })
