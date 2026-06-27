@@ -65,7 +65,7 @@ function NotesModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center">
       <div className="bg-white w-full max-w-md rounded-t-2xl md:rounded-2xl p-5">
-        <h3 className="text-base font-semibold text-gray-900 mb-1">完成備註</h3>
+        <h3 className="text-base font-semibold text-gray-900 mb-1">備註</h3>
         <p className="text-sm text-gray-500 mb-4 truncate">{label}</p>
         <textarea
           value={notes} onChange={e => setNotes(e.target.value)}
@@ -114,9 +114,8 @@ function TaskRow({ task, onComplete, onUncomplete, onEditNotes }: {
         }
       </button>
       <div
-        className="flex-1 min-w-0"
-        onClick={() => done ? onEditNotes(task.id, label, task.completion_notes ?? '') : undefined}
-        style={done ? { cursor: 'pointer' } : undefined}
+        className="flex-1 min-w-0 cursor-pointer"
+        onClick={() => onEditNotes(task.id, label, task.completion_notes ?? '')}
       >
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
@@ -124,19 +123,17 @@ function TaskRow({ task, onComplete, onUncomplete, onEditNotes }: {
         </div>
         {task.assignee && <p className="text-xs text-gray-400 mt-0.5">負責：{task.assignee.display_name}</p>}
         {task.special_notes && <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1 mt-1">{task.special_notes}</p>}
-        {done && (
-          <div className="mt-1 space-y-0.5">
-            {task.completer && (
-              <p className="text-xs text-emerald-600">
-                ✓ {task.completer.display_name}
-                {task.completed_at && <span className="text-gray-400 ml-1">{twTime(task.completed_at)}</span>}
-              </p>
-            )}
-            <p className="text-xs text-gray-400">
-              {task.completion_notes ? `💬 ${task.completion_notes}` : '點此新增備註…'}
+        <div className="mt-1 space-y-0.5">
+          {done && task.completer && (
+            <p className="text-xs text-emerald-600">
+              ✓ {task.completer.display_name}
+              {task.completed_at && <span className="text-gray-400 ml-1">{twTime(task.completed_at)}</span>}
             </p>
-          </div>
-        )}
+          )}
+          <p className="text-xs text-gray-400">
+            {task.completion_notes ? `💬 ${task.completion_notes}` : '點此新增備註…'}
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -161,9 +158,8 @@ function AdhocRow({ order, onComplete, onUncomplete, onEditNotes }: {
         }
       </button>
       <div
-        className="flex-1 min-w-0"
-        onClick={() => done ? onEditNotes(order.id, order.title, order.completion_notes ?? '') : undefined}
-        style={done ? { cursor: 'pointer' } : undefined}
+        className="flex-1 min-w-0 cursor-pointer"
+        onClick={() => onEditNotes(order.id, order.title, order.completion_notes ?? '')}
       >
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
@@ -178,19 +174,17 @@ function AdhocRow({ order, onComplete, onUncomplete, onEditNotes }: {
           <Clock className="w-3 h-3" />
           派工：{twTimeShort(order.created_at)}
         </p>
-        {done && (
-          <div className="mt-1 space-y-0.5">
-            {order.completer && (
-              <p className="text-xs text-emerald-600">
-                ✓ {order.completer.display_name}
-                {order.completed_at && <span className="text-gray-400 ml-1">{twTime(order.completed_at)}</span>}
-              </p>
-            )}
-            <p className="text-xs text-gray-400">
-              {order.completion_notes ? `💬 ${order.completion_notes}` : '點此新增備註…'}
+        <div className="mt-1 space-y-0.5">
+          {done && order.completer && (
+            <p className="text-xs text-emerald-600">
+              ✓ {order.completer.display_name}
+              {order.completed_at && <span className="text-gray-400 ml-1">{twTime(order.completed_at)}</span>}
             </p>
-          </div>
-        )}
+          )}
+          <p className="text-xs text-gray-400">
+            {order.completion_notes ? `💬 ${order.completion_notes}` : '點此新增備註…'}
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -367,7 +361,9 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
   }
 
   // ── 分類 ──
-  const guestTasks  = optimisticTasks.filter(t => t.room?.room_type === '客房').sort(compareByTypeFloorRoom)
+  const guestTasks      = optimisticTasks.filter(t => t.room?.room_type === '客房').sort(compareByTypeFloorRoom)
+  const cleanTasks      = guestTasks.filter(t => t.task_type !== 'vacant')   // 打掃
+  const maintenanceTasks = guestTasks.filter(t => t.task_type === 'vacant')  // 保養（空房整備）
   const publicTasks = optimisticTasks.filter(t => t.room?.room_type !== '客房').sort(compareByTypeFloorRoom)
   const adhocTasks  = [...optimisticAdhoc].sort(compareByTypeFloorRoom)
 
@@ -436,12 +432,18 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
 
       {/* 分區統計卡 */}
       {plan?.status === 'published' && totalItems > 0 && (
-        <div className="flex gap-3 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           <StatCard
-            label="客房"
-            done={guestTasks.filter(t => t.status === 'completed').length}
-            total={guestTasks.length}
+            label="客房清潔"
+            done={cleanTasks.filter(t => t.status === 'completed').length}
+            total={cleanTasks.length}
             color="bg-blue-500 text-white"
+          />
+          <StatCard
+            label="客房保養"
+            done={maintenanceTasks.filter(t => t.status === 'completed').length}
+            total={maintenanceTasks.length}
+            color="bg-indigo-400 text-white"
           />
           <StatCard
             label="公共空間"

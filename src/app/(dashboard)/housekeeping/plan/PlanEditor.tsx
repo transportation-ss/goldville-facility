@@ -21,6 +21,7 @@ interface Props {
   adhocOrders:  HousekeepingAdhocOrder[]
   spaces:       SpaceOption[]
   staff:        { id: string; display_name: string }[]
+  userRole:     string
 }
 
 // ── 批次空間選擇器 ─────────────────────────────────────────
@@ -486,7 +487,7 @@ function AddAdhocForm({ spaces, staff, onDone, onAdded }: {
   const [title, setTitle]         = useState('')
   const [description, setDesc]    = useState('')
   const [taskType, setTaskType]   = useState<TaskType | ''>('')
-  const [priority, setPriority]   = useState<TaskPriority>('normal')
+  const [priority, setPriority]   = useState<TaskPriority>('urgent')
   const [roomId, setRoomId]       = useState('')
   const [assignedTo, setAssignedTo] = useState('')
   const [saving, setSaving]       = useState(false)
@@ -678,7 +679,8 @@ function PlanTaskRow({ task, onEdit, onDelete, canDelete }: {
 }
 
 // ── 主元件 ────────────────────────────────────────────────
-export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: Props) {
+export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff, userRole }: Props) {
+  const isAdmin = ['admin', 'manager'].includes(userRole)
   const [, startTransition] = useTransition()
   const [showAddForm, setShowAddForm]         = useState(false)
   const [showAddAdhocForm, setShowAddAdhocForm] = useState(false)
@@ -840,7 +842,7 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
                 key={t.id} task={t}
                 onEdit={setEditingTask}
                 onDelete={() => handleDelete(t.id)}
-                canDelete={plan.status !== 'completed'}
+                canDelete={plan.status !== 'completed' && (plan.status !== 'published' || isAdmin)}
               />
             ))}
             {tasks.length === 0 && (
@@ -848,8 +850,8 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
             )}
           </div>
 
-          {/* 新增固定任務（僅草稿階段可新增；發布後只能編輯） */}
-          {plan.status === 'draft' && (
+          {/* 新增固定任務（草稿：所有人；發布後：僅 admin/manager） */}
+          {(plan.status === 'draft' || (plan.status === 'published' && isAdmin)) && (
             <div className="mb-4">
               {showAddForm
                 ? (
@@ -969,7 +971,7 @@ export function PlanEditor({ today, plan, tasks, adhocOrders, spaces, staff }: P
           onSave={handleSaveEdit}
           onDelete={() => handleDelete(editingTask.id)}
           onClose={() => setEditingTask(null)}
-          canDelete={plan?.status !== 'completed'}
+          canDelete={plan?.status !== 'completed' && (plan?.status !== 'published' || isAdmin)}
         />
       )}
 
