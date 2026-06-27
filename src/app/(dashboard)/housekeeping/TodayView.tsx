@@ -95,11 +95,12 @@ function Toast({ message, type }: { message: string; type: 'loading' | 'success'
 }
 
 // ── Task 行 ───────────────────────────────────────────────
-function TaskRow({ task, onComplete, onUncomplete, onEditNotes }: {
+function TaskRow({ task, onComplete, onUncomplete, onEditNotes, showType }: {
   task: HousekeepingTask
   onComplete:   (id: string, label: string) => void
   onUncomplete: (id: string) => void
   onEditNotes:  (id: string, label: string, current: string) => void
+  showType?:    boolean
 }) {
   const done     = task.status === 'completed'
   const isUrgent = task.priority === 'urgent'
@@ -119,6 +120,11 @@ function TaskRow({ task, onComplete, onUncomplete, onEditNotes }: {
       >
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
+          {showType && task.task_type && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${TASK_TYPE_COLORS[task.task_type]}`}>
+              {TASK_TYPE_LABELS[task.task_type]}
+            </span>
+          )}
           <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>{label}</span>
         </div>
         {task.assignee && <p className="text-xs text-gray-400 mt-0.5">負責：{task.assignee.display_name}</p>}
@@ -360,6 +366,13 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
     })
   }
 
+  // ── 緊急彙總（所有緊急固定任務 + 所有臨時任務）──
+  type UrgentItem = { kind: 'task'; data: HousekeepingTask } | { kind: 'adhoc'; data: HousekeepingAdhocOrder }
+  const urgentSection: UrgentItem[] = [
+    ...optimisticTasks.filter(t => t.priority === 'urgent').map(t => ({ kind: 'task' as const, data: t })),
+    ...optimisticAdhoc.map(o => ({ kind: 'adhoc' as const, data: o })),
+  ].sort((a, b) => compareByTypeFloorRoom(a.data, b.data))
+
   // ── 分類 ──
   const guestTasks      = optimisticTasks.filter(t => t.room?.room_type === '客房').sort(compareByTypeFloorRoom)
   const cleanTasks      = guestTasks.filter(t => t.task_type !== 'vacant')   // 打掃
@@ -485,6 +498,35 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
             </p>
           )}
         </div>
+      )}
+
+      {/* 緊急及臨時任務彙總 */}
+      {plan?.status === 'published' && urgentSection.length > 0 && (
+        <CategorySection
+          title="⚡ 緊急及臨時任務"
+          color="bg-red-50 text-red-800"
+          count={urgentSection.length}
+          doneCount={urgentSection.filter(i => i.data.status === 'completed').length}
+          defaultOpen={true}
+        >
+          {urgentSection.map(item =>
+            item.kind === 'task' ? (
+              <TaskRow
+                key={item.data.id} task={item.data} showType
+                onComplete={(id, label) => handleComplete(id, label, 'task')}
+                onUncomplete={id => handleUncomplete(id, 'task')}
+                onEditNotes={(id, label, cur) => handleEditNotes(id, label, cur, 'task')}
+              />
+            ) : (
+              <AdhocRow
+                key={item.data.id} order={item.data}
+                onComplete={(id, label) => handleComplete(id, label, 'adhoc')}
+                onUncomplete={id => handleUncomplete(id, 'adhoc')}
+                onEditNotes={(id, label, cur) => handleEditNotes(id, label, cur, 'adhoc')}
+              />
+            )
+          )}
+        </CategorySection>
       )}
 
       {/* 客房 */}
