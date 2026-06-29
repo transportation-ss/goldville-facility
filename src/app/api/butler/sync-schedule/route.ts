@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchSheetSchedule, getCurrentSyncRange } from '@/lib/butler-schedule-sync'
 
+// GET: 除錯用，回傳 parser 結果但不寫入 DB
+export async function GET() {
+  try {
+    const { start, end } = getCurrentSyncRange()
+    const entries = await fetchSheetSchedule({ start, end })
+    return NextResponse.json({ ok: true, range: { start, end }, count: entries.length, entries })
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: e.message }, { status: 500 })
+  }
+}
+
 export async function POST() {
   try {
     // 只同步本週 + 下週，不動歷史資料
