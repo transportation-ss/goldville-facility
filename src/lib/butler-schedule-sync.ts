@@ -10,7 +10,7 @@
 const SHEET_ID = '1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM'
 
 // 已知的分頁 GID 清單，從最新到最舊排列（未來有 API Key 後可動態取得）
-const KNOWN_GIDS = ['1878188924', '2015301849']
+const KNOWN_GIDS = ['1878188924', '1672694789', '2015301849']
 
 export type SheetEntry = {
   date: string            // YYYY-MM-DD
@@ -97,6 +97,42 @@ function parseCsv(csv: string): string[][] {
   })
 }
 
+// ── 偵測 Sheet 格式 ──────────────────────────────────────
+// 橫向（July）：第一列是日期，每欄一天，每列一位人員
+// 豎向（June）：第一欄是日期，每列一天，其餘欄是人員
+function detectFormat(grid: string[][]): 'horizontal' | 'vertical' {
+  if (!grid[0]) return 'horizontal'
+  // 若 row[0][1] 是星期（一二三四五六日開頭）→ 豎向
+  const cell01 = (grid[0][1] ?? '').trim()
+  if (/^[一二三四五六日]/.test(cell01)) return 'vertical'
+  return 'horizontal'
+}
+
+// ── 豎向格式解析（June）────────────────────────────────
+function parseVertical(grid: string[][], filterStart?: string, filterEnd?: string): SheetEntry[] {
+  const results: SheetEntry[] = []
+  for (const row of grid) {
+    const date = parseDate(row[0] ?? '')
+    if (!date) continue
+    if (filterStart && date < filterStart) continue
+    if (filterEnd   && date > filterEnd)   continue
+    // 欄 2 以後是人員（欄 1 是星期/備注）
+    for (let col = 2; col < row.length; col++) {
+      const parsed = parseCell(row[col] ?? '')
+      if (!parsed) continue
+      results.push({
+        date,
+        staffName:  parsed.name,
+        shiftStart: parsed.isDayOff ? null : parsed.shiftStart,
+        shiftEnd:   parsed.isDayOff ? null : parsed.shiftEnd,
+        isDayOff:   parsed.isDayOff,
+        notes:      parsed.notes,
+      })
+    }
+  }
+  return results
+}
+
 // ── 從單一 GID 抓排班 ────────────────────────────────────
 async function fetchGid(gid: string, filterStart?: string, filterEnd?: string): Promise<SheetEntry[]> {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`
@@ -107,6 +143,11 @@ async function fetchGid(gid: string, filterStart?: string, filterEnd?: string): 
   const grid = parseCsv(csv)
   if (grid.length < 2) return []
 
+  if (detectFormat(grid) === 'vertical') {
+    return parseVertical(grid, filterStart, filterEnd)
+  }
+
+  // ── 橫向格式（July / March-May）────────────────────────
   const dateRow  = grid[0]
   const dataRows = grid.slice(2)
   const results: SheetEntry[] = []
