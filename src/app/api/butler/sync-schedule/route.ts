@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { fetchSheetSchedule } from '@/lib/butler-schedule-sync'
+import { fetchSheetSchedule, getCurrentSyncRange } from '@/lib/butler-schedule-sync'
 
 export async function POST() {
   try {
-    const sheetEntries = await fetchSheetSchedule()
+    // 只同步本週 + 下週，不動歷史資料
+    const { start, end } = getCurrentSyncRange()
+    const sheetEntries = await fetchSheetSchedule({ start, end })
     const supabase = createAdminClient()
 
     // 嘗試取帳號對照（有對應就填 staff_id，沒有就留 null）

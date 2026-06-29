@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getButlerSchedulesByMonth, getButlerStaff } from '../actions'
-import { fetchSheetSchedule, diffSchedules } from '@/lib/butler-schedule-sync'
+import { fetchSheetSchedule, diffSchedules, getCurrentSyncRange } from '@/lib/butler-schedule-sync'
 import { ButlerScheduleView } from './ButlerScheduleView'
 
 export const dynamic = 'force-dynamic'
@@ -28,11 +28,12 @@ export default async function ButlerSchedulePage() {
   ])
   const allSchedules = [...curSchedules, ...nextSchedules]
 
-  // 從 Google Sheets 取得最新班表並比對
+  // 從 Google Sheets 取得本週+下週班表並比對
   let diffs: Awaited<ReturnType<typeof diffSchedules>> = []
   let sheetError = ''
   try {
-    const sheetEntries = await fetchSheetSchedule()
+    const { start, end } = getCurrentSyncRange()
+    const sheetEntries = await fetchSheetSchedule({ start, end })
     diffs = diffSchedules(sheetEntries, allSchedules)
   } catch (e: any) {
     sheetError = e.message

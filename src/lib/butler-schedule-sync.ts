@@ -1,19 +1,37 @@
 /**
  * Google Sheets 管家班表同步工具
  * Sheet: https://docs.google.com/spreadsheets/d/1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM
+ *
+ * 已知分頁 GID（之後有 Google API Key 時改為動態抓取）：
+ *   2015301849 → 3/30–5/3（舊資料）
+ *   1878188924 → 6/29–7/31（目前使用中）
  */
 
-const SHEET_ID  = '1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM'
-const SHEET_GID = '2015301849'
-const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`
+const SHEET_ID = '1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM'
+
+// 已知的分頁 GID 清單，從最新到最舊排列（未來有 API Key 後可動態取得）
+const KNOWN_GIDS = ['1878188924', '2015301849']
 
 export type SheetEntry = {
-  date: string       // YYYY-MM-DD
+  date: string            // YYYY-MM-DD
   staffName: string
-  shiftStart: string | null  // HH:MM
-  shiftEnd: string | null    // HH:MM
+  shiftStart: string | null   // HH:MM
+  shiftEnd: string | null     // HH:MM
   isDayOff: boolean
   notes: string | null
+}
+
+// ── 取本週一到下週日的日期範圍 ────────────────────────────
+export function getCurrentSyncRange(): { start: string; end: string } {
+  const now = new Date(new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }) + 'T00:00:00+08:00')
+  const day = now.getDay()                          // 0=Sun
+  const mon = new Date(now)
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1))  // 本週一
+  const sun = new Date(mon)
+  sun.setDate(mon.getDate() + 13)                   // 下下週日（2週）
+
+  const fmt = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+  return { start: fmt(mon), end: fmt(sun) }
 }
 
 // ── 日期解析 ────────────────────────────────────────────
@@ -25,8 +43,7 @@ function parseDate(header: string): string | null {
   const now   = new Date()
   const curY  = now.getFullYear()
   const curM  = now.getMonth() + 1
-  // 月份 < 現在月份-6 時，可能是下一年；否則同年
-  const year = month < curM - 6 ? curY + 1 : curY
+  const year  = month < curM - 6 ? curY + 1 : curY
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
@@ -35,14 +52,13 @@ function parseCell(cell: string): { name: string; shiftStart: string | null; shi
   const raw = cell.trim()
   if (!raw) return null
 
-  // 取中文姓名（開頭的中文字）
   const nameMatch = raw.match(/^([一-鿿㐀-䶿]{2,4})/)
   if (!nameMatch) return null
   const name = nameMatch[1]
 
   const isDayOff = raw.includes('特休') || raw.includes('補休')
 
-  // 取所有時間點 HH:MM（支援全形冒號 ：和半形 :）
+  // 支援全形冒號 ：和半形 :
   const normalized = raw.replace(/：/g, ':')
   const times = [...normalized.matchAll(/(\d{1,2}:\d{2})/g)].map(m => {
     const [h, min] = m[1].split(':').map(Number)
@@ -52,11 +68,10 @@ function parseCell(cell: string): { name: string; shiftStart: string | null; shi
   const shiftStart: string | null = times[0] ?? null
   const shiftEnd: string | null   = times.length > 1 ? (times[times.length - 1] ?? null) : null
 
-  // 取括弧內備注
   const noteMatches = [...raw.matchAll(/\(([^)]+)\)/g)].map(m => m[1])
   const notes = noteMatches.filter(n => n !== '特休' && n !== '補休').join('、')
 
-  return { name, shiftStart: shiftStart ?? null, shiftEnd: shiftEnd ?? null, isDayOff, notes: notes || null }
+  return { name, shiftStart, shiftEnd, isDayOff, notes: notes || null }
 }
 
 // ── 解析 CSV ─────────────────────────────────────────────
@@ -82,23 +97,25 @@ function parseCsv(csv: string): string[][] {
   })
 }
 
-// ── 主函式：從 Google Sheets 取得排班 ─────────────────────
-export async function fetchSheetSchedule(): Promise<SheetEntry[]> {
-  const res = await fetch(CSV_URL, { next: { revalidate: 3600 } }) // cache 1hr
-  if (!res.ok) throw new Error(`無法取得班表: ${res.status}`)
+// ── 從單一 GID 抓排班 ────────────────────────────────────
+async function fetchGid(gid: string, filterStart?: string, filterEnd?: string): Promise<SheetEntry[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) return []
   const csv = await res.text()
 
   const grid = parseCsv(csv)
   if (grid.length < 2) return []
 
-  const dateRow    = grid[0]
-  const dataRows   = grid.slice(2) // 跳過日期列和星期列
-
+  const dateRow  = grid[0]
+  const dataRows = grid.slice(2)
   const results: SheetEntry[] = []
 
   for (let col = 0; col < dateRow.length; col++) {
     const date = parseDate(dateRow[col])
     if (!date) continue
+    if (filterStart && date < filterStart) continue
+    if (filterEnd   && date > filterEnd)   continue
 
     for (const row of dataRows) {
       const cell = row[col] ?? ''
@@ -119,6 +136,26 @@ export async function fetchSheetSchedule(): Promise<SheetEntry[]> {
   return results
 }
 
+// ── 主函式：從所有已知 GID 取得排班（可選日期篩選） ────────
+export async function fetchSheetSchedule(opts?: { start?: string; end?: string }): Promise<SheetEntry[]> {
+  const results = await Promise.all(
+    KNOWN_GIDS.map(gid => fetchGid(gid, opts?.start, opts?.end))
+  )
+  // 合併，去重（同 date+staffName 只留第一筆，優先最新 GID）
+  const seen = new Set<string>()
+  const merged: SheetEntry[] = []
+  for (const entries of results) {
+    for (const e of entries) {
+      const key = `${e.date}|${e.staffName}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        merged.push(e)
+      }
+    }
+  }
+  return merged
+}
+
 // ── 比對工具 ─────────────────────────────────────────────
 export type ScheduleDiff = {
   date: string
@@ -134,7 +171,6 @@ export function diffSchedules(
 ): ScheduleDiff[] {
   const diffs: ScheduleDiff[] = []
 
-  // Sheet → DB 比對（優先用 sheet_name，fallback 用 display_name）
   for (const entry of sheetEntries) {
     const dbMatch = dbSchedules.find(
       s => s.schedule_date === entry.date &&
