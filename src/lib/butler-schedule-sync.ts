@@ -148,8 +148,13 @@ async function fetchGid(gid: string, filterStart?: string, filterEnd?: string): 
   }
 
   // ── 橫向格式（July / March-May）────────────────────────
-  const dateRow  = grid[0]
-  const dataRows = grid.slice(2)
+  // 找到第一個含有日期的列（有些 sheet 首列是「日期」標題）
+  let dateRowIdx = 0
+  for (let i = 0; i < Math.min(grid.length, 4); i++) {
+    if (grid[i].some(cell => /\d+月\d+日/.test(cell))) { dateRowIdx = i; break }
+  }
+  const dateRow  = grid[dateRowIdx]
+  const dataRows = grid.slice(dateRowIdx + 2) // 跳過日期列和星期列
   const results: SheetEntry[] = []
 
   for (let col = 0; col < dateRow.length; col++) {
