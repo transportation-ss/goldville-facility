@@ -93,6 +93,15 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '使用說明書', href: '/nightshift/guide', icon: HelpCircle },
     ],
   },
+  {
+    type: 'group', label: '管家',
+    items: [
+      { label: '管家任務', href: '/butler',          icon: Sparkles,     exact: true },
+      { label: '派工安排', href: '/butler/plan',     icon: ClipboardList },
+      { label: '班表管理', href: '/butler/schedule', icon: History       },
+      { label: '歷史紀錄', href: '/butler/history',  icon: History       },
+    ],
+  },
 ]
 
 /** 工務身分 */
