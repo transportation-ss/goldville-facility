@@ -23,7 +23,8 @@ export type ButlerTask = {
 
 export type ButlerSchedule = {
   id: string
-  staff_id: string
+  staff_id: string | null
+  sheet_name: string | null
   schedule_date: string
   shift_start: string | null
   shift_end: string | null
@@ -90,6 +91,13 @@ export async function getButlerSchedulesByWeek(startDate: string, endDate: strin
     .lte('schedule_date', endDate)
     .order('schedule_date')
   return (data ?? []) as ButlerSchedule[]
+}
+
+export async function getButlerSchedulesByMonth(year: number, month: number): Promise<ButlerSchedule[]> {
+  const start = `${year}-${String(month).padStart(2, '0')}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+  return getButlerSchedulesByWeek(start, end)
 }
 
 // ── 任務 CRUD ─────────────────────────────────────────────
