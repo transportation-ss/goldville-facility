@@ -2,12 +2,28 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchSheetSchedule, getCurrentSyncRange } from '@/lib/butler-schedule-sync'
 
-// GET: 除錯用，回傳 parser 結果但不寫入 DB
+// GET: 除錯用，回傳 raw CSV 前幾列讓我們看格式
 export async function GET() {
   try {
+    const SHEET_ID = '1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM'
+    const gid = '1878188924' // July sheet
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`
+    const res = await fetch(url, { cache: 'no-store', redirect: 'follow' })
+    const csv = await res.text()
+
+    // 簡單 CSV split（不處理 quotes）看前 10 列前 12 欄
+    const rows = csv.split('\n').slice(0, 10).map(line => line.split(',').slice(0, 12))
+
     const { start, end } = getCurrentSyncRange()
     const entries = await fetchSheetSchedule({ start, end })
-    return NextResponse.json({ ok: true, range: { start, end }, count: entries.length, entries })
+
+    return NextResponse.json({
+      ok: true,
+      range: { start, end },
+      count: entries.length,
+      entries,
+      rawGrid: rows, // 前 10 列前 12 欄原始 CSV
+    })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 })
   }
