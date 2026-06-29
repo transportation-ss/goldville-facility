@@ -16,6 +16,7 @@ export type ButlerTask = {
   priority: 'normal' | 'urgent'
   status: 'pending' | 'in_progress' | 'completed'
   completion_notes: string | null
+  completion_photo_url: string | null
   created_by: string | null
   created_at: string
   assignee?: { id: string; display_name: string } | null
@@ -153,7 +154,7 @@ export async function deleteButlerTask(id: string) {
   revalidatePath('/butler')
 }
 
-export async function completeButlerTask(id: string, notes: string) {
+export async function completeButlerTask(id: string, notes: string, photoUrl?: string | null) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('未登入')
@@ -163,8 +164,29 @@ export async function completeButlerTask(id: string, notes: string) {
     .update({
       status: 'completed',
       completion_notes: notes || null,
+      completion_photo_url: photoUrl ?? null,
       updated_at: new Date().toISOString(),
     })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath('/butler')
+}
+
+export async function uncompleteButlerTask(id: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('butler_tasks')
+    .update({ status: 'pending', completion_notes: null, completion_photo_url: null, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath('/butler')
+}
+
+export async function updateCompletionData(id: string, notes: string, photoUrl?: string | null) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('butler_tasks')
+    .update({ completion_notes: notes || null, completion_photo_url: photoUrl ?? undefined, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw new Error(error.message)
   revalidatePath('/butler')
