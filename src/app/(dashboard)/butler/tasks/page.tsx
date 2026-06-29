@@ -40,6 +40,7 @@ export default async function ButlerTasksPage() {
       tasks={tasks}
       staff={staff}
       userRole={profile?.role ?? ''}
+      userId={user!.id}
     />
   )
 }

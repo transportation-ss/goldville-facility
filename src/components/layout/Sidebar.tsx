@@ -42,7 +42,7 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 // ─── 型別 ──────────────────────────────────────
-type NavItem   = { label: string; href: string; icon: React.ElementType }
+type NavItem   = { label: string; href: string; icon: React.ElementType; exact?: boolean }
 type NavGroup  = { type: 'group'; label: string; items: NavItem[] }
 type NavSingle = { type: 'single' } & NavItem
 
@@ -234,10 +234,9 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '管家',
     items: [
-      { label: '今日任務', href: '/butler',          icon: Sparkles    },
-      { label: '本週任務', href: '/butler/tasks',    icon: CalendarCheck },
+      { label: '管家任務', href: '/butler',          icon: Sparkles,     exact: true },
       { label: '派工安排', href: '/butler/plan',     icon: ClipboardList },
-      { label: '班表管理', href: '/butler/schedule', icon: History      },
+      { label: '班表管理', href: '/butler/schedule', icon: History       },
     ],
   },
 ]
@@ -247,9 +246,8 @@ const butlerNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '管家',
     items: [
-      { label: '今日任務', href: '/butler',          icon: Sparkles    },
-      { label: '本週任務', href: '/butler/tasks',    icon: CalendarCheck },
-      { label: '班表',     href: '/butler/schedule', icon: History      },
+      { label: '管家任務', href: '/butler',          icon: Sparkles, exact: true },
+      { label: '班表',     href: '/butler/schedule', icon: History   },
     ],
   },
 ]
@@ -280,7 +278,7 @@ const nightshiftNav: (NavSingle | NavGroup)[] = [
 
 // ─── 子元件 ──────────────────────────────────
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+  const isActive = item.exact ? pathname === item.href : (pathname === item.href || pathname.startsWith(item.href + '/'))
   const Icon = item.icon
   return (
     <Link
@@ -296,7 +294,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
 }
 
 function SubNavLink({ item, pathname }: { item: NavItem; pathname: string }) {
-  const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+  const isActive = item.exact ? pathname === item.href : (pathname === item.href || pathname.startsWith(item.href + '/'))
   const Icon = item.icon
   return (
     <Link

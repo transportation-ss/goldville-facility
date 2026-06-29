@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useOptimistic, useTransition } from 'react'
-import { Plus, Clock, MapPin, User, CheckCircle2, Circle, AlertCircle, Pencil, Trash2 } from 'lucide-react'
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import { Plus, Clock, MapPin, User, CheckCircle2, Circle, AlertCircle, Pencil, Trash2, CalendarDays, History } from 'lucide-react'
 import type { ButlerTask, ButlerStaff } from './actions'
 import { createButlerTask, updateButlerTask, deleteButlerTask, completeButlerTask } from './actions'
 
@@ -10,6 +11,7 @@ interface Props {
   tasks: ButlerTask[]
   staff: ButlerStaff[]
   userRole: string
+  userId: string
 }
 
 const isManager = (role: string) => ['admin', 'manager', 'butler_manager'].includes(role)
@@ -29,9 +31,7 @@ function formatDuration(mins: number | null) {
 }
 
 // ── 新增/編輯任務 Modal ───────────────────────────────────
-function TaskModal({
-  task, staff, today, onClose,
-}: {
+function TaskModal({ task, staff, today, onClose }: {
   task?: ButlerTask | null
   staff: ButlerStaff[]
   today: string
@@ -48,7 +48,6 @@ function TaskModal({
     assigned_to:      task?.assigned_to ?? '',
     priority:         task?.priority ?? 'normal',
   })
-
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   async function handleSubmit(e: React.FormEvent) {
@@ -66,15 +65,10 @@ function TaskModal({
         assigned_to:      form.assigned_to || null,
         priority:         form.priority as 'normal' | 'urgent',
       }
-      if (task) {
-        await updateButlerTask(task.id, payload)
-      } else {
-        await createButlerTask(payload)
-      }
+      if (task) { await updateButlerTask(task.id, payload) }
+      else       { await createButlerTask(payload) }
       onClose()
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
   return (
@@ -87,11 +81,9 @@ function TaskModal({
         <form onSubmit={handleSubmit} className="p-4 space-y-3">
           <div>
             <label className="text-xs text-gray-500 mb-1 block">工作內容 *</label>
-            <input
-              className="w-full border rounded-lg px-3 py-2 text-sm"
+            <input className="w-full border rounded-lg px-3 py-2 text-sm"
               value={form.title} onChange={e => set('title', e.target.value)}
-              placeholder="例：協助住戶搬運行李" required
-            />
+              placeholder="例：協助住戶搬運行李" required />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -115,7 +107,7 @@ function TaskModal({
                 value={form.start_time} onChange={e => set('start_time', e.target.value)} />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">工作長度（分鐘）</label>
+              <label className="text-xs text-gray-500 mb-1 block">工作長度</label>
               <select className="w-full border rounded-lg px-3 py-2 text-sm"
                 value={form.duration_minutes} onChange={e => set('duration_minutes', e.target.value)}>
                 <option value="">不指定</option>
@@ -139,16 +131,13 @@ function TaskModal({
             <select className="w-full border rounded-lg px-3 py-2 text-sm"
               value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)}>
               <option value="">未指派</option>
-              {staff.map(s => (
-                <option key={s.id} value={s.id}>{s.display_name}</option>
-              ))}
+              {staff.map(s => <option key={s.id} value={s.id}>{s.display_name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">備注</label>
             <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={2}
-              value={form.notes} onChange={e => set('notes', e.target.value)}
-              placeholder="其他說明…" />
+              value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="其他說明…" />
           </div>
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
@@ -171,12 +160,8 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
 
   async function handleComplete() {
     setSaving(true)
-    try {
-      await completeButlerTask(task.id, notes)
-      onClose()
-    } finally {
-      setSaving(false)
-    }
+    try { await completeButlerTask(task.id, notes); onClose() }
+    finally { setSaving(false) }
   }
 
   return (
@@ -187,12 +172,9 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
           <p className="text-sm text-gray-500 mt-0.5 truncate">{task.title}</p>
         </div>
         <div className="p-4 space-y-3">
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">回報備注（選填）</label>
-            <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={3}
-              value={notes} onChange={e => setNotes(e.target.value)}
-              placeholder="例：住戶反映很滿意，已完成交接…" />
-          </div>
+          <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={3}
+            value={notes} onChange={e => setNotes(e.target.value)}
+            placeholder="回報備注（選填）…" />
           <div className="flex gap-2">
             <button onClick={onClose} className="flex-1 border rounded-lg py-2 text-sm text-gray-600">取消</button>
             <button onClick={handleComplete} disabled={saving}
@@ -207,24 +189,20 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
 }
 
 // ── 任務列 ────────────────────────────────────────────────
-function TaskRow({
-  task, canManage, onComplete, onEdit, onDelete,
-}: {
+function TaskRow({ task, canManage, onComplete, onEdit, onDelete }: {
   task: ButlerTask
   canManage: boolean
   onComplete: (t: ButlerTask) => void
   onEdit: (t: ButlerTask) => void
   onDelete: (id: string) => void
 }) {
-  const done = task.status === 'completed'
+  const done   = task.status === 'completed'
   const urgent = task.priority === 'urgent'
 
   return (
     <div className={`flex gap-3 py-3 ${done ? 'opacity-60' : ''}`}>
-      <button
-        onClick={() => !done && onComplete(task)}
-        className={`mt-0.5 shrink-0 ${done ? 'text-emerald-500 cursor-default' : 'text-gray-300 hover:text-emerald-400'}`}
-      >
+      <button onClick={() => !done && onComplete(task)}
+        className={`mt-0.5 shrink-0 ${done ? 'text-emerald-500 cursor-default' : 'text-gray-300 hover:text-emerald-400'}`}>
         {done ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
       </button>
       <div className="flex-1 min-w-0">
@@ -277,18 +255,20 @@ function TaskRow({
 }
 
 // ── 主元件 ───────────────────────────────────────────────
-export function ButlerTodayView({ today, tasks, staff, userRole }: Props) {
+export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props) {
   const canManage = isManager(userRole)
+  const [viewAll, setViewAll] = useState(false)
   const [modal, setModal] = useState<'add' | 'edit' | 'complete' | null>(null)
   const [selected, setSelected] = useState<ButlerTask | null>(null)
   const [, startTransition] = useTransition()
 
-  const pending   = tasks.filter(t => t.status !== 'completed')
-  const completed = tasks.filter(t => t.status === 'completed')
+  const filtered = viewAll ? tasks : tasks.filter(t => t.assigned_to === userId)
+  const pending   = filtered.filter(t => t.status !== 'completed')
+  const completed = filtered.filter(t => t.status === 'completed')
 
-  function openEdit(t: ButlerTask) { setSelected(t); setModal('edit') }
+  function openEdit(t: ButlerTask)     { setSelected(t); setModal('edit') }
   function openComplete(t: ButlerTask) { setSelected(t); setModal('complete') }
-  function closeModal() { setModal(null); setSelected(null) }
+  function closeModal()                { setModal(null); setSelected(null) }
 
   async function handleDelete(id: string) {
     if (!confirm('確定要刪除這個任務？')) return
@@ -301,19 +281,40 @@ export function ButlerTodayView({ today, tasks, staff, userRole }: Props) {
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            ✨ 今日任務
-          </h1>
+          <h1 className="text-xl font-bold text-gray-900">✨ 今日任務</h1>
           <p className="text-sm text-gray-400 mt-0.5">{dateLabel}</p>
         </div>
+        {/* 右上角導航 */}
+        <div className="flex items-center gap-2">
+          <Link href="/butler/tasks"
+            className="flex items-center gap-1 text-xs text-gray-500 border rounded-lg px-2.5 py-1.5 hover:bg-gray-50">
+            <CalendarDays className="w-3.5 h-3.5" />本週
+          </Link>
+          <Link href="/butler/history"
+            className="flex items-center gap-1 text-xs text-gray-500 border rounded-lg px-2.5 py-1.5 hover:bg-gray-50">
+            <History className="w-3.5 h-3.5" />歷史
+          </Link>
+        </div>
+      </div>
+
+      {/* 個人/全部切換 + 新增 */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex bg-gray-100 rounded-lg p-0.5 text-xs">
+          <button onClick={() => setViewAll(false)}
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors ${!viewAll ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+            我的任務
+          </button>
+          <button onClick={() => setViewAll(true)}
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors ${viewAll ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+            全部任務
+          </button>
+        </div>
         {canManage && (
-          <button
-            onClick={() => setModal('add')}
-            className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" /> 新增任務
+          <button onClick={() => setModal('add')}
+            className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm font-medium">
+            <Plus className="w-4 h-4" /> 新增
           </button>
         )}
       </div>
@@ -327,8 +328,8 @@ export function ButlerTodayView({ today, tasks, staff, userRole }: Props) {
         <div className="bg-white rounded-xl border p-3">
           <p className="text-xs text-gray-400">已完成</p>
           <p className="text-2xl font-bold text-emerald-600 mt-0.5">{completed.length}</p>
-          {tasks.length > 0 && (
-            <p className="text-xs text-gray-300">{Math.round(completed.length / tasks.length * 100)}%</p>
+          {filtered.length > 0 && (
+            <p className="text-xs text-gray-300">{Math.round(completed.length / filtered.length * 100)}%</p>
           )}
         </div>
       </div>
@@ -351,7 +352,9 @@ export function ButlerTodayView({ today, tasks, staff, userRole }: Props) {
       {/* 一般任務 */}
       <div className="bg-white border rounded-xl divide-y">
         {pending.filter(t => t.priority !== 'urgent').length === 0 && completed.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-10">今日尚無任務</p>
+          <p className="text-sm text-gray-400 text-center py-10">
+            {viewAll ? '今日尚無任務' : '今日沒有派給你的任務'}
+          </p>
         )}
         {pending.filter(t => t.priority !== 'urgent').map(t => (
           <div key={t.id} className="px-4">

@@ -13,7 +13,7 @@ export default async function ButlerPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase
-    .from('user_profiles').select('role').eq('id', user!.id).single()
+    .from('user_profiles').select('role, display_name').eq('id', user!.id).single()
 
   const [tasks, staff] = await Promise.all([
     getButlerTasksByDate(today),
@@ -26,6 +26,7 @@ export default async function ButlerPage() {
       tasks={tasks}
       staff={staff}
       userRole={profile?.role ?? ''}
+      userId={user!.id}
     />
   )
 }
