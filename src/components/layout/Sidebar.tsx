@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
-  Users, BookOpen, KeyRound, HelpCircle, BedDouble, History,
+  Users, BookOpen, KeyRound, HelpCircle, BedDouble, History, Sparkles,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -20,6 +20,8 @@ const HOUSEKEEPING_ROLES      = ['housekeeping']
 const TECH_HOUSEKEEPING_ROLES = ['tech_housekeeping']
 const HOUSEKEEPER_ROLES       = ['housekeeper']
 const FRONTDESK_DAY_ROLES     = ['frontdesk_day']
+const BUTLER_MANAGER_ROLES    = ['butler_manager']
+const BUTLER_ROLES            = ['butler']
 // 其餘（admin_staff, sales）→ 一般版
 
 // ─── 身分中文標籤 ──────────────────────────────
@@ -31,6 +33,8 @@ const ROLE_LABELS: Record<string, string> = {
   housekeeping:      '房務',
   housekeeper:       '生活管家',
   tech_housekeeping: '工務＋房務',
+  butler_manager:    '管家主管',
+  butler:            '管家',
   frontdesk_day:     '日班櫃台',
   frontdesk_night:   '大夜班',
   admin_staff:       '行政人員',
@@ -225,6 +229,31 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
   },
 ]
 
+/** 管家主管 */
+const butlerManagerNav: (NavSingle | NavGroup)[] = [
+  {
+    type: 'group', label: '管家',
+    items: [
+      { label: '今日任務', href: '/butler',          icon: Sparkles    },
+      { label: '本週任務', href: '/butler/tasks',    icon: CalendarCheck },
+      { label: '派工安排', href: '/butler/plan',     icon: ClipboardList },
+      { label: '班表管理', href: '/butler/schedule', icon: History      },
+    ],
+  },
+]
+
+/** 管家 */
+const butlerNav: (NavSingle | NavGroup)[] = [
+  {
+    type: 'group', label: '管家',
+    items: [
+      { label: '今日任務', href: '/butler',          icon: Sparkles    },
+      { label: '本週任務', href: '/butler/tasks',    icon: CalendarCheck },
+      { label: '班表',     href: '/butler/schedule', icon: History      },
+    ],
+  },
+]
+
 /** 大夜班身分 */
 const nightshiftNav: (NavSingle | NavGroup)[] = [
   {
@@ -335,6 +364,8 @@ export function Sidebar() {
   const isTechHousekeeping = TECH_HOUSEKEEPING_ROLES.includes(role)
   const isHousekeeper      = HOUSEKEEPER_ROLES.includes(role)
   const isFrontdeskDay     = FRONTDESK_DAY_ROLES.includes(role)
+  const isButlerManager    = BUTLER_MANAGER_ROLES.includes(role)
+  const isButler           = BUTLER_ROLES.includes(role)
 
   const nav = isAdmin            ? fullNav
             : isNightshift       ? nightshiftNav
@@ -344,6 +375,8 @@ export function Sidebar() {
             : isTechHousekeeping ? techHousekeepingNav
             : isHousekeeper      ? housekeeperNav
             : isFrontdeskDay     ? frontdeskDayNav
+            : isButlerManager    ? butlerManagerNav
+            : isButler           ? butlerNav
             : role               ? generalNav
             : []  // 尚未載入時不顯示
 
