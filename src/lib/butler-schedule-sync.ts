@@ -157,24 +157,27 @@ async function fetchGid(gid: string, filterStart?: string, filterEnd?: string): 
   const dataRows = grid.slice(dateRowIdx + 2) // 跳過日期列和星期列
   const results: SheetEntry[] = []
 
+  // 空白欄沿用前一日期（合併儲存格的 CSV 表現）
+  let currentDate: string | null = null
   for (let col = 0; col < dateRow.length; col++) {
-    const date = parseDate(dateRow[col])
-    if (!date) continue
-    if (filterStart && date < filterStart) continue
-    if (filterEnd   && date > filterEnd)   continue
+    const parsed = parseDate(dateRow[col])
+    if (parsed) currentDate = parsed
+    if (!currentDate) continue
+    if (filterStart && currentDate < filterStart) continue
+    if (filterEnd   && currentDate > filterEnd)   continue
 
     for (const row of dataRows) {
       const cell = row[col] ?? ''
-      const parsed = parseCell(cell)
-      if (!parsed) continue
+      const p = parseCell(cell)
+      if (!p) continue
 
       results.push({
-        date,
-        staffName:  parsed.name,
-        shiftStart: parsed.isDayOff ? null : parsed.shiftStart,
-        shiftEnd:   parsed.isDayOff ? null : parsed.shiftEnd,
-        isDayOff:   parsed.isDayOff,
-        notes:      parsed.notes,
+        date:       currentDate,
+        staffName:  p.name,
+        shiftStart: p.isDayOff ? null : p.shiftStart,
+        shiftEnd:   p.isDayOff ? null : p.shiftEnd,
+        isDayOff:   p.isDayOff,
+        notes:      p.notes,
       })
     }
   }
