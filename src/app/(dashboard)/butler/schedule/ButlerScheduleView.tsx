@@ -148,7 +148,7 @@ export function ButlerScheduleView({ today, year, month, schedules, staff, userR
       const res = await fetch('/api/butler/sync-schedule', { method: 'POST' })
       const data = await res.json()
       if (data.ok) {
-        setSyncResult(`✓ 同步完成：${data.synced} 筆更新，${data.skipped} 筆略過（姓名未匹配）`)
+        setSyncResult(`✓ 同步完成：${data.synced} 筆寫入，共 ${data.total} 筆`)
         setShowDiffs(false)
         startTransition(() => { window.location.reload() })
       } else {

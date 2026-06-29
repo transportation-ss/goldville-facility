@@ -42,8 +42,9 @@ function parseCell(cell: string): { name: string; shiftStart: string | null; shi
 
   const isDayOff = raw.includes('特休') || raw.includes('補休')
 
-  // 取所有時間點 HH:MM
-  const times = [...raw.matchAll(/(\d{1,2}:\d{2})/g)].map(m => {
+  // 取所有時間點 HH:MM（支援全形冒號 ：和半形 :）
+  const normalized = raw.replace(/：/g, ':')
+  const times = [...normalized.matchAll(/(\d{1,2}:\d{2})/g)].map(m => {
     const [h, min] = m[1].split(':').map(Number)
     return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
   })
@@ -129,14 +130,15 @@ export type ScheduleDiff = {
 
 export function diffSchedules(
   sheetEntries: SheetEntry[],
-  dbSchedules: { staff?: { display_name: string } | null; schedule_date: string; shift_start: string | null; shift_end: string | null; is_day_off: boolean; notes: string | null }[],
+  dbSchedules: { sheet_name?: string | null; staff?: { display_name: string } | null; schedule_date: string; shift_start: string | null; shift_end: string | null; is_day_off: boolean; notes: string | null }[],
 ): ScheduleDiff[] {
   const diffs: ScheduleDiff[] = []
 
-  // Sheet → DB 比對
+  // Sheet → DB 比對（優先用 sheet_name，fallback 用 display_name）
   for (const entry of sheetEntries) {
     const dbMatch = dbSchedules.find(
-      s => s.staff?.display_name === entry.staffName && s.schedule_date === entry.date
+      s => s.schedule_date === entry.date &&
+           (s.sheet_name === entry.staffName || s.staff?.display_name === entry.staffName)
     )
     if (!dbMatch) {
       diffs.push({ date: entry.date, staffName: entry.staffName, type: 'added', sheetData: entry, dbData: null })
