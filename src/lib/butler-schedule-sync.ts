@@ -23,15 +23,19 @@ export type SheetEntry = {
 
 // ── 取本週一到下週日的日期範圍 ────────────────────────────
 export function getCurrentSyncRange(): { start: string; end: string } {
-  const now = new Date(new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }) + 'T00:00:00+08:00')
-  const day = now.getDay()                          // 0=Sun
-  const mon = new Date(now)
-  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1))  // 本週一
-  const sun = new Date(mon)
-  sun.setDate(mon.getDate() + 13)                   // 下下週日（2週）
+  // 用台灣日期字串建立 Date（避免 Vercel UTC 環境的 getDay/getDate 時區問題）
+  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+  const today = new Date(todayStr)       // midnight UTC，但日期字串已是台灣日期
+  const day = today.getDay()            // 0=Sun, 1=Mon ...
+  const mon = new Date(today)
+  mon.setDate(today.getDate() - (day === 0 ? 6 : day - 1))  // 本週一
+  const end = new Date(mon)
+  end.setDate(mon.getDate() + 13)       // 2 週後的日
 
-  const fmt = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
-  return { start: fmt(mon), end: fmt(sun) }
+  return {
+    start: mon.toISOString().split('T')[0],
+    end:   end.toISOString().split('T')[0],
+  }
 }
 
 // ── 日期解析 ────────────────────────────────────────────
