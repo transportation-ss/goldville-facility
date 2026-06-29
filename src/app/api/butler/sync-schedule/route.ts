@@ -11,8 +11,8 @@ export async function GET() {
     const res = await fetch(url, { cache: 'no-store', redirect: 'follow' })
     const csv = await res.text()
 
-    // 簡單 CSV split（不處理 quotes）看前 10 列前 12 欄
-    const rows = csv.split('\n').slice(0, 10).map(line => line.split(',').slice(0, 12))
+    // 簡單 CSV split（不處理 quotes）看前 20 列前 12 欄
+    const rows = csv.split('\n').slice(0, 20).map(line => line.split(',').slice(0, 12))
 
     const { start, end } = getCurrentSyncRange()
     const entries = await fetchSheetSchedule({ start, end })

@@ -78,27 +78,35 @@ function parseCell(cell: string): { name: string; shiftStart: string | null; shi
   return { name, shiftStart, shiftEnd, isDayOff, notes: notes || null }
 }
 
-// ── 解析 CSV ─────────────────────────────────────────────
+// ── 解析 CSV（支援 quoted cells 內的嵌入換行符）─────────────
 function parseCsv(csv: string): string[][] {
-  const lines = csv.split('\n')
-  return lines.map(line => {
-    const cells: string[] = []
-    let cur = ''
-    let inQuotes = false
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i]
-      if (ch === '"') {
-        inQuotes = !inQuotes
-      } else if (ch === ',' && !inQuotes) {
-        cells.push(cur.trim())
-        cur = ''
-      } else {
-        cur += ch
-      }
+  const rows: string[][] = []
+  let cells: string[] = []
+  let cur = ''
+  let inQuotes = false
+
+  for (let i = 0; i < csv.length; i++) {
+    const ch = csv[i]
+    if (ch === '\r') continue
+    if (ch === '"') {
+      inQuotes = !inQuotes
+    } else if (ch === '\n' && !inQuotes) {
+      cells.push(cur.trim())
+      if (cells.some(c => c !== '')) rows.push(cells)
+      cells = []
+      cur = ''
+    } else if (ch === ',' && !inQuotes) {
+      cells.push(cur.trim())
+      cur = ''
+    } else {
+      cur += ch
     }
+  }
+  if (cur || cells.length > 0) {
     cells.push(cur.trim())
-    return cells
-  })
+    if (cells.some(c => c !== '')) rows.push(cells)
+  }
+  return rows
 }
 
 // ── 偵測 Sheet 格式 ──────────────────────────────────────
