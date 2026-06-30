@@ -21,8 +21,10 @@ const ROLE_LABELS: Record<string, string> = {
   technician:        '工務',
   procurement:       '採購',
   housekeeping:      '房務',
-  housekeeper:       '管家',
+  housekeeper:       '房務人員',
   tech_housekeeping: '工務＋房務',
+  butler_manager:    '管家主管',
+  butler:            '管家',
   admin_staff:       '行政',
   sales:             '業務',
   nightshift:        '大夜班',
@@ -43,19 +45,27 @@ const STATUS_LABEL: Record<string, string> = {
   disabled: '已停用',
 }
 
-const ALL_ROLES = [
+// 建立帳號時可選的身分（與申請註冊頁一致，不含需由管理員另行歸類的身分）
+const CREATE_ROLES = [
   { value: 'frontdesk_night',   label: '櫃台大夜'   },
   { value: 'frontdesk_day',     label: '櫃台日班'   },
   { value: 'technician',        label: '工務'       },
   { value: 'procurement',       label: '採購'       },
   { value: 'housekeeping',      label: '房務'       },
-  { value: 'housekeeper',       label: '管家'       },
+  { value: 'housekeeper',       label: '房務人員'   },
+  { value: 'butler',            label: '管家'       },
   { value: 'tech_housekeeping', label: '工務＋房務' },
   { value: 'admin_staff',       label: '行政'       },
   { value: 'sales',             label: '業務'       },
+]
+
+// 帳號管理（角色歸類）下拉可選的全部身分，含僅能由管理員指派的「管家主管」
+const ALL_ROLES = [
+  ...CREATE_ROLES,
+  { value: 'butler_manager',    label: '管家主管'   },
   { value: 'reporter',          label: '通報'       },
   { value: 'manager',           label: '管理者'     },
-  { value: 'admin',           label: '系統管理員' },
+  { value: 'admin',             label: '系統管理員' },
 ]
 
 // ─── 重設密碼 Modal ──────────────────────────────────────
@@ -266,7 +276,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
             <div>
               <label className="block text-xs text-gray-500 mb-2">身分</label>
               <div className="grid grid-cols-2 gap-1.5">
-                {ALL_ROLES.map(r => (
+                {CREATE_ROLES.map(r => (
                   <button
                     key={r.value}
                     type="button"

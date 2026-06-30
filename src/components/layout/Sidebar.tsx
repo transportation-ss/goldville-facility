@@ -96,10 +96,13 @@ const fullNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '管家',
     items: [
-      { label: '管家任務', href: '/butler',          icon: Sparkles,     exact: true },
-      { label: '派工安排', href: '/butler/plan',     icon: ClipboardList },
-      { label: '班表管理', href: '/butler/schedule', icon: History       },
-      { label: '歷史紀錄', href: '/butler/history',  icon: History       },
+      { label: '管家任務', href: '/butler',           icon: Sparkles,     exact: true },
+      { label: '派工安排', href: '/butler/plan',      icon: ClipboardList },
+      { label: '住戶列表', href: '/butler/residents', icon: Users         },
+      { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen      },
+      { label: '管家清單', href: '/butler/staff',     icon: UserCog       },
+      { label: '班表管理', href: '/butler/schedule',  icon: History       },
+      { label: '歷史紀錄', href: '/butler/history',   icon: History       },
     ],
   },
 ]
