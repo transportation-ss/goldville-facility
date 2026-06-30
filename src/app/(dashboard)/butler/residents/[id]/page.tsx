@@ -37,6 +37,19 @@ export default async function ResidentDetailPage({ params }: { params: { id: str
             <p className="text-sm text-gray-400 mt-0.5">
               {[resident.room, resident.move_in_date && `入住 ${resident.move_in_date}`].filter(Boolean).join(' · ')}
             </p>
+            {(resident.contract_start || resident.contract_end) && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                合約 {resident.contract_start} ～ {resident.contract_end}
+              </p>
+            )}
+            <div className="flex gap-1.5 mt-1.5">
+              {resident.meal_plan && (
+                <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{resident.meal_plan}</span>
+              )}
+              {resident.membership_plan && (
+                <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{resident.membership_plan}</span>
+              )}
+            </div>
             {resident.notes && <p className="text-xs text-gray-500 mt-2">{resident.notes}</p>}
           </div>
           {resident.drive_folder_url && (

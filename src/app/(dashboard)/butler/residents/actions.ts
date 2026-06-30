@@ -13,6 +13,10 @@ export type ButlerResident = {
   status: ResidentStatus
   move_in_date: string | null
   move_out_date: string | null
+  contract_start: string | null
+  contract_end: string | null
+  meal_plan: string | null
+  membership_plan: string | null
   drive_folder_id: string | null
   drive_folder_url: string | null
   notes: string | null
@@ -68,6 +72,10 @@ export async function createResident(input: {
   status: ResidentStatus
   move_in_date?: string | null
   move_out_date?: string | null
+  contract_start?: string | null
+  contract_end?: string | null
+  meal_plan?: string | null
+  membership_plan?: string | null
   drive_folder_id?: string | null
   drive_folder_url?: string | null
   notes?: string | null
@@ -88,6 +96,10 @@ export async function updateResident(id: string, input: Partial<{
   status: ResidentStatus
   move_in_date: string | null
   move_out_date: string | null
+  contract_start: string | null
+  contract_end: string | null
+  meal_plan: string | null
+  membership_plan: string | null
   drive_folder_id: string | null
   drive_folder_url: string | null
   notes: string | null

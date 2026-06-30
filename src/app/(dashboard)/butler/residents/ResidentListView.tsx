@@ -39,6 +39,10 @@ function ResidentModal({ resident, onClose }: {
     status:           resident?.status ?? 'active_resident' as ResidentStatus,
     move_in_date:     resident?.move_in_date ?? '',
     move_out_date:    resident?.move_out_date ?? '',
+    contract_start:   resident?.contract_start ?? '',
+    contract_end:     resident?.contract_end ?? '',
+    meal_plan:        resident?.meal_plan ?? '',
+    membership_plan:  resident?.membership_plan ?? '',
     drive_folder_id:  resident?.drive_folder_id ?? '',
     drive_folder_url: resident?.drive_folder_url ?? '',
     notes:            resident?.notes ?? '',
@@ -56,6 +60,10 @@ function ResidentModal({ resident, onClose }: {
         status:           form.status,
         move_in_date:     form.move_in_date || null,
         move_out_date:    form.move_out_date || null,
+        contract_start:   form.contract_start || null,
+        contract_end:     form.contract_end || null,
+        meal_plan:        form.meal_plan || null,
+        membership_plan:  form.membership_plan.trim() || null,
         drive_folder_id:  form.drive_folder_id.trim() || null,
         drive_folder_url: form.drive_folder_url.trim() || null,
         notes:            form.notes.trim() || null,
@@ -114,6 +122,36 @@ function ResidentModal({ resident, onClose }: {
               <label className="text-xs text-gray-500 mb-1 block">退租日期</label>
               <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
                 value={form.move_out_date} onChange={e => set('move_out_date', e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">合約起日</label>
+              <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.contract_start} onChange={e => set('contract_start', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">合約迄日</label>
+              <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.contract_end} onChange={e => set('contract_end', e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">起始餐點</label>
+              <select className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.meal_plan} onChange={e => set('meal_plan', e.target.value)}>
+                <option value="">不指定</option>
+                <option value="早餐">早餐</option>
+                <option value="午餐">午餐</option>
+                <option value="晚餐">晚餐</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">方案</label>
+              <input className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.membership_plan} onChange={e => set('membership_plan', e.target.value)}
+                placeholder="例：樂活長青" />
             </div>
           </div>
           <div>
@@ -180,6 +218,17 @@ function ResidentCard({ resident, canManage, onEdit }: {
           )}
           {resident.move_in_date && (
             <span className="text-xs text-gray-400">入住 {resident.move_in_date}</span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+          {resident.contract_end && (
+            <span className="text-xs text-gray-400">合約至 {resident.contract_end}</span>
+          )}
+          {resident.meal_plan && (
+            <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">{resident.meal_plan}</span>
+          )}
+          {resident.membership_plan && (
+            <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{resident.membership_plan}</span>
           )}
         </div>
         {resident.notes && (
