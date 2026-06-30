@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "好好園館 工務管理系統",
-  description: "好好園館內部工務管理平台",
+  title: "好好園館大平台",
+  description: "好好園館內部管理平台",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

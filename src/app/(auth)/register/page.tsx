@@ -105,8 +105,8 @@ export default function RegisterPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 rounded-2xl mb-4">
             <Building2 className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">好好園館</h1>
-          <p className="text-sm text-gray-500 mt-1">工務管理系統</p>
+          <h1 className="text-2xl font-bold text-gray-900">好好園館大平台</h1>
+          <p className="text-sm text-gray-500 mt-1">內部管理系統</p>
         </div>
 
         {/* Card */}

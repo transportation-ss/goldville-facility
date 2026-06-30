@@ -70,7 +70,7 @@ export default function NightshiftGuidePage() {
         </Link>
         <div>
           <h1 className="text-xl font-bold text-gray-900">大夜班記錄表使用說明</h1>
-          <p className="text-sm text-gray-400 mt-0.5">好好園館 工務管理系統</p>
+          <p className="text-sm text-gray-400 mt-0.5">好好園館大平台</p>
         </div>
       </div>
 
@@ -141,7 +141,7 @@ export default function NightshiftGuidePage() {
 
         {/* Footer */}
         <div className="text-center text-xs text-gray-400 pt-2">
-          如有問題請聯絡主管・好好園館工務管理系統
+          如有問題請聯絡主管・好好園館大平台
         </div>
 
       </div>

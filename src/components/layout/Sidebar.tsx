@@ -402,8 +402,8 @@ export function Sidebar() {
       <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-200">
         <Building2 className="w-6 h-6 text-emerald-600 shrink-0" />
         <div>
-          <p className="text-sm font-bold text-gray-900 leading-tight">好好園館</p>
-          <p className="text-xs text-gray-500">工務管理系統</p>
+          <p className="text-sm font-bold text-gray-900 leading-tight">好好園館大平台</p>
+          <p className="text-xs text-gray-500">內部管理系統</p>
         </div>
       </div>
 
