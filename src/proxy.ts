@@ -7,7 +7,8 @@ const NIGHTSHIFT_ROLES   = ['frontdesk_night']
 const TECHNICIAN_ROLES   = ['technician']
 const PROCUREMENT_ROLES  = ['procurement']
 const HOUSEKEEPING_ROLES = ['housekeeping']
-const GENERAL_ROLES      = ['frontdesk_day', 'admin_staff', 'sales']
+const SALES_ROLES        = ['sales']
+const GENERAL_ROLES      = ['frontdesk_day', 'admin_staff']
 
 // ─── 各身分允許的路徑前綴 ────────────────────
 const NIGHTSHIFT_ALLOWED   = ['/nightshift', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
@@ -16,6 +17,7 @@ const PROCUREMENT_ALLOWED  = ['/work-orders', '/consumables', '/manuals', '/hard
 const HOUSEKEEPING_ALLOWED   = ['/housekeeping', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
 const HOUSEKEEPING_FORBIDDEN = ['/housekeeping/plan']
 const GENERAL_ALLOWED      = ['/work-orders', '/housekeeping', '/manuals', '/hardware', '/rooms', '/api', '/settings']
+const SALES_ALLOWED        = ['/butler', '/manuals', '/hardware', '/api', '/settings']
 
 // 禁止存取的子路徑（所有非 admin 均不可，採購例外）
 const ADMIN_ONLY_PATHS     = ['/admin', '/maintenance/admin', '/hardware/admin', '/assets']
@@ -105,6 +107,12 @@ export async function proxy(request: NextRequest) {
     if (GENERAL_ROLES.includes(role)) {
       const allowed = GENERAL_ALLOWED.some(p => pathname.startsWith(p))
       if (!allowed) return NextResponse.redirect(new URL('/work-orders', request.url))
+    }
+
+    // 業務（準用管家主管頁面）
+    if (SALES_ROLES.includes(role)) {
+      const allowed = SALES_ALLOWED.some(p => pathname.startsWith(p))
+      if (!allowed) return NextResponse.redirect(new URL('/butler', request.url))
     }
   }
 

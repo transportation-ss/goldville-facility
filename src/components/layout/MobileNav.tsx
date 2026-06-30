@@ -141,6 +141,7 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
 
     // ── 管家主管 ──
     case 'butler_manager':
+    case 'sales':
       return {
         primary: [
           { label: '管家任務', href: '/butler',      icon: Sparkles      },

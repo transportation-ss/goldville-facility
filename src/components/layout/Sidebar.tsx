@@ -20,9 +20,9 @@ const PROCUREMENT_ROLES       = ['procurement']
 const HOUSEKEEPING_ROLES      = ['housekeeping']
 const TECH_HOUSEKEEPING_ROLES = ['tech_housekeeping']
 const FRONTDESK_DAY_ROLES     = ['frontdesk_day']
-const BUTLER_MANAGER_ROLES    = ['butler_manager']
+const BUTLER_MANAGER_ROLES    = ['butler_manager', 'sales']
 const BUTLER_ROLES            = ['butler']
-// 其餘（admin_staff, sales）→ 一般版
+// 其餘（admin_staff）→ 一般版
 
 // ─── 身分中文標籤 ──────────────────────────────
 const ROLE_LABELS: Record<string, string> = {
