@@ -5,7 +5,8 @@ export const dynamic = 'force-dynamic'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Building2, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 
 const ROLE_OPTIONS = [
@@ -14,7 +15,7 @@ const ROLE_OPTIONS = [
   { value: 'technician',      label: '工務'     },
   { value: 'procurement',     label: '採購'     },
   { value: 'housekeeping',    label: '房務'     },
-  { value: 'housekeeper',     label: '管家'     },
+  { value: 'butler',          label: '管家'     },
   { value: 'admin_staff',     label: '行政'     },
   { value: 'sales',           label: '業務'     },
 ]
@@ -102,9 +103,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 rounded-2xl mb-4">
-            <Building2 className="w-8 h-8 text-white" />
-          </div>
+          <Image src="/logo.png" alt="好好園館大平台" width={64} height={64}
+            className="inline-block rounded-2xl mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">好好園館大平台</h1>
           <p className="text-sm text-gray-500 mt-1">內部管理系統</p>
         </div>

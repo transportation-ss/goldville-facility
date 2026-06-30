@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, HelpCircle, History,
+  Users, LogOut, BookOpen, HelpCircle, History, Sparkles, UserCog,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -107,19 +107,6 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
         ],
       }
 
-    // ── 房務人員 ──
-    case 'housekeeper':
-      return {
-        primary: [
-          { label: '今日任務', href: '/housekeeping', icon: BedDouble },
-        ],
-        more: [
-          { label: '使用說明', href: '/housekeeping/guide', icon: BookOpen },
-          { label: '說明書',   href: '/manuals',  icon: BookOpen },
-          { label: '緊急維修', href: '/hardware', icon: Wrench   },
-        ],
-      }
-
     // ── 大夜班 ──
     case 'frontdesk_night':
     case 'nightshift':
@@ -149,6 +136,38 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
           { label: '說明書',   href: '/manuals',  icon: BookOpen },
           { label: '緊急維修', href: '/hardware', icon: Wrench   },
           { label: '房間登錄', href: '/rooms',    icon: DoorOpen },
+        ],
+      }
+
+    // ── 管家主管 ──
+    case 'butler_manager':
+      return {
+        primary: [
+          { label: '管家任務', href: '/butler',      icon: Sparkles      },
+          { label: '派工管理', href: '/butler/plan',  icon: ClipboardList },
+          { label: '服務紀錄', href: '/butler/logs',  icon: BookOpen      },
+        ],
+        more: [
+          { label: '住戶列表', href: '/butler/residents', icon: Users     },
+          { label: '管家清單', href: '/butler/staff',     icon: UserCog   },
+          { label: '班表',     href: '/butler/schedule',  icon: History   },
+          { label: '說明書',   href: '/manuals',           icon: BookOpen },
+          { label: '緊急維修', href: '/hardware',          icon: Wrench   },
+        ],
+      }
+
+    // ── 管家 ──
+    case 'butler':
+      return {
+        primary: [
+          { label: '管家任務', href: '/butler',     icon: Sparkles },
+          { label: '服務紀錄', href: '/butler/logs', icon: BookOpen },
+        ],
+        more: [
+          { label: '住戶列表', href: '/butler/residents', icon: Users     },
+          { label: '班表',     href: '/butler/schedule',  icon: History   },
+          { label: '說明書',   href: '/manuals',           icon: BookOpen },
+          { label: '緊急維修', href: '/hardware',          icon: Wrench   },
         ],
       }
 

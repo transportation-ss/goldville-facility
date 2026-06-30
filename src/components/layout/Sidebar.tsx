@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
-  Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
+  Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, HelpCircle, BedDouble, History, Sparkles, UserCog,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -18,7 +19,6 @@ const TECHNICIAN_ROLES        = ['technician']
 const PROCUREMENT_ROLES       = ['procurement']
 const HOUSEKEEPING_ROLES      = ['housekeeping']
 const TECH_HOUSEKEEPING_ROLES = ['tech_housekeeping']
-const HOUSEKEEPER_ROLES       = ['housekeeper']
 const FRONTDESK_DAY_ROLES     = ['frontdesk_day']
 const BUTLER_MANAGER_ROLES    = ['butler_manager']
 const BUTLER_ROLES            = ['butler']
@@ -31,10 +31,9 @@ const ROLE_LABELS: Record<string, string> = {
   technician:        '工務人員',
   procurement:       '採購人員',
   housekeeping:      '房務',
-  housekeeper:       '生活管家',
   tech_housekeeping: '工務＋房務',
   butler_manager:    '管家主管',
-  butler:            '管家',
+  butler:            '生活管家',
   frontdesk_day:     '日班櫃台',
   frontdesk_night:   '大夜班',
   admin_staff:       '行政人員',
@@ -158,26 +157,6 @@ const generalNav: (NavSingle | NavGroup)[] = [
   { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
 ]
 
-/** 房務人員身分 */
-const housekeeperNav: (NavSingle | NavGroup)[] = [
-  { type: 'single', label: '工務任務', href: '/work-orders', icon: ClipboardList },
-  {
-    type: 'group', label: '房務',
-    items: [
-      { label: '今日任務', href: '/housekeeping',       icon: BedDouble },
-      { label: '使用說明', href: '/housekeeping/guide', icon: BookOpen  },
-    ],
-  },
-  {
-    type: 'group', label: '說明書',
-    items: [
-      { label: '使用說明書',     href: '/manuals',  icon: BookOpen },
-      { label: '緊急維修說明書', href: '/hardware', icon: Wrench   },
-    ],
-  },
-  { type: 'single', label: '房間登錄', href: '/rooms', icon: DoorOpen },
-]
-
 /** 櫃台日班身分 */
 const frontdeskDayNav: (NavSingle | NavGroup)[] = [
   { type: 'single', label: '工務任務', href: '/work-orders', icon: ClipboardList },
@@ -249,8 +228,8 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '管家任務', href: '/butler',            icon: Sparkles,     exact: true },
       { label: '派工安排', href: '/butler/plan',       icon: ClipboardList },
       { label: '住戶列表', href: '/butler/residents',  icon: Users         },
-      { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '管家清單', href: '/butler/staff',      icon: UserCog       },
+      { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
     ],
   },
@@ -264,7 +243,6 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '管家任務', href: '/butler',           icon: Sparkles, exact: true },
       { label: '住戶列表', href: '/butler/residents', icon: Users     },
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
-      { label: '管家清單', href: '/butler/staff',     icon: UserCog   },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
     ],
   },
@@ -378,7 +356,6 @@ export function Sidebar() {
   const isProcurement      = PROCUREMENT_ROLES.includes(role)
   const isHousekeeping     = HOUSEKEEPING_ROLES.includes(role)
   const isTechHousekeeping = TECH_HOUSEKEEPING_ROLES.includes(role)
-  const isHousekeeper      = HOUSEKEEPER_ROLES.includes(role)
   const isFrontdeskDay     = FRONTDESK_DAY_ROLES.includes(role)
   const isButlerManager    = BUTLER_MANAGER_ROLES.includes(role)
   const isButler           = BUTLER_ROLES.includes(role)
@@ -389,7 +366,6 @@ export function Sidebar() {
             : isProcurement      ? procurementNav
             : isHousekeeping     ? housekeepingNav
             : isTechHousekeeping ? techHousekeepingNav
-            : isHousekeeper      ? housekeeperNav
             : isFrontdeskDay     ? frontdeskDayNav
             : isButlerManager    ? butlerManagerNav
             : isButler           ? butlerNav
@@ -400,7 +376,7 @@ export function Sidebar() {
     <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 bg-white border-r border-gray-200 flex-col z-10">
       {/* Logo */}
       <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-200">
-        <Building2 className="w-6 h-6 text-emerald-600 shrink-0" />
+        <Image src="/logo.png" alt="好好園館大平台" width={28} height={28} className="rounded-md shrink-0" />
         <div>
           <p className="text-sm font-bold text-gray-900 leading-tight">好好園館大平台</p>
           <p className="text-xs text-gray-500">內部管理系統</p>

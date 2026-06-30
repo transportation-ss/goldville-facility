@@ -231,7 +231,7 @@ export async function getHousekeepingStaff() {
   const { data } = await admin
     .from('user_profiles')
     .select('id, display_name, role')
-    .in('role', ['housekeeping', 'housekeeper', 'admin', 'manager', 'frontdesk_day'])
+    .in('role', ['housekeeping', 'admin', 'manager', 'frontdesk_day'])
     .eq('status', 'active')
     .order('display_name')
   return data ?? []

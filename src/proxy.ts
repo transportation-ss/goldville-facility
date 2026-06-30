@@ -7,7 +7,7 @@ const NIGHTSHIFT_ROLES   = ['frontdesk_night']
 const TECHNICIAN_ROLES   = ['technician']
 const PROCUREMENT_ROLES  = ['procurement']
 const HOUSEKEEPING_ROLES = ['housekeeping']
-const GENERAL_ROLES      = ['frontdesk_day', 'housekeeper', 'admin_staff', 'sales']
+const GENERAL_ROLES      = ['frontdesk_day', 'admin_staff', 'sales']
 
 // ─── 各身分允許的路徑前綴 ────────────────────
 const NIGHTSHIFT_ALLOWED   = ['/nightshift', '/work-orders', '/manuals', '/hardware', '/api', '/settings']

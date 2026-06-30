@@ -16,7 +16,7 @@ export default async function Home() {
   const role = profile?.role ?? ''
 
   if (['butler_manager', 'butler'].includes(role)) redirect('/butler')
-  if (['housekeeping', 'housekeeper'].includes(role)) redirect('/housekeeping')
+  if (role === 'housekeeping') redirect('/housekeeping')
 
   redirect('/dashboard')
 }
