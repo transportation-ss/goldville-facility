@@ -20,9 +20,13 @@ export type ButlerResident = {
   membership_plan: string | null
   drive_folder_id: string | null
   drive_folder_url: string | null
+  primary_butler_id: string | null
   notes: string | null
   created_at: string
+  primary_butler?: { display_name: string } | null
 }
+
+export type ButlerOption = { id: string; display_name: string }
 
 export type LogBlock =
   | { type: 'heading'; text: string }
@@ -51,7 +55,7 @@ export async function getResidents(): Promise<ButlerResident[]> {
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('butler_residents')
-    .select('*')
+    .select('*, primary_butler:user_profiles!butler_residents_primary_butler_id_fkey(display_name)')
     .order('status')
     .order('name')
   return (data ?? []) as ButlerResident[]
@@ -61,10 +65,21 @@ export async function getResident(id: string): Promise<ButlerResident | null> {
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('butler_residents')
-    .select('*')
+    .select('*, primary_butler:user_profiles!butler_residents_primary_butler_id_fkey(display_name)')
     .eq('id', id)
     .single()
   return data as ButlerResident | null
+}
+
+export async function getButlerOptions(): Promise<ButlerOption[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('id, display_name')
+    .in('role', ['butler', 'butler_manager'])
+    .eq('is_active', true)
+    .order('display_name')
+  return (data ?? []) as ButlerOption[]
 }
 
 export async function createResident(input: {
@@ -80,6 +95,7 @@ export async function createResident(input: {
   membership_plan?: string | null
   drive_folder_id?: string | null
   drive_folder_url?: string | null
+  primary_butler_id?: string | null
   notes?: string | null
 }) {
   const supabase = await createClient()
@@ -105,6 +121,7 @@ export async function updateResident(id: string, input: Partial<{
   membership_plan: string | null
   drive_folder_id: string | null
   drive_folder_url: string | null
+  primary_butler_id: string | null
   notes: string | null
 }>) {
   const supabase = await createClient()

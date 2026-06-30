@@ -52,6 +52,11 @@ export default async function ResidentDetailPage({ params }: { params: { id: str
               {resident.membership_plan && (
                 <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{resident.membership_plan}</span>
               )}
+              {resident.primary_butler?.display_name && (
+                <span className="text-xs text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded">
+                  小天使 {resident.primary_butler.display_name}
+                </span>
+              )}
             </div>
             {resident.notes && <p className="text-xs text-gray-500 mt-2">{resident.notes}</p>}
           </div>

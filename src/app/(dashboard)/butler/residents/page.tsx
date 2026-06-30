@@ -1,4 +1,4 @@
-import { getResidents } from './actions'
+import { getResidents, getButlerOptions } from './actions'
 import { ResidentListView } from './ResidentListView'
 import { createClient } from '@/lib/supabase/server'
 
@@ -10,11 +10,12 @@ export default async function ResidentsPage() {
   const { data: profile } = await supabase
     .from('user_profiles').select('role').eq('id', user!.id).single()
 
-  const residents = await getResidents()
+  const [residents, butlers] = await Promise.all([getResidents(), getButlerOptions()])
 
   return (
     <ResidentListView
       residents={residents}
+      butlers={butlers}
       userRole={profile?.role ?? ''}
     />
   )

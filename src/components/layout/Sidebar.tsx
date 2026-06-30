@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Building2, Settings, Moon,
-  Users, BookOpen, KeyRound, HelpCircle, BedDouble, History, Sparkles,
+  Users, BookOpen, KeyRound, HelpCircle, BedDouble, History, Sparkles, UserCog,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -247,6 +247,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '派工安排', href: '/butler/plan',       icon: ClipboardList },
       { label: '住戶列表', href: '/butler/residents',  icon: Users         },
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
+      { label: '管家清單', href: '/butler/staff',      icon: UserCog       },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
     ],
   },
@@ -260,6 +261,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '管家任務', href: '/butler',           icon: Sparkles, exact: true },
       { label: '住戶列表', href: '/butler/residents', icon: Users     },
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
+      { label: '管家清單', href: '/butler/staff',     icon: UserCog   },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
     ],
   },

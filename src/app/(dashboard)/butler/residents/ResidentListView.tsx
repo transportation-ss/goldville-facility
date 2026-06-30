@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Plus, ExternalLink, User, Home, X } from 'lucide-react'
-import type { ButlerResident, ResidentStatus } from './actions'
+import type { ButlerResident, ResidentStatus, ButlerOption } from './actions'
 import { createResident, updateResident, deleteResident } from './actions'
 
 const STATUS_LABEL: Record<ResidentStatus, string> = {
@@ -31,8 +31,9 @@ function isManager(role: string) {
 }
 
 // ── 住戶表單 Modal ────────────────────────────────────────
-function ResidentModal({ resident, onClose }: {
+function ResidentModal({ resident, butlers, onClose }: {
   resident?: ButlerResident | null
+  butlers: ButlerOption[]
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
@@ -49,6 +50,7 @@ function ResidentModal({ resident, onClose }: {
     membership_plan:  resident?.membership_plan ?? '',
     drive_folder_id:  resident?.drive_folder_id ?? '',
     drive_folder_url: resident?.drive_folder_url ?? '',
+    primary_butler_id: resident?.primary_butler_id ?? '',
     notes:            resident?.notes ?? '',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -71,6 +73,7 @@ function ResidentModal({ resident, onClose }: {
         membership_plan:  form.membership_plan.trim() || null,
         drive_folder_id:  form.drive_folder_id.trim() || null,
         drive_folder_url: form.drive_folder_url.trim() || null,
+        primary_butler_id: form.primary_butler_id || null,
         notes:            form.notes.trim() || null,
       }
       if (resident) { await updateResident(resident.id, payload) }
@@ -169,6 +172,16 @@ function ResidentModal({ resident, onClose }: {
             </div>
           </div>
           <div>
+            <label className="text-xs text-gray-500 mb-1 block">小天使（承責管家）</label>
+            <select className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.primary_butler_id} onChange={e => set('primary_butler_id', e.target.value)}>
+              <option value="">未指定</option>
+              {butlers.map(b => (
+                <option key={b.id} value={b.id}>{b.display_name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="text-xs text-gray-500 mb-1 block">Google Drive 資料夾 ID</label>
             <input className="w-full border rounded-lg px-3 py-2 text-sm font-mono"
               value={form.drive_folder_id} onChange={e => set('drive_folder_id', e.target.value)}
@@ -247,6 +260,11 @@ function ResidentCard({ resident, canManage, onEdit }: {
           {resident.membership_plan && (
             <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{resident.membership_plan}</span>
           )}
+          {resident.primary_butler?.display_name && (
+            <span className="text-xs text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded">
+              小天使 {resident.primary_butler.display_name}
+            </span>
+          )}
         </div>
         {resident.notes && (
           <p className="text-xs text-gray-500 mt-1 truncate">{resident.notes}</p>
@@ -279,8 +297,9 @@ function ResidentCard({ resident, canManage, onEdit }: {
 }
 
 // ── 主元件 ───────────────────────────────────────────────
-export function ResidentListView({ residents, userRole }: {
+export function ResidentListView({ residents, butlers, userRole }: {
   residents: ButlerResident[]
+  butlers: ButlerOption[]
   userRole: string
 }) {
   const canManage = isManager(userRole)
@@ -334,7 +353,7 @@ export function ResidentListView({ residents, userRole }: {
       </div>
 
       {showModal && (
-        <ResidentModal resident={editing} onClose={closeModal} />
+        <ResidentModal resident={editing} butlers={butlers} onClose={closeModal} />
       )}
     </div>
   )
