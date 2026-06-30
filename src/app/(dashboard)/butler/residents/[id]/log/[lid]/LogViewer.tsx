@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Trash2, Printer } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Printer, FileDown } from 'lucide-react'
 import type { ServiceLog, LogBlock } from '../../../actions'
 import { deleteServiceLog } from '../../../actions'
 import { LogEditor } from '../new/LogEditor'
@@ -19,7 +19,7 @@ function BlockView({ block }: { block: LogBlock }) {
   if (block.type === 'image') {
     return (
       <figure className="my-3">
-        <img src={block.url} alt={block.caption || '服務照片'}
+        <img src={block.url} alt={block.caption || '服務照片'} crossOrigin="anonymous"
           className="w-full rounded-xl border object-cover max-h-80" />
         {block.caption && (
           <figcaption className="text-xs text-gray-400 mt-1 text-center">{block.caption}</figcaption>
@@ -36,8 +36,10 @@ export function LogViewer({ log, residentId, canEdit }: {
   canEdit: boolean
 }) {
   const router = useRouter()
+  const printRef = useRef<HTMLDivElement>(null)
   const [editMode, setEditMode] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   async function handleDelete() {
     if (!confirm('確定刪除這篇紀錄？')) return
@@ -46,6 +48,41 @@ export function LogViewer({ log, residentId, canEdit }: {
       await deleteServiceLog(log.id, residentId)
       router.push(`/butler/residents/${residentId}`)
     } finally { setDeleting(false) }
+  }
+
+  async function handleExportPDF() {
+    if (!printRef.current) return
+    setExporting(true)
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'), import('jspdf'),
+      ])
+      const node = printRef.current
+      const prevDisplay = node.style.display
+      node.style.display = 'block'
+      const canvas = await html2canvas(node, { scale: 2, useCORS: true })
+      node.style.display = prevDisplay
+
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const imgHeight = canvas.height * pageWidth / canvas.width
+      const imgData = canvas.toDataURL('image/png')
+
+      let heightLeft = imgHeight
+      let position = 0
+      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight)
+      heightLeft -= pageHeight
+      while (heightLeft > 0) {
+        position -= pageHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      pdf.save(`${log.title}_${log.log_date}.pdf`)
+    } finally {
+      setExporting(false)
+    }
   }
 
   if (editMode && log.resident) {
@@ -60,8 +97,8 @@ export function LogViewer({ log, residentId, canEdit }: {
 
   return (
     <>
-      {/* 列印用 */}
-      <div className="hidden print:block p-8 text-black">
+      {/* 列印 / PDF 匯出用 */}
+      <div ref={printRef} className="hidden print:block p-8 text-black" style={{ width: '794px' }}>
         <h1 className="text-xl font-bold mb-1">{log.title}</h1>
         <p className="text-sm text-gray-500 mb-4">
           {log.period_start} ～ {log.period_end} · {log.author?.display_name} · {log.log_date}
@@ -92,6 +129,10 @@ export function LogViewer({ log, residentId, canEdit }: {
             <button onClick={() => window.print()} title="列印"
               className="border rounded-lg p-2 text-gray-400 hover:text-gray-600">
               <Printer className="w-4 h-4" />
+            </button>
+            <button onClick={handleExportPDF} disabled={exporting} title="下載 PDF"
+              className="border rounded-lg p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50">
+              <FileDown className="w-4 h-4" />
             </button>
             {canEdit && (
               <>
