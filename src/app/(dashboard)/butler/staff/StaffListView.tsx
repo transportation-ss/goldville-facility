@@ -20,6 +20,7 @@ function StaffModal({ staff, onClose }: { staff: ButlerStaff; onClose: () => voi
     hire_date: staff.hire_date ?? '',
     skills: staff.skills,
     notes: staff.notes ?? '',
+    schedule_alias: staff.schedule_alias ?? '',
   })
 
   function toggleSkill(s: Skill) {
@@ -39,6 +40,7 @@ function StaffModal({ staff, onClose }: { staff: ButlerStaff; onClose: () => voi
         hire_date: form.hire_date || null,
         skills: form.skills,
         notes: form.notes.trim() || null,
+        schedule_alias: form.schedule_alias.trim() || null,
       })
       onClose()
     } finally { setSaving(false) }
@@ -96,6 +98,11 @@ function StaffModal({ staff, onClose }: { staff: ButlerStaff; onClose: () => voi
             </div>
           </div>
           <div>
+            <label className="text-xs text-gray-500 mb-1 block">班表姓名（與帳號顯示名稱不同時填寫，例如帳號「翊涵」班表上是「涵涵」）</label>
+            <input className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.schedule_alias} onChange={e => setForm(f => ({ ...f, schedule_alias: e.target.value }))} />
+          </div>
+          <div>
             <label className="text-xs text-gray-500 mb-1 block">備註</label>
             <textarea className="w-full border rounded-lg px-3 py-2 text-sm" rows={2}
               value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
@@ -121,6 +128,11 @@ function StaffCard({ staff, canManage, onEdit }: {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-gray-900">{staff.display_name}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              staff.on_duty_today ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
+            }`}>
+              {staff.on_duty_today ? 'ON' : 'OFF'}
+            </span>
             {staff.employment_type && (
               <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">
                 {EMPLOYMENT_LABEL[staff.employment_type]}

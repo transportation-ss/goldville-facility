@@ -37,14 +37,17 @@ export async function POST() {
     const supabase = createAdminClient()
 
     // 嘗試取帳號對照（有對應就填 staff_id，沒有就留 null）
-    const { data: staffList } = await supabase
-      .from('user_profiles')
-      .select('id, display_name')
-      .in('role', ['butler_manager', 'butler'])
+    // 優先用 schedule_alias（班表姓名跟帳號顯示名稱不同時填寫），沒設定才用 display_name
+    const [{ data: staffList }, { data: aliasProfiles }] = await Promise.all([
+      supabase.from('user_profiles').select('id, display_name').in('role', ['butler_manager', 'butler']),
+      supabase.from('butler_staff_profiles').select('id, schedule_alias'),
+    ])
 
+    const aliasById = new Map((aliasProfiles ?? []).map(p => [p.id, p.schedule_alias]))
     const nameToId: Record<string, string> = {}
     for (const s of staffList ?? []) {
-      if (s.display_name) nameToId[s.display_name] = s.id
+      const key = aliasById.get(s.id) || s.display_name
+      if (key) nameToId[key] = s.id
     }
 
     let synced = 0
