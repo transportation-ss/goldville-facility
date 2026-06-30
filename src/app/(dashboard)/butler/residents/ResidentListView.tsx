@@ -287,7 +287,7 @@ function ResidentCard({ resident, canManage, onEdit }: {
           {(resident.status === 'active_resident' || resident.status === 'service_only') && (
             <Link href={`/butler/residents/${resident.id}`}
               className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded px-2 py-0.5">
-              日誌
+              撰寫紀錄
             </Link>
           )}
         </div>

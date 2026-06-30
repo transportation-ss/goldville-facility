@@ -56,7 +56,7 @@ export async function getResidents(): Promise<ButlerResident[]> {
   const { data } = await supabase
     .from('butler_residents')
     .select('*, primary_butler:user_profiles!butler_residents_primary_butler_id_fkey(display_name)')
-    .order('status')
+    .order('room', { ascending: true, nullsFirst: false })
     .order('name')
   return (data ?? []) as ButlerResident[]
 }
