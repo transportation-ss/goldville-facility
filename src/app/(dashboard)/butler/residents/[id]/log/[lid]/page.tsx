@@ -7,14 +7,15 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-export default async function LogDetailPage({ params }: { params: { id: string; lid: string } }) {
+export default async function LogDetailPage({ params }: { params: Promise<{ id: string; lid: string }> }) {
+  const { id, lid } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase
     .from('user_profiles').select('role').eq('id', user!.id).single()
 
-  const log = await getServiceLog(params.lid)
-  if (!log || log.resident_id !== params.id) notFound()
+  const log = await getServiceLog(lid)
+  if (!log || log.resident_id !== id) notFound()
 
   const canEdit = ['admin', 'manager', 'butler_manager'].includes(profile?.role ?? '') ||
                   log.author_id === user!.id
@@ -22,7 +23,7 @@ export default async function LogDetailPage({ params }: { params: { id: string; 
   return (
     <LogViewer
       log={log}
-      residentId={params.id}
+      residentId={id}
       canEdit={canEdit}
     />
   )

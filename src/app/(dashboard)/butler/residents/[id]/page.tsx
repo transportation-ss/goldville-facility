@@ -8,15 +8,16 @@ export const dynamic = 'force-dynamic'
 
 const PERIOD_LABEL = { day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間' }
 
-export default async function ResidentDetailPage({ params }: { params: { id: string } }) {
+export default async function ResidentDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase
     .from('user_profiles').select('role, display_name').eq('id', user!.id).single()
 
   const [resident, logs] = await Promise.all([
-    getResident(params.id),
-    getServiceLogs(params.id),
+    getResident(id),
+    getServiceLogs(id),
   ])
   if (!resident) notFound()
 
