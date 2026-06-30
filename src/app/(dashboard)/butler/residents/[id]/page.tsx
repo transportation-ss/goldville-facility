@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-const PERIOD_LABEL = { day: '日記錄', month: '月記錄', quarter: '季記錄', year: '年記錄' }
+const PERIOD_LABEL = { day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間' }
 
 export default async function ResidentDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
@@ -33,7 +33,10 @@ export default async function ResidentDetailPage({ params }: { params: { id: str
       <div className="bg-white border rounded-xl p-4 mb-5">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{resident.name}</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              {resident.name}
+              {resident.nickname && <span className="text-sm font-normal text-gray-400">（{resident.nickname}）</span>}
+            </h1>
             <p className="text-sm text-gray-400 mt-0.5">
               {[resident.room, resident.move_in_date && `入住 ${resident.move_in_date}`].filter(Boolean).join(' · ')}
             </p>

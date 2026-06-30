@@ -7,7 +7,7 @@ import type { ServiceLog, LogBlock } from '../../../actions'
 import { deleteServiceLog } from '../../../actions'
 import { LogEditor } from '../new/LogEditor'
 
-const PERIOD_LABEL = { day: '日記錄', month: '月記錄', quarter: '季記錄', year: '年記錄' }
+const PERIOD_LABEL = { day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間' }
 
 function BlockView({ block }: { block: LogBlock }) {
   if (block.type === 'heading') {

@@ -246,6 +246,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '管家任務', href: '/butler',            icon: Sparkles,     exact: true },
       { label: '派工安排', href: '/butler/plan',       icon: ClipboardList },
       { label: '住戶列表', href: '/butler/residents',  icon: Users         },
+      { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
     ],
   },
@@ -258,6 +259,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
     items: [
       { label: '管家任務', href: '/butler',           icon: Sparkles, exact: true },
       { label: '住戶列表', href: '/butler/residents', icon: Users     },
+      { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
     ],
   },

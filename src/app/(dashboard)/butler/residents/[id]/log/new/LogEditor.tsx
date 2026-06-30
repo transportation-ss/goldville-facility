@@ -6,10 +6,10 @@ import { ArrowLeft, Plus, Type, Camera, Heading, Trash2, GripVertical } from 'lu
 import type { ButlerResident, LogBlock, ServiceLog } from '../../../actions'
 import { createServiceLog, updateServiceLog } from '../../../actions'
 
-type PeriodType = 'day' | 'month' | 'quarter' | 'year'
+type PeriodType = 'day' | 'week' | 'month' | 'custom'
 
 const PERIOD_LABEL: Record<PeriodType, string> = {
-  day: '日記錄', month: '月記錄', quarter: '季記錄', year: '年記錄',
+  day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間',
 }
 
 function formatDateCompact(d: string) {

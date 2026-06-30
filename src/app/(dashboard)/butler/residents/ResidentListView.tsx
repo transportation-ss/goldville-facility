@@ -9,18 +9,21 @@ import { createResident, updateResident, deleteResident } from './actions'
 const STATUS_LABEL: Record<ResidentStatus, string> = {
   active_resident: '入住＋服務',
   service_only:    '純服務',
-  inactive:        '退租',
+  inactive:        '已退租',
+  vacant:          '空房',
 }
 const STATUS_COLOR: Record<ResidentStatus, string> = {
   active_resident: 'bg-emerald-100 text-emerald-700',
   service_only:    'bg-blue-100 text-blue-700',
   inactive:        'bg-gray-100 text-gray-500',
+  vacant:          'bg-gray-50 text-gray-400',
 }
 const TABS: { key: ResidentStatus | 'all'; label: string }[] = [
   { key: 'all',             label: '全部' },
   { key: 'active_resident', label: '入住＋服務' },
   { key: 'service_only',    label: '純服務' },
-  { key: 'inactive',        label: '退租' },
+  { key: 'inactive',        label: '已退租' },
+  { key: 'vacant',          label: '空房' },
 ]
 
 function isManager(role: string) {
@@ -35,6 +38,7 @@ function ResidentModal({ resident, onClose }: {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     name:             resident?.name ?? '',
+    nickname:         resident?.nickname ?? '',
     room:             resident?.room ?? '',
     status:           resident?.status ?? 'active_resident' as ResidentStatus,
     move_in_date:     resident?.move_in_date ?? '',
@@ -56,6 +60,7 @@ function ResidentModal({ resident, onClose }: {
     try {
       const payload = {
         name:             form.name.trim(),
+        nickname:         form.nickname.trim() || null,
         room:             form.room.trim() || null,
         status:           form.status,
         move_in_date:     form.move_in_date || null,
@@ -90,11 +95,19 @@ function ResidentModal({ resident, onClose }: {
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-3">
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">姓名 *</label>
-            <input className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={form.name} onChange={e => set('name', e.target.value)}
-              placeholder="例：陳小明" required />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">姓名 *</label>
+              <input className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.name} onChange={e => set('name', e.target.value)}
+                placeholder="例：陳小明" required />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">暱稱</label>
+              <input className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.nickname} onChange={e => set('nickname', e.target.value)}
+                placeholder="選填" />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -108,7 +121,8 @@ function ResidentModal({ resident, onClose }: {
                 value={form.status} onChange={e => set('status', e.target.value as ResidentStatus)}>
                 <option value="active_resident">入住＋服務</option>
                 <option value="service_only">純服務</option>
-                <option value="inactive">退租</option>
+                <option value="inactive">已退租</option>
+                <option value="vacant">空房</option>
               </select>
             </div>
           </div>
@@ -206,6 +220,9 @@ function ResidentCard({ resident, canManage, onEdit }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-gray-900">{resident.name}</span>
+          {resident.nickname && (
+            <span className="text-xs text-gray-400">（{resident.nickname}）</span>
+          )}
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[resident.status]}`}>
             {STATUS_LABEL[resident.status]}
           </span>

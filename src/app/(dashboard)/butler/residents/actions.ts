@@ -4,11 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export type ResidentStatus = 'active_resident' | 'service_only' | 'inactive'
+export type ResidentStatus = 'active_resident' | 'service_only' | 'inactive' | 'vacant'
 
 export type ButlerResident = {
   id: string
   name: string
+  nickname: string | null
   room: string | null
   status: ResidentStatus
   move_in_date: string | null
@@ -35,7 +36,7 @@ export type ServiceLog = {
   log_date: string
   period_start: string
   period_end: string
-  period_type: 'day' | 'month' | 'quarter' | 'year'
+  period_type: 'day' | 'week' | 'month' | 'custom'
   title: string
   content: LogBlock[]
   created_at: string
@@ -68,6 +69,7 @@ export async function getResident(id: string): Promise<ButlerResident | null> {
 
 export async function createResident(input: {
   name: string
+  nickname?: string | null
   room?: string | null
   status: ResidentStatus
   move_in_date?: string | null
@@ -92,6 +94,7 @@ export async function createResident(input: {
 
 export async function updateResident(id: string, input: Partial<{
   name: string
+  nickname: string | null
   room: string | null
   status: ResidentStatus
   move_in_date: string | null
@@ -133,6 +136,19 @@ export async function getServiceLogs(residentId: string): Promise<ServiceLog[]> 
   return (data ?? []) as ServiceLog[]
 }
 
+export async function getAllServiceLogs(): Promise<ServiceLog[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('butler_service_logs')
+    .select(`
+      *,
+      author:user_profiles!butler_service_logs_author_id_fkey(display_name),
+      resident:butler_residents!butler_service_logs_resident_id_fkey(name, room)
+    `)
+    .order('log_date', { ascending: false })
+  return (data ?? []) as ServiceLog[]
+}
+
 export async function getServiceLog(id: string): Promise<ServiceLog | null> {
   const supabase = createAdminClient()
   const { data } = await supabase
@@ -152,7 +168,7 @@ export async function createServiceLog(input: {
   log_date: string
   period_start: string
   period_end: string
-  period_type: 'day' | 'month' | 'quarter' | 'year'
+  period_type: 'day' | 'week' | 'month' | 'custom'
   title: string
   content: LogBlock[]
 }): Promise<string> {
@@ -174,7 +190,7 @@ export async function updateServiceLog(id: string, input: {
   content?: LogBlock[]
   period_start?: string
   period_end?: string
-  period_type?: 'day' | 'month' | 'quarter' | 'year'
+  period_type?: 'day' | 'week' | 'month' | 'custom'
 }) {
   const supabase = await createClient()
   const { error } = await supabase
