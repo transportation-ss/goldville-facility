@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Plus, X, ChevronLeft, ChevronRight, Users, User } from 'lucide-react'
+import { Plus, X, ChevronLeft, ChevronRight, Users, User, Loader2 } from 'lucide-react'
 import type { ServiceLog } from '../residents/actions'
 import type { GroupActivity, ResidentOption } from './actions'
 
@@ -24,10 +24,22 @@ function NewEntryModal({ residents, defaultDate, onClose }: {
   const router = useRouter()
   const [mode, setMode] = useState<'pick' | 'resident' | 'group'>('pick')
   const [query, setQuery] = useState('')
+  const [navId, setNavId] = useState<string | null>(null) // 正在跳轉的住民 ID
+  const [groupLoading, setGroupLoading] = useState(false)
 
   const filtered = residents.filter(r =>
     !query || r.name.includes(query) || (r.room ?? '').includes(query)
   )
+
+  function handleGoGroup() {
+    setGroupLoading(true)
+    router.push(`/butler/logs/group/new?date=${defaultDate}`)
+  }
+
+  function handleGoResident(id: string) {
+    setNavId(id)
+    router.push(`/butler/residents/${id}/log/new?date=${defaultDate}`)
+  }
 
   if (mode === 'pick') {
     return (
@@ -48,14 +60,16 @@ function NewEntryModal({ residents, defaultDate, onClose }: {
                 <p className="text-[11px] text-gray-400 mt-0.5">選擇住民</p>
               </div>
             </button>
-            <button onClick={() => router.push(`/butler/logs/group/new?date=${defaultDate}`)}
-              className="flex flex-col items-center gap-3 border-2 border-gray-100 rounded-xl p-5 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+            <button onClick={handleGoGroup} disabled={groupLoading}
+              className="flex flex-col items-center gap-3 border-2 border-gray-100 rounded-xl p-5 hover:border-blue-300 hover:bg-blue-50 transition-colors disabled:opacity-60">
               <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600" />
+                {groupLoading
+                  ? <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                  : <Users className="w-6 h-6 text-blue-600" />}
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-900">多人活動</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">群組紀錄</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{groupLoading ? '開啟中…' : '群組紀錄'}</p>
               </div>
             </button>
           </div>
@@ -83,15 +97,19 @@ function NewEntryModal({ residents, defaultDate, onClose }: {
         <div className="overflow-y-auto flex-1">
           {filtered.map(r => (
             <button key={r.id}
-              onClick={() => router.push(`/butler/residents/${r.id}/log/new?date=${defaultDate}`)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b last:border-0">
+              onClick={() => handleGoResident(r.id)}
+              disabled={navId !== null}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b last:border-0 disabled:opacity-60">
               <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 text-sm font-medium text-emerald-700">
-                {r.name[0]}
+                {navId === r.id
+                  ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
+                  : r.name[0]}
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-900">{r.name}</p>
                 {r.room && <p className="text-xs text-gray-400">{r.room}</p>}
               </div>
+              {navId === r.id && <span className="ml-auto text-xs text-gray-400">開啟中…</span>}
             </button>
           ))}
         </div>

@@ -116,7 +116,8 @@ function ImageBlock({ block, onChange, onDelete, residentId, residentName, logDa
       const { url } = await res.json()
       onChange({ ...block, url })
     } catch (err) {
-      setError('上傳失敗，請重試')
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(`上傳失敗：${msg.slice(0, 80)}`)
       console.error(err)
     } finally {
       setUploading(false)
