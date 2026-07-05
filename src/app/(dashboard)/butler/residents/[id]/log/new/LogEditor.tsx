@@ -97,30 +97,47 @@ function ImageBlock({ block, onChange, onDelete, residentId, residentName, logDa
   logDate: string
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'compressing' | 'folder' | 'uploading'>('idle')
   const [error, setError] = useState('')
+
+  const uploading = status !== 'idle'
+  const statusLabel = status === 'compressing' ? '壓縮中…' : status === 'folder' ? '準備中…' : status === 'uploading' ? '上傳中…' : '點擊選取照片'
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploading(true)
     setError('')
     try {
+      // 1. 壓縮
+      setStatus('compressing')
       const compressed = await compressImage(file)
+
+      // 2. 取得資料夾 ID
+      setStatus('folder')
+      const folderRes = await fetch('/api/butler/ensure-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ residentName, logDate }),
+      })
+      if (!folderRes.ok) throw new Error(await folderRes.text())
+      const { folderId } = await folderRes.json()
+
+      // 3. 上傳
+      setStatus('uploading')
       const form = new FormData()
       form.append('file', new File([compressed], file.name, { type: 'image/jpeg' }))
-      form.append('residentName', residentName)
+      form.append('folderId', folderId)
       form.append('logDate', logDate)
-      const res = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
-      if (!res.ok) throw new Error(await res.text())
-      const { url } = await res.json()
+      const upRes = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
+      if (!upRes.ok) throw new Error(await upRes.text())
+      const { url } = await upRes.json()
       onChange({ ...block, url })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setError(`上傳失敗：${msg.slice(0, 80)}`)
       console.error(err)
     } finally {
-      setUploading(false)
+      setStatus('idle')
     }
   }
 
@@ -146,7 +163,7 @@ function ImageBlock({ block, onChange, onDelete, residentId, residentName, logDa
             disabled={uploading}
             className="w-full border-2 border-dashed border-gray-200 rounded-lg py-8 flex flex-col items-center gap-2 text-gray-400 hover:border-emerald-300 hover:text-emerald-500 transition-colors">
             <Camera className="w-6 h-6" />
-            <span className="text-sm">{uploading ? '壓縮上傳中…' : '點擊選取照片'}</span>
+            <span className="text-sm">{statusLabel}</span>
           </button>
         )}
         {error && <p className="text-xs text-red-500">{error}</p>}
