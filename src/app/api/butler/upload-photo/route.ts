@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Readable } from 'stream'
 import { createClient } from '@/lib/supabase/server'
 import { getDriveClient, getOrCreateFolder } from '@/lib/google-drive'
+
+export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -25,23 +26,25 @@ export async function POST(req: NextRequest) {
   const residentFolder = await getOrCreateFolder(drive, rootFolderId, residentName)
   const monthFolder = await getOrCreateFolder(drive, residentFolder, yearMonth)
 
+  // 直接用 Buffer 而非 stream，避免 Node.js stream 封裝開銷
   const buffer = Buffer.from(await file.arrayBuffer())
-  const stream = Readable.from(buffer)
   const ext = file.name.split('.').pop() ?? 'jpg'
   const fileName = `${logDate}_${Date.now()}.${ext}`
 
   const uploaded = await drive.files.create({
     requestBody: { name: fileName, parents: [monthFolder] },
-    media: { mimeType: file.type || 'image/jpeg', body: stream },
+    media: { mimeType: 'image/jpeg', body: buffer },
     fields: 'id',
   })
 
-  // 檔案本身設為任何人可讀（嵌入 img src 用）
-  await drive.permissions.create({
-    fileId: uploaded.data.id!,
-    requestBody: { role: 'reader', type: 'anyone' },
-  })
+  const fileId = uploaded.data.id!
 
-  const url = `https://drive.google.com/uc?export=view&id=${uploaded.data.id}`
-  return NextResponse.json({ url, fileId: uploaded.data.id })
+  // 設定權限不等待（背景執行，不佔 response 時間）
+  drive.permissions.create({
+    fileId,
+    requestBody: { role: 'reader', type: 'anyone' },
+  }).catch(() => {})
+
+  const url = `https://drive.google.com/uc?export=view&id=${fileId}`
+  return NextResponse.json({ url, fileId })
 }
