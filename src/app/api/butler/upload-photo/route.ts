@@ -17,25 +17,30 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
   if (!folderId) return NextResponse.json({ error: 'No folderId' }, { status: 400 })
 
-  const drive = getDriveClient()
-  const buffer = Buffer.from(await file.arrayBuffer())
-  const ext = file.name.split('.').pop() ?? 'jpg'
-  const fileName = `${logDate}_${Date.now()}.${ext}`
+  try {
+    const drive = getDriveClient()
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const fileName = `${logDate}_${Date.now()}.${ext}`
 
-  const uploaded = await drive.files.create({
-    requestBody: { name: fileName, parents: [folderId] },
-    media: { mimeType: 'image/jpeg', body: buffer },
-    fields: 'id',
-  })
+    const uploaded = await drive.files.create({
+      requestBody: { name: fileName, parents: [folderId] },
+      media: { mimeType: 'image/jpeg', body: buffer },
+      fields: 'id',
+    })
 
-  const fileId = uploaded.data.id!
+    const fileId = uploaded.data.id!
 
-  // 設定權限，背景執行不阻塞 response
-  drive.permissions.create({
-    fileId,
-    requestBody: { role: 'reader', type: 'anyone' },
-  }).catch(() => {})
+    drive.permissions.create({
+      fileId,
+      requestBody: { role: 'reader', type: 'anyone' },
+    }).catch(() => {})
 
-  const url = `https://drive.google.com/uc?export=view&id=${fileId}`
-  return NextResponse.json({ url, fileId })
+    const url = `https://drive.google.com/uc?export=view&id=${fileId}`
+    return NextResponse.json({ url, fileId })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : JSON.stringify(e)
+    console.error('[upload-photo]', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
