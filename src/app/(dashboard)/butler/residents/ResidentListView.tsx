@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import { Plus, ExternalLink, User, Home, X, FolderOpen, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, User, Home, X, FolderOpen, Loader2 } from 'lucide-react'
 import type { ButlerResident, ResidentStatus, ButlerOption } from './actions'
 import { createResident, updateResident, deleteResident } from './actions'
 
@@ -225,7 +225,14 @@ function ResidentCard({ resident, canManage, onEdit }: {
   canManage: boolean
   onEdit: (r: ButlerResident) => void
 }) {
+  const router = useRouter()
   const [folderLoading, setFolderLoading] = useState(false)
+  const [navLoading, setNavLoading] = useState(false)
+
+  function handleOpenResident() {
+    setNavLoading(true)
+    router.push(`/butler/residents/${resident.id}`)
+  }
 
   async function openDriveFolder() {
     setFolderLoading(true)
@@ -303,10 +310,11 @@ function ResidentCard({ resident, canManage, onEdit }: {
             </button>
           )}
           {(resident.status === 'active_resident' || resident.status === 'service_only') && (
-            <Link href={`/butler/residents/${resident.id}`}
-              className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded px-2 py-0.5">
-              撰寫紀錄
-            </Link>
+            <button onClick={handleOpenResident} disabled={navLoading}
+              className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded px-2 py-0.5 disabled:opacity-60 flex items-center gap-1">
+              {navLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+              {navLoading ? '開啟中…' : '撰寫紀錄'}
+            </button>
           )}
         </div>
       </div>
