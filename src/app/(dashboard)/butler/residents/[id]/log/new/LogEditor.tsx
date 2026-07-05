@@ -70,28 +70,57 @@ function TextBlock({ block, onChange, onDelete }: {
   )
 }
 
-function ImageBlock({ block, onChange, onDelete, residentId }: {
+function compressImage(file: File, maxWidth = 1920, quality = 0.7): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxWidth / img.width)
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width * scale
+      canvas.height = img.height * scale
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('compress failed')), 'image/jpeg', quality)
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
+function ImageBlock({ block, onChange, onDelete, residentId, residentName, logDate }: {
   block: Extract<LogBlock, { type: 'image' }>
   onChange: (b: LogBlock) => void
   onDelete: () => void
   residentId: string
+  residentName: string
+  logDate: string
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
+    setError('')
     try {
-      // 先用 base64 預覽；SA 設好後替換為 Drive 上傳
-      const reader = new FileReader()
-      reader.onload = ev => {
-        onChange({ ...block, url: ev.target?.result as string })
-        setUploading(false)
-      }
-      reader.readAsDataURL(file)
-    } catch { setUploading(false) }
+      const compressed = await compressImage(file)
+      const form = new FormData()
+      form.append('file', new File([compressed], file.name, { type: 'image/jpeg' }))
+      form.append('residentName', residentName)
+      form.append('logDate', logDate)
+      const res = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
+      if (!res.ok) throw new Error(await res.text())
+      const { url } = await res.json()
+      onChange({ ...block, url })
+    } catch (err) {
+      setError('上傳失敗，請重試')
+      console.error(err)
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -116,9 +145,10 @@ function ImageBlock({ block, onChange, onDelete, residentId }: {
             disabled={uploading}
             className="w-full border-2 border-dashed border-gray-200 rounded-lg py-8 flex flex-col items-center gap-2 text-gray-400 hover:border-emerald-300 hover:text-emerald-500 transition-colors">
             <Camera className="w-6 h-6" />
-            <span className="text-sm">{uploading ? '上傳中…' : '點擊選取照片'}</span>
+            <span className="text-sm">{uploading ? '壓縮上傳中…' : '點擊選取照片'}</span>
           </button>
         )}
+        {error && <p className="text-xs text-red-500">{error}</p>}
         <input
           className="w-full text-xs border border-gray-100 rounded-lg px-3 py-1.5 focus:outline-none focus:border-gray-300 bg-gray-50/50"
           value={block.caption}
@@ -279,7 +309,8 @@ export function LogEditor({ resident, authorName, existingLog }: {
               <TextBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} />
             )}
             {b.type === 'image' && (
-              <ImageBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} residentId={resident.id} />
+              <ImageBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)}
+                residentId={resident.id} residentName={resident.name} logDate={today} />
             )}
           </div>
         ))}

@@ -12,6 +12,7 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
     "date-fns": "^4.2.1",
+    "googleapis": "^173.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.16.0",
