@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, ExternalLink, User, Home, X } from 'lucide-react'
+import { Plus, ExternalLink, User, Home, X, FolderOpen, Loader2 } from 'lucide-react'
 import type { ButlerResident, ResidentStatus, ButlerOption } from './actions'
 import { createResident, updateResident, deleteResident } from './actions'
 
@@ -225,6 +225,23 @@ function ResidentCard({ resident, canManage, onEdit }: {
   canManage: boolean
   onEdit: (r: ButlerResident) => void
 }) {
+  const [folderLoading, setFolderLoading] = useState(false)
+
+  async function openDriveFolder() {
+    setFolderLoading(true)
+    try {
+      const res = await fetch('/api/butler/resident-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ residentName: resident.name }),
+      })
+      const { url } = await res.json()
+      window.open(url, '_blank')
+    } finally {
+      setFolderLoading(false)
+    }
+  }
+
   return (
     <div className="bg-white border rounded-xl p-4 flex gap-3">
       <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
@@ -271,12 +288,13 @@ function ResidentCard({ resident, canManage, onEdit }: {
         )}
       </div>
       <div className="flex flex-col items-end gap-2 shrink-0">
-        {resident.drive_folder_url && (
-          <a href={resident.drive_folder_url} target="_blank" rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-600" title="開啟 Drive 資料夾">
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        )}
+        <button onClick={openDriveFolder} disabled={folderLoading}
+          title="開啟 Drive 照片資料夾"
+          className="text-blue-400 hover:text-blue-600 disabled:opacity-50">
+          {folderLoading
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <FolderOpen className="w-4 h-4" />}
+        </button>
         <div className="flex gap-2">
           {canManage && (
             <button onClick={() => onEdit(resident)}
