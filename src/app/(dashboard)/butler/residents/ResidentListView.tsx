@@ -234,19 +234,9 @@ function ResidentCard({ resident, canManage, onEdit }: {
     router.push(`/butler/residents/${resident.id}`)
   }
 
-  async function openDriveFolder() {
+  function openPhotoWall() {
     setFolderLoading(true)
-    try {
-      const res = await fetch('/api/butler/resident-folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ residentName: resident.name }),
-      })
-      const { url } = await res.json()
-      window.open(url, '_blank')
-    } finally {
-      setFolderLoading(false)
-    }
+    router.push(`/butler/residents/${resident.id}/photos`)
   }
 
   return (
@@ -295,8 +285,8 @@ function ResidentCard({ resident, canManage, onEdit }: {
         )}
       </div>
       <div className="flex flex-col items-end gap-2 shrink-0">
-        <button onClick={openDriveFolder} disabled={folderLoading}
-          title="開啟 Drive 照片資料夾"
+        <button onClick={openPhotoWall} disabled={folderLoading}
+          title="照片資料夾"
           className="text-blue-400 hover:text-blue-600 disabled:opacity-50">
           {folderLoading
             ? <Loader2 className="w-4 h-4 animate-spin" />
