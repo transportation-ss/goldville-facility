@@ -98,6 +98,7 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '班表管理',     href: '/butler/schedule',  icon: History       },
       { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
       { label: '照片庫',       href: '/butler/photos',    icon: Images        },
+      { label: '管家說明',     href: '/butler/guide',     icon: BookOpen      },
     ],
   },
 ]
@@ -240,6 +241,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
       { label: '照片庫',   href: '/butler/photos',     icon: Images        },
+      { label: '管家說明', href: '/butler/guide',      icon: BookOpen      },
     ],
   },
   {
@@ -261,6 +263,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
       { label: '照片庫',   href: '/butler/photos',    icon: Images    },
+      { label: '管家說明', href: '/butler/guide',     icon: BookOpen  },
     ],
   },
   {

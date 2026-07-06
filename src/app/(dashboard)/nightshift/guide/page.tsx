@@ -1,150 +1,122 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import {
-  ArrowLeft, LogIn, CheckSquare, ClipboardList, FileText,
-  Lock, QrCode, KeyRound, AlertTriangle, ChevronRight,
+  ArrowLeft, LogIn, Moon, FileText, History,
+  KeyRound, AlertTriangle, Download, ShieldCheck, User,
 } from 'lucide-react'
-
-function Section({
-  icon: Icon,
-  title,
-  children,
-  color = 'emerald',
-}: {
-  icon: React.ElementType
-  title: string
-  children: React.ReactNode
-  color?: 'emerald' | 'blue' | 'amber' | 'gray'
-}) {
-  const colors = {
-    emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    blue:    'bg-blue-50 border-blue-200 text-blue-700',
-    amber:   'bg-amber-50 border-amber-200 text-amber-700',
-    gray:    'bg-gray-50 border-gray-200 text-gray-500',
-  }
-  const iconColors = {
-    emerald: 'text-emerald-600',
-    blue:    'text-blue-500',
-    amber:   'text-amber-500',
-    gray:    'text-gray-400',
-  }
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className={`flex items-center gap-2.5 px-5 py-3.5 border-b ${colors[color]}`}>
-        <Icon className={`w-5 h-5 shrink-0 ${iconColors[color]}`} />
-        <h2 className="text-sm font-semibold">{title}</h2>
-      </div>
-      <div className="px-5 py-4 text-sm text-gray-700 space-y-2.5">
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function Step({ n, children }: { n: number; children: React.ReactNode }) {
-  return (
-    <div className="flex gap-3">
-      <span className="shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
-        {n}
-      </span>
-      <p className="leading-relaxed">{children}</p>
-    </div>
-  )
-}
-
-function Tip({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-amber-800 text-xs">
-      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
-      <span>{children}</span>
-    </div>
-  )
-}
+import { Section, Step, Tip } from '@/components/guide/GuideKit'
 
 export default function NightshiftGuidePage() {
+  const [tab, setTab] = useState<'admin' | 'staff'>('staff')
+
   return (
     <div className="max-w-xl mx-auto pb-10">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <Link href="/nightshift" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Link>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">大夜班記錄表使用說明</h1>
-          <p className="text-sm text-gray-400 mt-0.5">好好園館大平台</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-bold text-gray-900">大夜班功能說明書</h1>
+          <p className="text-sm text-gray-400 mt-0.5">好好園館 管理系統</p>
         </div>
+        <a href="/docs/nightshift-guide.docx" download
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors shrink-0">
+          <Download className="w-4 h-4" />
+          下載
+        </a>
       </div>
 
-      <div className="space-y-4">
+      {/* Tab 切換 */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5">
+        <button onClick={() => setTab('admin')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+            tab === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}>
+          <ShieldCheck className="w-4 h-4" /> 管理版
+        </button>
+        <button onClick={() => setTab('staff')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+            tab === 'staff' ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}>
+          <User className="w-4 h-4" /> 一般版
+        </button>
+      </div>
 
-        {/* 1. 登入 */}
-        <Section icon={LogIn} title="一、登入系統" color="emerald">
-          <Step n={1}>開啟瀏覽器，前往系統網址（可請主管提供）。</Step>
-          <Step n={2}>輸入你的 <strong>電子郵件</strong> 與 <strong>密碼</strong>，點擊「登入」。</Step>
-          <Step n={3}>登入成功後，左側側欄點選「<strong>大夜工作表</strong>」進入本班記錄頁面。</Step>
-          <Tip>第一次登入請用預設密碼，登入後記得到側欄底部「修改密碼」換成自己的密碼。</Tip>
-        </Section>
-
-        {/* 2. 簽到 */}
-        <Section icon={CheckSquare} title="二、到班簽到" color="blue">
-          <Step n={1}>進入大夜工作表後，找到頁面上方的「<strong>到班簽到</strong>」區塊。</Step>
-          <Step n={2}>點擊「<strong>我已到班，點此簽到</strong>」按鈕，系統會記錄你的姓名與簽到時間。</Step>
-          <Step n={3}>簽到後按鈕會消失，並顯示你的姓名與時間，代表簽到成功。</Step>
-          <Tip>一班最多 3 人簽到。若按鈕不見，可能已有 3 人簽到或你已簽過了。</Tip>
-        </Section>
-
-        {/* 3. 工作記錄 */}
-        <Section icon={ClipboardList} title="三、工作項目記錄" color="emerald">
-          <Step n={1}>工作表依照時段排列各項任務，找到對應時段的工作項目。</Step>
-          <Step n={2}>完成一項工作後，點擊該項目左側的 <strong>圓圈</strong>，圓圈變成綠色打勾代表已完成，同時記錄你的名字。</Step>
-          <Step n={3}>若需在工作項目補充說明，可點擊「新增備註」輸入後儲存。</Step>
-          <Tip>點擊「已完成」的項目時，系統會跳出確認視窗，確認後才會取消完成狀態，避免誤觸。</Tip>
-        </Section>
-
-        {/* 4. 工務派工 */}
-        <Section icon={AlertTriangle} title="四、設備故障通報" color="amber">
-          <Step n={1}>若發現設備故障或需要維修，點擊左側側欄「<strong>工務任務</strong>」。</Step>
-          <Step n={2}>點擊右上角「<strong>新增通報</strong>」，填寫地點、問題說明後送出。</Step>
-          <Step n={3}>送出後工務同仁可以看到，會安排處理時間。</Step>
-        </Section>
-
-        {/* 5. 交接說明 */}
-        <Section icon={FileText} title="五、填寫交接說明" color="blue">
-          <Step n={1}>班次接近尾聲時，找到工作表底部的「<strong>交接說明</strong>」文字框。</Step>
-          <Step n={2}>填入本班的重要事項、待處理事務或需要告知下一班的資訊。</Step>
-          <Step n={3}>點擊「<strong>儲存</strong>」後，管理員與下一班人員可看到你的留言。</Step>
-        </Section>
-
-        {/* 6. 結束班次 */}
-        <Section icon={Lock} title="六、結束班次" color="emerald">
-          <Step n={1}>工作全部完成、交接說明填好後，點擊頁面底部「<strong>結束班次</strong>」。</Step>
-          <Step n={2}>確認送出後，本班記錄將鎖定，不可再修改。</Step>
-          <Step n={3}>系統也會在 <strong>早上 07:30</strong> 自動鎖定未結單的班次。</Step>
-          <Tip>鎖定後如需修改，請聯絡管理員解鎖。</Tip>
-        </Section>
-
-        {/* 7. 修改密碼 */}
-        <Section icon={KeyRound} title="七、修改密碼" color="blue">
-          <Step n={1}>點擊左側側欄最底部的「<strong>修改密碼</strong>」。</Step>
-          <Step n={2}>輸入目前密碼、新密碼（至少 6 個字元）、確認新密碼後送出。</Step>
-          <Step n={3}>更新成功後，下次登入即使用新密碼。</Step>
-        </Section>
-
-        {/* 8. QR 施工中 */}
-        <Section icon={QrCode} title="八、區域巡查 QR Code（施工中）" color="gray">
-          <p className="text-gray-500">各樓層/區域的巡查 QR Code 功能目前正在規劃施工中。</p>
-          <p className="text-gray-500">未來掃描 QR Code 後將自動記錄巡查時間與人員，敬請期待。</p>
-          <div className="flex items-center gap-2 text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 mt-1">
-            <QrCode className="w-4 h-4 shrink-0" />
-            <span>QR Code 掃描功能即將上線</span>
+      {tab === 'admin' && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs text-blue-700 font-medium">
+            適用身分：管理員（admin）、主管（manager）
           </div>
-        </Section>
 
-        {/* Footer */}
-        <div className="text-center text-xs text-gray-400 pt-2">
-          如有問題請聯絡主管・好好園館大平台
+          <Section icon={LogIn} title="一、登入系統" color="blue">
+            <Step n={1}>開啟瀏覽器，輸入系統網址。</Step>
+            <Step n={2}>輸入電子郵件帳號與密碼，點選「登入」。</Step>
+            <Step n={3}>系統自動導向功能首頁，左側側欄顯示可用功能。</Step>
+          </Section>
+
+          <Section icon={Moon} title="二、大夜工作表管理" color="purple">
+            <Step n={1}>點選側欄「<strong>大夜工作表</strong>」查看所有人員的值班紀錄。</Step>
+            <Step n={2}>可依日期查詢歷史紀錄，點選任一筆查看詳情。</Step>
+            <Step n={3}>如發現異常或遺漏，可聯繫相關人員補填。</Step>
+          </Section>
+
+          <Section icon={History} title="三、查看歷史紀錄" color="purple">
+            <Step n={1}>在大夜工作表頁面選擇日期，查看指定日期的值班紀錄。</Step>
+            <Step n={2}>紀錄包含：值班事項、設備異常、來電來訪、交接注意事項。</Step>
+          </Section>
+
+          <Section icon={KeyRound} title="四、修改密碼" color="gray">
+            <Step n={1}>點選側欄底部「<strong>修改密碼</strong>」。</Step>
+            <Step n={2}>輸入目前密碼與新密碼（至少 6 個字元），送出後生效。</Step>
+          </Section>
+
+          <div className="text-center text-xs text-gray-400 pt-2">如有問題請聯絡主管・好好園館 管理系統</div>
         </div>
+      )}
 
-      </div>
+      {tab === 'staff' && (
+        <div className="space-y-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-2.5 text-xs text-purple-700 font-medium">
+            適用身分：大夜班（frontdesk_night / nightshift）
+          </div>
+
+          <Section icon={LogIn} title="一、登入系統" color="blue">
+            <Step n={1}>開啟瀏覽器，前往系統網址（可請主管提供）。</Step>
+            <Step n={2}>輸入電子郵件與密碼，點擊「登入」。</Step>
+            <Step n={3}>登入後底部導覽列點選「<strong>大夜工作表</strong>」。</Step>
+            <Tip>建議每次接班後立即開啟系統確認前一班次交接事項。</Tip>
+          </Section>
+
+          <Section icon={FileText} title="二、填寫大夜工作表" color="purple">
+            <Step n={1}>點選右上角「<strong>新增今日紀錄</strong>」。</Step>
+            <Step n={2}>依照欄位填寫值班事項，包含房況、設備異常、來電來訪。</Step>
+            <Step n={3}>如有照片，可透過照片欄位上傳。</Step>
+            <Step n={4}>填寫完成後點選「<strong>儲存</strong>」。</Step>
+            <Tip>值班期間如有重要事件，請即時填寫，避免遺漏。</Tip>
+          </Section>
+
+          <Section icon={History} title="三、查看歷史紀錄" color="purple">
+            <Step n={1}>在大夜工作表頁面選擇日期查詢。</Step>
+            <Step n={2}>可查看自己或其他班次的值班紀錄作為參考。</Step>
+          </Section>
+
+          <Section icon={AlertTriangle} title="四、緊急狀況處理" color="orange">
+            <Step n={1}>底部更多 → 「<strong>緊急維修</strong>」查閱緊急維修處理流程。</Step>
+            <Step n={2}>底部更多 → 「<strong>設備說明書</strong>」查看各設備操作說明。</Step>
+            <Tip>遇到無法處理的緊急狀況，請立即聯繫值班主管。</Tip>
+          </Section>
+
+          <Section icon={KeyRound} title="五、修改密碼" color="gray">
+            <Step n={1}>點選更多 → 「<strong>修改密碼</strong>」。</Step>
+            <Step n={2}>輸入目前密碼與新密碼（至少 6 個字元），送出後生效。</Step>
+          </Section>
+
+          <div className="text-center text-xs text-gray-400 pt-2">如有問題請聯絡主管・好好園館 管理系統</div>
+        </div>
+      )}
     </div>
   )
 }
