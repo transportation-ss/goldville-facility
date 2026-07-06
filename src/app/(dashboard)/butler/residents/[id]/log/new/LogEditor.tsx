@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Type, Camera, Heading, Trash2, GripVertical } from 'lucide-react'
+import { ArrowLeft, Plus, Type, Camera, Heading, Trash2, GripVertical, Loader2 } from 'lucide-react'
 import type { ButlerResident, LogBlock, ServiceLog } from '../../../actions'
 import { createServiceLog, updateServiceLog } from '../../../actions'
 
@@ -206,6 +206,48 @@ export function LogEditor({ resident, authorName, existingLog }: {
     ]
   )
   const [saving, setSaving] = useState(false)
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null)
+  const batchFileRef = useRef<HTMLInputElement>(null)
+
+  async function handleBatchFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    e.target.value = ''
+
+    // 先佔位：插入 N 個空 image block，記住起始索引
+    const startIdx = blocks.length
+    const placeholders: LogBlock[] = files.map(() => ({ type: 'image', url: '', caption: '' }))
+    setBlocks(b => [...b, ...placeholders])
+
+    setBatchProgress({ done: 0, total: files.length })
+
+    // 取一次 folderId
+    const folderRes = await fetch('/api/butler/ensure-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ residentName: resident.name, logDate: today }),
+    })
+    const { folderId } = await folderRes.json()
+
+    // 依序上傳（避免手機記憶體爆掉）
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const compressed = await compressImage(files[i])
+        const form = new FormData()
+        form.append('file', new File([compressed], files[i].name, { type: 'image/jpeg' }))
+        form.append('folderId', folderId)
+        form.append('logDate', today)
+        const upRes = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
+        if (upRes.ok) {
+          const { url } = await upRes.json()
+          setBlocks(bs => bs.map((b, idx) => idx === startIdx + i ? { ...b, url } : b))
+        }
+      } catch { /* 失敗的 block 維持空白，管家可手動補或刪除 */ }
+      setBatchProgress({ done: i + 1, total: files.length })
+    }
+
+    setBatchProgress(null)
+  }
 
   function updatePeriod(type: PeriodType, start: string, end: string) {
     setPeriodType(type); setPeriodStart(start); setPeriodEnd(end)
@@ -336,30 +378,44 @@ export function LogEditor({ resident, authorName, existingLog }: {
 
       {/* 新增 Block 按鈕 */}
       <div className="border border-dashed border-gray-200 rounded-xl p-4">
-        <p className="text-xs text-gray-400 text-center mb-3">新增內容</p>
-        <div className="flex justify-center gap-3">
-          <button onClick={() => addBlock('heading')}
-            className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <div className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-gray-400">
-              <Heading className="w-4 h-4" />
+        {batchProgress ? (
+          <div className="flex flex-col items-center gap-2 py-2">
+            <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+            <p className="text-xs text-gray-500">
+              上傳中 {batchProgress.done} / {batchProgress.total}
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-gray-400 text-center mb-3">新增內容</p>
+            <div className="flex justify-center gap-3">
+              <button onClick={() => addBlock('heading')}
+                className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-700 transition-colors">
+                <div className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-gray-400">
+                  <Heading className="w-4 h-4" />
+                </div>
+                <span className="text-[10px]">標題</span>
+              </button>
+              <button onClick={() => addBlock('text')}
+                className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-700 transition-colors">
+                <div className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-gray-400">
+                  <Type className="w-4 h-4" />
+                </div>
+                <span className="text-[10px]">文字</span>
+              </button>
+              <button onClick={() => batchFileRef.current?.click()}
+                disabled={!!batchProgress}
+                className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-40">
+                <div className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-gray-400">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <span className="text-[10px]">照片</span>
+              </button>
             </div>
-            <span className="text-[10px]">標題</span>
-          </button>
-          <button onClick={() => addBlock('text')}
-            className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <div className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-gray-400">
-              <Type className="w-4 h-4" />
-            </div>
-            <span className="text-[10px]">文字</span>
-          </button>
-          <button onClick={() => addBlock('image')}
-            className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-700 transition-colors">
-            <div className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-gray-400">
-              <Camera className="w-4 h-4" />
-            </div>
-            <span className="text-[10px]">照片</span>
-          </button>
-        </div>
+          </>
+        )}
+        <input ref={batchFileRef} type="file" accept="image/*" multiple
+          className="hidden" onChange={handleBatchFiles} />
       </div>
     </div>
   )
