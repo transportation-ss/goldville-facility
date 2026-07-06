@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, HelpCircle, History, Sparkles, UserCog, Settings, Layers,
+  Users, LogOut, BookOpen, HelpCircle, History, Sparkles, UserCog, Settings, Layers, Images,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -62,6 +62,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
               { label: '班表管理',     href: '/butler/schedule',  icon: History       },
               { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
+              { label: '照片庫',       href: '/butler/photos',    icon: Images        },
             ],
           },
           {
@@ -219,6 +220,7 @@ function getNavByRole(role: string): RoleNav {
             items: [
               { label: '住戶列表',   href: '/butler/residents', icon: Users     },
               { label: '班表',       href: '/butler/schedule',  icon: History   },
+              { label: '照片庫',     href: '/butler/photos',    icon: Images    },
               { label: '設備說明書', href: '/manuals',           icon: BookOpen  },
               { label: '緊急維修',   href: '/hardware',         icon: Wrench    },
             ],
@@ -238,8 +240,9 @@ function getNavByRole(role: string): RoleNav {
         more: [
           {
             items: [
-              { label: '設備說明書', href: '/manuals',  icon: BookOpen },
-              { label: '緊急維修',   href: '/hardware', icon: Wrench   },
+              { label: '照片庫',     href: '/butler/photos', icon: Images    },
+              { label: '設備說明書', href: '/manuals',        icon: BookOpen  },
+              { label: '緊急維修',   href: '/hardware',       icon: Wrench    },
             ],
           },
         ],

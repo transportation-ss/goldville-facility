@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
   const file = form.get('file') as File | null
   const residentName = (form.get('residentName') as string) || '未知住民'
   const logDate = (form.get('logDate') as string) || new Date().toISOString().slice(0, 10)
+  const seqNum   = parseInt((form.get('seqNum') as string) || '0', 10) || 0
 
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
@@ -33,9 +34,15 @@ export async function POST(req: NextRequest) {
     const yearMonth = logDate.slice(0, 7)
     const folder = `goldville/${residentName}/${yearMonth}`
 
+    // 照片命名：20260706-01、20260706-02 …（seqNum=0 → auto）
+    const dateStr   = logDate.replace(/-/g, '')
+    const publicId  = seqNum > 0
+      ? `${folder}/${dateStr}-${String(seqNum).padStart(2, '0')}`
+      : undefined
+
     const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
       cld.uploader.upload_stream(
-        { folder, resource_type: 'image', format: 'jpg', quality: 'auto' },
+        { folder, public_id: publicId, resource_type: 'image', format: 'jpg', quality: 'auto' },
         (error, result) => {
           if (error || !result) reject(error ?? new Error('upload failed'))
           else resolve(result as { secure_url: string; public_id: string })

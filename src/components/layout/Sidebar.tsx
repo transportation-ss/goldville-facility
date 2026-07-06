@@ -8,7 +8,7 @@ import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, HelpCircle, BedDouble, History,
-  Sparkles, UserCog, Loader2, Layers,
+  Sparkles, UserCog, Loader2, Layers, Images,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -97,6 +97,7 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
       { label: '班表管理',     href: '/butler/schedule',  icon: History       },
       { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
+      { label: '照片庫',       href: '/butler/photos',    icon: Images        },
     ],
   },
 ]
@@ -238,6 +239,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '管家清單', href: '/butler/staff',      icon: UserCog       },
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
+      { label: '照片庫',   href: '/butler/photos',     icon: Images        },
     ],
   },
   {
@@ -258,6 +260,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '住戶列表', href: '/butler/residents', icon: Users     },
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
+      { label: '照片庫',   href: '/butler/photos',    icon: Images    },
     ],
   },
   {

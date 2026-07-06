@@ -221,13 +221,15 @@ export function LogEditor({ resident, authorName, existingLog }: {
 
     setBatchProgress({ done: 0, total: files.length })
 
-    // 取一次 folderId
-    const folderRes = await fetch('/api/butler/ensure-folder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ residentName: resident.name, logDate: today }),
-    })
-    const { folderId } = await folderRes.json()
+    // 查當天已有幾張，作為序號起點
+    let seqStart = 1
+    try {
+      const countRes = await fetch(
+        `/api/butler/photos?residentName=${encodeURIComponent(resident.name)}&date=${today}`
+      )
+      const countData = await countRes.json()
+      seqStart = (countData.dateCount ?? 0) + 1
+    } catch { /* 查不到就從 1 開始 */ }
 
     // 依序上傳（避免手機記憶體爆掉）
     for (let i = 0; i < files.length; i++) {
@@ -237,6 +239,7 @@ export function LogEditor({ resident, authorName, existingLog }: {
         form.append('file', new File([compressed], files[i].name, { type: 'image/jpeg' }))
         form.append('residentName', resident.name)
         form.append('logDate', today)
+        form.append('seqNum', String(seqStart + i))
         const upRes = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
         if (upRes.ok) {
           const { url } = await upRes.json()
