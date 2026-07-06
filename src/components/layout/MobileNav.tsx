@@ -97,10 +97,10 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
       return {
         primary: [
           { label: '工務派工', href: '/work-orders',  icon: ClipboardList },
-          { label: '今日任務', href: '/housekeeping', icon: BedDouble     },
+          { label: '房務任務', href: '/housekeeping', icon: BedDouble     },
         ],
         more: [
-          { label: '歷史紀錄', href: '/housekeeping/history', icon: History  },
+          { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History  },
           { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen },
           { label: '說明書',   href: '/manuals',              icon: BookOpen },
           { label: '緊急維修', href: '/hardware',             icon: Wrench   },
@@ -127,10 +127,10 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
       return {
         primary: [
           { label: '工務任務', href: '/work-orders',  icon: ClipboardList },
-          { label: '今日任務', href: '/housekeeping', icon: BedDouble     },
+          { label: '房務任務', href: '/housekeeping', icon: BedDouble     },
         ],
         more: [
-          { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
+          { label: '房務派工', href: '/housekeeping/plan',    icon: ClipboardList },
           { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
           { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
           { label: '說明書',   href: '/manuals',  icon: BookOpen },
@@ -145,13 +145,14 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
       return {
         primary: [
           { label: '管家任務', href: '/butler',      icon: Sparkles      },
-          { label: '派工管理', href: '/butler/plan',  icon: ClipboardList },
+          { label: '管家派工', href: '/butler/plan',  icon: ClipboardList },
           { label: '服務紀錄', href: '/butler/logs',  icon: BookOpen      },
         ],
         more: [
           { label: '住戶列表', href: '/butler/residents', icon: Users     },
           { label: '管家清單', href: '/butler/staff',     icon: UserCog   },
           { label: '班表',     href: '/butler/schedule',  icon: History   },
+          { label: '樓層配置', href: '/butler/floorplan', icon: DoorOpen },
           { label: '說明書',   href: '/manuals',           icon: BookOpen },
           { label: '緊急維修', href: '/hardware',          icon: Wrench   },
         ],
@@ -167,6 +168,7 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
         more: [
           { label: '住戶列表', href: '/butler/residents', icon: Users     },
           { label: '班表',     href: '/butler/schedule',  icon: History   },
+          { label: '樓層配置', href: '/butler/floorplan', icon: DoorOpen },
           { label: '說明書',   href: '/manuals',           icon: BookOpen },
           { label: '緊急維修', href: '/hardware',          icon: Wrench   },
         ],
@@ -177,7 +179,7 @@ function getNavByRole(role: string, isAdmin: boolean): RoleNav {
       return {
         primary: [
           { label: '派工單',   href: '/work-orders',  icon: ClipboardList },
-          { label: '今日任務', href: '/housekeeping', icon: BedDouble     },
+          { label: '房務任務', href: '/housekeeping', icon: BedDouble     },
         ],
         more: [
           { label: '說明書',   href: '/manuals',  icon: BookOpen },

@@ -79,9 +79,9 @@ const fullNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '房務',
     items: [
-      { label: '今日任務', href: '/housekeeping',         icon: BedDouble     },
-      { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
-      { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
+      { label: '房務任務', href: '/housekeeping',         icon: BedDouble     },
+      { label: '房務派工', href: '/housekeeping/plan',    icon: ClipboardList },
+      { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History   },
       { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
     ],
   },
@@ -96,12 +96,13 @@ const fullNav: (NavSingle | NavGroup)[] = [
     type: 'group', label: '管家',
     items: [
       { label: '管家任務', href: '/butler',           icon: Sparkles,     exact: true },
-      { label: '派工安排', href: '/butler/plan',      icon: ClipboardList },
+      { label: '管家派工', href: '/butler/plan',      icon: ClipboardList },
       { label: '住戶列表', href: '/butler/residents', icon: Users         },
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen      },
       { label: '管家清單', href: '/butler/staff',     icon: UserCog       },
       { label: '班表管理', href: '/butler/schedule',  icon: History       },
-      { label: '歷史紀錄', href: '/butler/history',   icon: History       },
+      { label: '歷史紀錄(管)', href: '/butler/history', icon: History     },
+      { label: '樓層配置', href: '/butler/floorplan', icon: DoorOpen      },
     ],
   },
 ]
@@ -163,9 +164,9 @@ const frontdeskDayNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '房務',
     items: [
-      { label: '今日任務', href: '/housekeeping',         icon: BedDouble     },
-      { label: '派工管理', href: '/housekeeping/plan',    icon: ClipboardList },
-      { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
+      { label: '房務任務', href: '/housekeeping',         icon: BedDouble     },
+      { label: '房務派工', href: '/housekeeping/plan',    icon: ClipboardList },
+      { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History   },
       { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
     ],
   },
@@ -185,9 +186,9 @@ const housekeepingNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '房務',
     items: [
-      { label: '今日任務', href: '/housekeeping',         icon: BedDouble },
-      { label: '歷史紀錄', href: '/housekeeping/history', icon: History   },
-      { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen  },
+      { label: '房務任務',     href: '/housekeeping',         icon: BedDouble },
+      { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History   },
+      { label: '使用說明',     href: '/housekeeping/guide',   icon: BookOpen  },
     ],
   },
 ]
@@ -214,7 +215,7 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '房務',
     items: [
-      { label: '今日任務', href: '/housekeeping',        icon: BedDouble },
+      { label: '房務任務', href: '/housekeeping',        icon: BedDouble },
       { label: '使用說明', href: '/housekeeping/guide',  icon: BookOpen  },
     ],
   },
@@ -226,11 +227,12 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
     type: 'group', label: '管家',
     items: [
       { label: '管家任務', href: '/butler',            icon: Sparkles,     exact: true },
-      { label: '派工安排', href: '/butler/plan',       icon: ClipboardList },
+      { label: '管家派工', href: '/butler/plan',       icon: ClipboardList },
       { label: '住戶列表', href: '/butler/residents',  icon: Users         },
       { label: '管家清單', href: '/butler/staff',      icon: UserCog       },
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
+      { label: '樓層配置', href: '/butler/floorplan',  icon: DoorOpen      },
     ],
   },
 ]
@@ -244,6 +246,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '住戶列表', href: '/butler/residents', icon: Users     },
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
+      { label: '樓層配置', href: '/butler/floorplan', icon: DoorOpen  },
     ],
   },
 ]
