@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Trash2, Printer, FileDown } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Printer, FileDown, Loader2 } from 'lucide-react'
 import type { ServiceLog, LogBlock } from '../../../actions'
 import { deleteServiceLog } from '../../../actions'
 import { LogEditor } from '../new/LogEditor'
@@ -132,7 +132,7 @@ export function LogViewer({ log, residentId, canEdit }: {
             </button>
             <button onClick={handleExportPDF} disabled={exporting} title="下載 PDF"
               className="border rounded-lg p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50">
-              <FileDown className="w-4 h-4" />
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
             </button>
             {canEdit && (
               <>
@@ -142,7 +142,7 @@ export function LogViewer({ log, residentId, canEdit }: {
                 </button>
                 <button onClick={handleDelete} disabled={deleting}
                   className="border rounded-lg p-2 text-gray-400 hover:text-red-500 disabled:opacity-50">
-                  <Trash2 className="w-4 h-4" />
+                  {deleting ? <Loader2 className="w-4 h-4 animate-spin text-red-400" /> : <Trash2 className="w-4 h-4" />}
                 </button>
               </>
             )}

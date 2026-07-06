@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, FileDown, Pencil, Trash2, Users, User } from 'lucide-react'
+import { ArrowLeft, FileDown, Pencil, Trash2, Users, User, Loader2 } from 'lucide-react'
 import type { GroupActivity } from '../../actions'
 import { deleteGroupActivity } from '../../actions'
 import type { LogBlock } from '@/app/(dashboard)/butler/residents/actions'
@@ -31,6 +31,7 @@ export function GroupViewer({ activity, canManage }: {
   const printRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const residents = activity.participants?.filter(p => p.resident_id) ?? []
   const staff     = activity.participants?.filter(p => p.staff_id) ?? []
@@ -81,17 +82,18 @@ export function GroupViewer({ activity, canManage }: {
         <div className="flex items-center gap-2">
           <button onClick={handleExportPDF} disabled={exporting}
             className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50" title="匯出 PDF">
-            <FileDown className="w-4 h-4" />
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
           </button>
           {canManage && (
             <>
-              <button onClick={() => router.push(`/butler/logs/group/${activity.id}/edit`)}
-                className="p-2 text-gray-400 hover:text-gray-600" title="編輯">
-                <Pencil className="w-4 h-4" />
+              <button onClick={() => { setEditing(true); router.push(`/butler/logs/group/${activity.id}/edit`) }}
+                disabled={editing}
+                className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50" title="編輯">
+                {editing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
               </button>
               <button onClick={handleDelete} disabled={deleting}
                 className="p-2 text-red-300 hover:text-red-500 disabled:opacity-50" title="刪除">
-                <Trash2 className="w-4 h-4" />
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               </button>
             </>
           )}
