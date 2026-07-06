@@ -6,190 +6,262 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, HelpCircle, History, Sparkles, UserCog,
+  Users, LogOut, BookOpen, HelpCircle, History, Sparkles, UserCog, Settings, Layers,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-// ─── 型別 ──────────────────────────────────────
-type NavItem = { label: string; href: string; icon: React.ElementType }
+// ─── 型別 ─────────────────────────────────────
+type NavItem    = { label: string; href: string; icon: React.ElementType }
+type NavSection = { label?: string; items: NavItem[] }
+type RoleNav    = { primary: NavItem[]; more: NavSection[] }
 
-// ─── 各身分手機導航設定 ─────────────────────────
-// primaryNav = 底部 Tab Bar（最多 4 項，第 4 格留給「更多」）
-// moreNav    = 更多面板（額外項目）
-
-type RoleNav = { primary: NavItem[]; more: NavItem[] }
-
-function getNavByRole(role: string, isAdmin: boolean): RoleNav {
+// ─── 各身分手機導航設定 ────────────────────────
+function getNavByRole(role: string): RoleNav {
   switch (role) {
-    // ── 管理員 / 主管 ──
+
+    // ── 管理員 / 主管 ──────────────────────────
     case 'admin':
     case 'manager':
       return {
         primary: [
-          { label: '總覽',   href: '/dashboard',   icon: LayoutDashboard },
-          { label: '工務任務', href: '/work-orders',  icon: ClipboardList   },
-          { label: '今日任務', href: '/housekeeping', icon: BedDouble      },
-          { label: '大夜班', href: '/nightshift',   icon: Moon             },
+          { label: '總覽',       href: '/dashboard',   icon: LayoutDashboard },
+          { label: '大夜工作表', href: '/nightshift',   icon: Moon            },
+          { label: '房務任務',   href: '/housekeeping', icon: BedDouble       },
+          { label: '管家任務',   href: '/butler',       icon: Sparkles        },
         ],
         more: [
-          { label: '保養提醒',   href: '/maintenance',      icon: CalendarCheck },
-          { label: '進銷存',     href: '/consumables',       icon: Package       },
-          { label: '水電紀錄',   href: '/utilities',         icon: Droplets      },
-          { label: '說明書',     href: '/manuals',           icon: BookOpen      },
-          { label: '緊急維修',   href: '/hardware',          icon: Wrench        },
-          { label: '房間登錄',   href: '/rooms',             icon: DoorOpen      },
-          { label: '財產清單',   href: '/assets',            icon: Archive       },
-          { label: '帳號管理',   href: '/admin/users',       icon: Users         },
+          {
+            label: '工務',
+            items: [
+              { label: '工務任務',   href: '/work-orders', icon: ClipboardList },
+              { label: '保養提醒',   href: '/maintenance', icon: CalendarCheck },
+              { label: '耗材進銷存', href: '/consumables', icon: Package       },
+              { label: '水電紀錄',   href: '/utilities',   icon: Droplets      },
+            ],
+          },
+          {
+            label: '房務',
+            items: [
+              { label: '房務派工',     href: '/housekeeping/plan',    icon: ClipboardList },
+              { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History       },
+              { label: '房務說明',     href: '/housekeeping/guide',   icon: BookOpen      },
+            ],
+          },
+          {
+            label: '大夜',
+            items: [
+              { label: '大夜說明', href: '/nightshift/guide', icon: HelpCircle },
+            ],
+          },
+          {
+            label: '管家',
+            items: [
+              { label: '管家派工',     href: '/butler/plan',      icon: ClipboardList },
+              { label: '住戶列表',     href: '/butler/residents', icon: Users         },
+              { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
+              { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
+              { label: '班表管理',     href: '/butler/schedule',  icon: History       },
+              { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
+            ],
+          },
+          {
+            label: '說明書',
+            items: [
+              { label: '設備說明書', href: '/manuals',  icon: BookOpen },
+              { label: '緊急維修',   href: '/hardware', icon: Wrench   },
+            ],
+          },
+          {
+            label: '管理',
+            items: [
+              { label: '房間登錄', href: '/rooms',            icon: DoorOpen },
+              { label: '帳號管理', href: '/admin/users',      icon: Users    },
+              { label: '財產清單', href: '/assets',           icon: Archive  },
+              { label: '樓層配置', href: '/butler/floorplan', icon: Layers   },
+            ],
+          },
         ],
       }
 
-    // ── 工務人員 ──
+    // ── 工務人員 ────────────────────────────────
     case 'technician':
       return {
         primary: [
-          { label: '派工單', href: '/work-orders', icon: ClipboardList },
-          { label: '進銷存', href: '/consumables',  icon: Package       },
+          { label: '工務任務', href: '/work-orders', icon: ClipboardList },
+          { label: '進銷存',   href: '/consumables', icon: Package       },
           { label: '保養提醒', href: '/maintenance', icon: CalendarCheck },
+          { label: '水電紀錄', href: '/utilities',   icon: Droplets      },
         ],
         more: [
-          { label: '水電紀錄', href: '/utilities', icon: Droplets  },
-          { label: '說明書',   href: '/manuals',   icon: BookOpen  },
-          { label: '緊急維修', href: '/hardware',  icon: Wrench    },
-          { label: '房間登錄', href: '/rooms',     icon: DoorOpen  },
+          {
+            items: [
+              { label: '設備說明書',   href: '/manuals',           icon: BookOpen },
+              { label: '緊急維修',     href: '/hardware',          icon: Wrench   },
+              { label: '房間登錄',     href: '/rooms',             icon: DoorOpen },
+              { label: '保養項目管理', href: '/maintenance/admin', icon: Settings },
+            ],
+          },
         ],
       }
 
-    // ── 工務＋房務 ──
+    // ── 工務＋房務 ──────────────────────────────
     case 'tech_housekeeping':
       return {
         primary: [
-          { label: '派工單',   href: '/work-orders',  icon: ClipboardList },
-          { label: '進銷存',   href: '/consumables',   icon: Package       },
-          { label: '房務任務', href: '/housekeeping',  icon: BedDouble     },
+          { label: '工務任務',   href: '/work-orders', icon: ClipboardList },
+          { label: '房務任務',   href: '/housekeeping', icon: BedDouble    },
+          { label: '耗材進銷存', href: '/consumables',  icon: Package      },
+          { label: '保養提醒',   href: '/maintenance',  icon: CalendarCheck},
         ],
         more: [
-          { label: '保養提醒', href: '/maintenance', icon: CalendarCheck },
-          { label: '水電紀錄', href: '/utilities',   icon: Droplets      },
-          { label: '說明書',   href: '/manuals',     icon: BookOpen      },
-          { label: '緊急維修', href: '/hardware',    icon: Wrench        },
-          { label: '房間登錄', href: '/rooms',       icon: DoorOpen      },
+          {
+            items: [
+              { label: '水電紀錄', href: '/utilities',         icon: Droplets  },
+              { label: '房間登錄', href: '/rooms',             icon: DoorOpen  },
+              { label: '設備說明書', href: '/manuals',         icon: BookOpen  },
+              { label: '緊急維修', href: '/hardware',          icon: Wrench    },
+              { label: '房務說明', href: '/housekeeping/guide', icon: BookOpen },
+            ],
+          },
         ],
       }
 
-    // ── 採購人員 ──
+    // ── 採購人員 ────────────────────────────────
     case 'procurement':
       return {
         primary: [
-          { label: '派工單', href: '/work-orders', icon: ClipboardList },
-          { label: '進銷存', href: '/consumables',  icon: Package       },
+          { label: '耗材進銷存',   href: '/consumables',    icon: Package  },
+          { label: '硬體設備管理', href: '/hardware/admin', icon: Wrench   },
+          { label: '財產清單',     href: '/assets',         icon: Archive  },
+          { label: '房間登錄',     href: '/rooms',          icon: DoorOpen },
         ],
         more: [
-          { label: '說明書',     href: '/manuals',          icon: BookOpen },
-          { label: '緊急維修',   href: '/hardware',         icon: Wrench   },
-          { label: '房間登錄',   href: '/rooms',            icon: DoorOpen },
-          { label: '硬體管理',   href: '/hardware/admin',   icon: Wrench   },
-          { label: '財產清單',   href: '/assets',           icon: Archive  },
+          {
+            items: [
+              { label: '設備說明書', href: '/manuals',  icon: BookOpen },
+              { label: '緊急維修',   href: '/hardware', icon: Wrench   },
+            ],
+          },
         ],
       }
 
-    // ── 房務主管 ──
+    // ── 房務 ────────────────────────────────────
     case 'housekeeping':
       return {
         primary: [
-          { label: '工務派工', href: '/work-orders',  icon: ClipboardList },
-          { label: '房務任務', href: '/housekeeping', icon: BedDouble     },
+          { label: '房務任務',     href: '/housekeeping',         icon: BedDouble     },
+          { label: '工務任務',     href: '/work-orders',          icon: ClipboardList },
+          { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History       },
+          { label: '使用說明',     href: '/housekeeping/guide',   icon: BookOpen      },
         ],
         more: [
-          { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History  },
-          { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen },
-          { label: '說明書',   href: '/manuals',              icon: BookOpen },
-          { label: '緊急維修', href: '/hardware',             icon: Wrench   },
+          {
+            items: [
+              { label: '設備說明書', href: '/manuals',  icon: BookOpen },
+              { label: '緊急維修',   href: '/hardware', icon: Wrench   },
+            ],
+          },
         ],
       }
 
-    // ── 大夜班 ──
+    // ── 大夜班 ──────────────────────────────────
     case 'frontdesk_night':
     case 'nightshift':
       return {
         primary: [
-          { label: '大夜班', href: '/nightshift',       icon: Moon        },
-          { label: '派工單', href: '/work-orders',      icon: ClipboardList },
+          { label: '大夜工作表', href: '/nightshift',       icon: Moon          },
+          { label: '大夜說明',   href: '/nightshift/guide', icon: HelpCircle    },
+          { label: '工務任務',   href: '/work-orders',      icon: ClipboardList },
         ],
         more: [
-          { label: '說明書',   href: '/manuals',           icon: BookOpen   },
-          { label: '緊急維修', href: '/hardware',           icon: Wrench     },
-          { label: '大夜說明', href: '/nightshift/guide',   icon: HelpCircle },
+          {
+            items: [
+              { label: '設備說明書', href: '/manuals',  icon: BookOpen },
+              { label: '緊急維修',   href: '/hardware', icon: Wrench   },
+            ],
+          },
         ],
       }
 
-    // ── 日班櫃台 ──
+    // ── 日班櫃台 ────────────────────────────────
     case 'frontdesk_day':
       return {
         primary: [
-          { label: '工務任務', href: '/work-orders',  icon: ClipboardList },
-          { label: '房務任務', href: '/housekeeping', icon: BedDouble     },
+          { label: '房務任務', href: '/housekeeping',      icon: BedDouble     },
+          { label: '房務派工', href: '/housekeeping/plan', icon: ClipboardList },
+          { label: '工務任務', href: '/work-orders',       icon: ClipboardList },
+          { label: '房間登錄', href: '/rooms',             icon: DoorOpen      },
         ],
         more: [
-          { label: '房務派工', href: '/housekeeping/plan',    icon: ClipboardList },
-          { label: '歷史紀錄', href: '/housekeeping/history', icon: History       },
-          { label: '使用說明', href: '/housekeeping/guide',   icon: BookOpen      },
-          { label: '說明書',   href: '/manuals',  icon: BookOpen },
-          { label: '緊急維修', href: '/hardware', icon: Wrench   },
-          { label: '房間登錄', href: '/rooms',    icon: DoorOpen },
+          {
+            items: [
+              { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History  },
+              { label: '使用說明',     href: '/housekeeping/guide',   icon: BookOpen },
+              { label: '設備說明書',   href: '/manuals',              icon: BookOpen },
+              { label: '緊急維修',     href: '/hardware',             icon: Wrench   },
+            ],
+          },
         ],
       }
 
-    // ── 管家主管 ──
+    // ── 管家主管 ────────────────────────────────
     case 'butler_manager':
     case 'sales':
       return {
         primary: [
           { label: '管家任務', href: '/butler',      icon: Sparkles      },
-          { label: '管家派工', href: '/butler/plan',  icon: ClipboardList },
-          { label: '服務紀錄', href: '/butler/logs',  icon: BookOpen      },
+          { label: '管家派工', href: '/butler/plan', icon: ClipboardList },
+          { label: '管家清單', href: '/butler/staff', icon: UserCog      },
+          { label: '服務紀錄', href: '/butler/logs', icon: BookOpen      },
         ],
         more: [
-          { label: '住戶列表', href: '/butler/residents', icon: Users     },
-          { label: '管家清單', href: '/butler/staff',     icon: UserCog   },
-          { label: '班表',     href: '/butler/schedule',  icon: History   },
-          { label: '樓層配置', href: '/butler/floorplan', icon: DoorOpen },
-          { label: '說明書',   href: '/manuals',           icon: BookOpen },
-          { label: '緊急維修', href: '/hardware',          icon: Wrench   },
+          {
+            items: [
+              { label: '住戶列表',   href: '/butler/residents', icon: Users     },
+              { label: '班表',       href: '/butler/schedule',  icon: History   },
+              { label: '設備說明書', href: '/manuals',           icon: BookOpen  },
+              { label: '緊急維修',   href: '/hardware',         icon: Wrench    },
+            ],
+          },
         ],
       }
 
-    // ── 管家 ──
+    // ── 管家 ────────────────────────────────────
     case 'butler':
       return {
         primary: [
-          { label: '管家任務', href: '/butler',     icon: Sparkles },
-          { label: '服務紀錄', href: '/butler/logs', icon: BookOpen },
+          { label: '管家任務', href: '/butler',           icon: Sparkles },
+          { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen },
+          { label: '住戶列表', href: '/butler/residents', icon: Users    },
+          { label: '班表',     href: '/butler/schedule',  icon: History  },
         ],
         more: [
-          { label: '住戶列表', href: '/butler/residents', icon: Users     },
-          { label: '班表',     href: '/butler/schedule',  icon: History   },
-          { label: '樓層配置', href: '/butler/floorplan', icon: DoorOpen },
-          { label: '說明書',   href: '/manuals',           icon: BookOpen },
-          { label: '緊急維修', href: '/hardware',          icon: Wrench   },
+          {
+            items: [
+              { label: '設備說明書', href: '/manuals',  icon: BookOpen },
+              { label: '緊急維修',   href: '/hardware', icon: Wrench   },
+            ],
+          },
         ],
       }
 
-    // ── 行政 / 業務 ──
+    // ── 最小 fallback ───────────────────────────
     default:
       return {
-        primary: [
-          { label: '派工單',   href: '/work-orders',  icon: ClipboardList },
-          { label: '房務任務', href: '/housekeeping', icon: BedDouble     },
-        ],
+        primary: [],
         more: [
-          { label: '說明書',   href: '/manuals',  icon: BookOpen },
-          { label: '緊急維修', href: '/hardware', icon: Wrench   },
-          { label: '房間登錄', href: '/rooms',    icon: DoorOpen },
+          {
+            items: [
+              { label: '設備說明書', href: '/manuals',  icon: BookOpen },
+              { label: '緊急維修',   href: '/hardware', icon: Wrench   },
+            ],
+          },
         ],
       }
   }
 }
 
+// ─── 主元件 ──────────────────────────────────
 export function MobileNav() {
   const pathname = usePathname()
   const router   = useRouter()
@@ -210,10 +282,11 @@ export function MobileNav() {
     fetchRole()
   }, [])
 
-  const isAdmin = ['admin', 'manager'].includes(role)
-  const { primary: primaryNav, more: moreNav } = role
-    ? getNavByRole(role, isAdmin)
+  const { primary: primaryNav, more: moreSections } = role
+    ? getNavByRole(role)
     : { primary: [], more: [] }
+
+  const hasMore = moreSections.some(s => s.items.length > 0)
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -222,9 +295,6 @@ export function MobileNav() {
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
-
-  // 是否需要顯示「更多」按鈕
-  const hasMore = moreNav.length > 0
 
   return (
     <>
@@ -235,15 +305,19 @@ export function MobileNav() {
           onClick={() => setShowMore(false)}
         >
           <div
-            className="absolute bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-4 pb-5 shadow-lg"
+            className="absolute bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-4 pb-5 shadow-lg max-h-[70vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
-            {moreNav.length > 0 && (
-              <>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">其他功能</p>
+            {moreSections.map((section, si) => (
+              <div key={si} className={si > 0 ? 'mt-4' : ''}>
+                {section.label && (
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    {section.label}
+                  </p>
+                )}
                 <div className="grid grid-cols-4 gap-1">
-                  {moreNav.map(item => {
-                    const Icon = item.icon
+                  {section.items.map(item => {
+                    const Icon   = item.icon
                     const active = isActive(item.href)
                     return (
                       <Link
@@ -255,18 +329,20 @@ export function MobileNav() {
                         }`}
                       >
                         <Icon className={`w-5 h-5 ${active ? 'text-emerald-600' : 'text-gray-500'}`} />
-                        <span className={`text-[11px] font-medium ${active ? 'text-emerald-600' : 'text-gray-600'}`}>
+                        <span className={`text-[10px] font-medium leading-tight text-center ${
+                          active ? 'text-emerald-600' : 'text-gray-600'
+                        }`}>
                           {item.label}
                         </span>
                       </Link>
                     )
                   })}
                 </div>
-              </>
-            )}
+              </div>
+            ))}
 
             {/* 登出 */}
-            <div className={`${moreNav.length > 0 ? 'mt-4 pt-4 border-t border-gray-100' : ''}`}>
+            <div className="mt-4 pt-4 border-t border-gray-100">
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
@@ -283,7 +359,7 @@ export function MobileNav() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 safe-bottom">
         <div className="flex items-stretch h-16">
           {primaryNav.map(item => {
-            const Icon = item.icon
+            const Icon   = item.icon
             const active = isActive(item.href)
             return (
               <Link
@@ -294,12 +370,12 @@ export function MobileNav() {
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[10px] font-medium leading-tight text-center">{item.label}</span>
               </Link>
             )
           })}
 
-          {/* 更多按鈕（有額外項目才顯示） */}
+          {/* 更多按鈕 */}
           {hasMore && (
             <button
               onClick={() => setShowMore(o => !o)}
@@ -307,15 +383,12 @@ export function MobileNav() {
                 showMore ? 'text-emerald-600' : 'text-gray-500'
               }`}
             >
-              {showMore
-                ? <X className="w-5 h-5" />
-                : <Menu className="w-5 h-5" />
-              }
+              {showMore ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               <span className="text-[10px] font-medium">更多</span>
             </button>
           )}
 
-          {/* 沒有更多項目時，登出直接放在 Tab Bar */}
+          {/* 無更多項目時，登出直接放 Tab Bar */}
           {!hasMore && (
             <button
               onClick={handleLogout}
