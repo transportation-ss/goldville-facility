@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
-  Users, BookOpen, KeyRound, HelpCircle, BedDouble, History,
+  Users, BookOpen, KeyRound, BedDouble, History,
   Sparkles, UserCog, Loader2, Layers, Images,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -77,14 +77,14 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '房務任務',     href: '/housekeeping',         icon: BedDouble     },
       { label: '房務派工',     href: '/housekeeping/plan',    icon: ClipboardList },
       { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History       },
-      { label: '使用說明',     href: '/housekeeping/guide',   icon: BookOpen      },
+      { label: '使用指引(房)', href: '/housekeeping/guide',   icon: BookOpen      },
     ],
   },
   {
     type: 'group', label: '大夜',
     items: [
       { label: '大夜工作表', href: '/nightshift',       icon: Moon       },
-      { label: '大夜說明',   href: '/nightshift/guide', icon: HelpCircle },
+      { label: '使用指引(夜)', href: '/nightshift/guide', icon: BookOpen },
     ],
   },
   {
@@ -98,7 +98,7 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '班表管理',     href: '/butler/schedule',  icon: History       },
       { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
       { label: '照片庫',       href: '/butler/photos',    icon: Images        },
-      { label: '管家說明',     href: '/butler/guide',     icon: BookOpen      },
+      { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen      },
     ],
   },
 ]
@@ -148,7 +148,7 @@ const housekeepingNav: (NavSingle | NavGroup)[] = [
     items: [
       { label: '房務任務',     href: '/housekeeping',         icon: BedDouble },
       { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History   },
-      { label: '使用說明',     href: '/housekeeping/guide',   icon: BookOpen  },
+      { label: '使用指引(房)', href: '/housekeeping/guide',   icon: BookOpen  },
     ],
   },
   {
@@ -183,7 +183,7 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
     type: 'group', label: '房務',
     items: [
       { label: '房務任務', href: '/housekeeping',       icon: BedDouble },
-      { label: '使用說明', href: '/housekeeping/guide', icon: BookOpen  },
+      { label: '使用指引(房)', href: '/housekeeping/guide', icon: BookOpen  },
     ],
   },
 ]
@@ -197,7 +197,7 @@ const frontdeskDayNav: (NavSingle | NavGroup)[] = [
       { label: '房務任務',     href: '/housekeeping',         icon: BedDouble     },
       { label: '房務派工',     href: '/housekeeping/plan',    icon: ClipboardList },
       { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History       },
-      { label: '使用說明',     href: '/housekeeping/guide',   icon: BookOpen      },
+      { label: '使用指引(房)', href: '/housekeeping/guide',   icon: BookOpen      },
     ],
   },
   {
@@ -224,7 +224,7 @@ const nightshiftNav: (NavSingle | NavGroup)[] = [
     type: 'group', label: '大夜',
     items: [
       { label: '大夜工作表', href: '/nightshift',       icon: Moon        },
-      { label: '大夜說明',   href: '/nightshift/guide', icon: HelpCircle  },
+      { label: '使用指引(夜)', href: '/nightshift/guide', icon: BookOpen  },
     ],
   },
 ]
@@ -241,7 +241,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
       { label: '照片庫',   href: '/butler/photos',     icon: Images        },
-      { label: '管家說明', href: '/butler/guide',      icon: BookOpen      },
+      { label: '使用指引(管)', href: '/butler/guide',      icon: BookOpen      },
     ],
   },
   {
@@ -263,7 +263,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
       { label: '照片庫',   href: '/butler/photos',    icon: Images    },
-      { label: '管家說明', href: '/butler/guide',     icon: BookOpen  },
+      { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },
     ],
   },
   {

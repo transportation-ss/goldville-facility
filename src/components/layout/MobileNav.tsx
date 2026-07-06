@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, HelpCircle, History, Sparkles, UserCog, Settings, Layers, Images,
+  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -44,13 +44,13 @@ function getNavByRole(role: string): RoleNav {
             items: [
               { label: '房務派工',     href: '/housekeeping/plan',    icon: ClipboardList },
               { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History       },
-              { label: '房務說明',     href: '/housekeeping/guide',   icon: BookOpen      },
+              { label: '使用指引(房)', href: '/housekeeping/guide',   icon: BookOpen      },
             ],
           },
           {
             label: '大夜',
             items: [
-              { label: '大夜說明', href: '/nightshift/guide', icon: HelpCircle },
+              { label: '使用指引(夜)', href: '/nightshift/guide', icon: BookOpen },
             ],
           },
           {
@@ -63,6 +63,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '班表管理',     href: '/butler/schedule',  icon: History       },
               { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
               { label: '照片庫',       href: '/butler/photos',    icon: Images        },
+              { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen      },
             ],
           },
           {
@@ -153,7 +154,7 @@ function getNavByRole(role: string): RoleNav {
           { label: '房務任務',     href: '/housekeeping',         icon: BedDouble     },
           { label: '工務任務',     href: '/work-orders',          icon: ClipboardList },
           { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History       },
-          { label: '使用說明',     href: '/housekeeping/guide',   icon: BookOpen      },
+          { label: '使用指引(房)', href: '/housekeeping/guide',   icon: BookOpen      },
         ],
         more: [
           {
@@ -171,7 +172,7 @@ function getNavByRole(role: string): RoleNav {
       return {
         primary: [
           { label: '大夜工作表', href: '/nightshift',       icon: Moon          },
-          { label: '大夜說明',   href: '/nightshift/guide', icon: HelpCircle    },
+          { label: '使用指引(夜)', href: '/nightshift/guide', icon: BookOpen    },
           { label: '工務任務',   href: '/work-orders',      icon: ClipboardList },
         ],
         more: [
@@ -197,7 +198,7 @@ function getNavByRole(role: string): RoleNav {
           {
             items: [
               { label: '歷史紀錄(房)', href: '/housekeeping/history', icon: History  },
-              { label: '使用說明',     href: '/housekeeping/guide',   icon: BookOpen },
+              { label: '使用指引(房)', href: '/housekeeping/guide',   icon: BookOpen },
               { label: '設備說明書',   href: '/manuals',              icon: BookOpen },
               { label: '緊急維修',     href: '/hardware',             icon: Wrench   },
             ],
@@ -218,11 +219,12 @@ function getNavByRole(role: string): RoleNav {
         more: [
           {
             items: [
-              { label: '住戶列表',   href: '/butler/residents', icon: Users     },
-              { label: '班表',       href: '/butler/schedule',  icon: History   },
-              { label: '照片庫',     href: '/butler/photos',    icon: Images    },
-              { label: '設備說明書', href: '/manuals',           icon: BookOpen  },
-              { label: '緊急維修',   href: '/hardware',         icon: Wrench    },
+              { label: '住戶列表',     href: '/butler/residents', icon: Users     },
+              { label: '班表',         href: '/butler/schedule',  icon: History   },
+              { label: '照片庫',       href: '/butler/photos',    icon: Images    },
+              { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },
+              { label: '設備說明書',   href: '/manuals',          icon: BookOpen  },
+              { label: '緊急維修',     href: '/hardware',         icon: Wrench    },
             ],
           },
         ],
@@ -240,9 +242,10 @@ function getNavByRole(role: string): RoleNav {
         more: [
           {
             items: [
-              { label: '照片庫',     href: '/butler/photos', icon: Images    },
-              { label: '設備說明書', href: '/manuals',        icon: BookOpen  },
-              { label: '緊急維修',   href: '/hardware',       icon: Wrench    },
+              { label: '照片庫',       href: '/butler/photos', icon: Images    },
+              { label: '使用指引(管)', href: '/butler/guide',  icon: BookOpen  },
+              { label: '設備說明書',   href: '/manuals',       icon: BookOpen  },
+              { label: '緊急維修',     href: '/hardware',      icon: Wrench    },
             ],
           },
         ],
