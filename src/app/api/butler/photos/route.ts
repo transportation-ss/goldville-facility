@@ -29,14 +29,21 @@ export async function GET(req: NextRequest) {
   if (!residentName) return NextResponse.json({ error: 'Missing residentName' }, { status: 400 })
 
   const cld = getCloudinary()
-  const prefix = `goldville/${residentName}/`
 
-  const result = await cld.api.resources({
-    type: 'upload',
-    prefix,
-    max_results: 500,
-    resource_type: 'image',
-  })
+  try {
+    // 用 Search API 查詢，比 api.resources + prefix 對中文路徑更穩定
+    const folderPrefix = `goldville/${residentName}/`
+    const result = await cld.search
+      .expression(`public_id:${folderPrefix}*`)
+      .sort_by('created_at', 'desc')
+      .max_results(500)
+      .execute()
 
-  return NextResponse.json({ photos: result.resources as CloudinaryPhoto[] })
+    const photos = (result.resources ?? []) as CloudinaryPhoto[]
+    return NextResponse.json({ photos, total: photos.length, folder: folderPrefix })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : JSON.stringify(e)
+    console.error('[butler/photos] Cloudinary search error:', msg)
+    return NextResponse.json({ error: msg, photos: [] }, { status: 500 })
+  }
 }
