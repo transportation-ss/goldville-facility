@@ -29,13 +29,16 @@ function dl(publicId: string) {
   return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/fl_attachment/${publicId}`
 }
 
-function extractDate(publicId: string) {
-  const parts = publicId.split('/')
-  const d = parts[3] ?? parts[2] ?? ''
-  return d.match(/^\d{4}-\d{2}-\d{2}$/) ? d : (parts[2] ?? '').slice(0, 7)
-}
+// public_id 格式（群組）: goldville/_群組活動/YYYY-MM/活動名稱/filename
+// public_id 格式（住民）: goldville/住民名/YYYY-MM/filename
 function extractMonth(publicId: string) {
   return publicId.split('/')[2] ?? ''
+}
+function extractActivity(publicId: string) {
+  // parts[3] 若存在且不像日期字串，視為活動名稱
+  const parts = publicId.split('/')
+  const p3 = parts[3] ?? ''
+  return p3.match(/^\d{8}-\d+/) ? '' : p3  // filename 開頭是 20260706-01，表示無活動層
 }
 
 // ─── Lightbox ─────────────────────────────────
@@ -113,14 +116,18 @@ function GroupPhotos() {
   const months = [...new Set(photos.map(p => extractMonth(p.public_id)))].sort().reverse()
   const monthPhotos = photos.filter(p => extractMonth(p.public_id) === selMonth)
 
-  // 按日期分組
+  // 按活動名稱分組，未命名的歸入「其他」
   const grouped: Record<string, Photo[]> = {}
   for (const p of monthPhotos) {
-    const d = extractDate(p.public_id)
-    if (!grouped[d]) grouped[d] = []
-    grouped[d].push(p)
+    const key = extractActivity(p.public_id) || '其他'
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(p)
   }
-  const sortedDates = Object.keys(grouped).sort().reverse()
+  const sortedActivities = Object.keys(grouped).sort((a, b) => {
+    if (a === '其他') return 1
+    if (b === '其他') return -1
+    return a.localeCompare(b, 'zh-TW')
+  })
 
   return (
     <div>
@@ -136,12 +143,15 @@ function GroupPhotos() {
         ))}
       </div>
 
-      {sortedDates.map(date => (
-        <div key={date} className="mb-6">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{date}</p>
+      {sortedActivities.map(activity => (
+        <div key={activity} className="mb-7">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-semibold text-gray-700">{activity}</span>
+            <span className="text-xs text-gray-400">{grouped[activity].length} 張</span>
+          </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5">
-            {grouped[date].map((p, i) => (
-              <button key={p.public_id} onClick={() => setLightbox({ photos: grouped[date], index: i })}
+            {grouped[activity].map((p, i) => (
+              <button key={p.public_id} onClick={() => setLightbox({ photos: grouped[activity], index: i })}
                 className="aspect-square overflow-hidden rounded-lg bg-gray-100">
                 <img src={thumb(p.public_id)} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform" />
               </button>

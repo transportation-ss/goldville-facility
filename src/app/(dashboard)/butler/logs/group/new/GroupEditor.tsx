@@ -52,9 +52,9 @@ function compressImage(file: File, maxWidth = 1920, quality = 0.7): Promise<Blob
   })
 }
 
-function ImageBlock({ block, onChange, onDelete, logDate }: {
+function ImageBlock({ block, onChange, onDelete, logDate, activityTitle }: {
   block: Extract<LogBlock, { type: 'image' }>
-  onChange: (b: LogBlock) => void; onDelete: () => void; logDate: string
+  onChange: (b: LogBlock) => void; onDelete: () => void; logDate: string; activityTitle: string
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<'idle' | 'compressing' | 'folder' | 'uploading'>('idle')
@@ -84,6 +84,7 @@ function ImageBlock({ block, onChange, onDelete, logDate }: {
       form.append('file', new File([compressed], file.name, { type: 'image/jpeg' }))
       form.append('residentName', '_群組活動')
       form.append('logDate', logDate)
+      form.append('activityTitle', activityTitle)
       const upRes = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
       if (!upRes.ok) throw new Error(await upRes.text())
       const { url } = await upRes.json()
@@ -307,7 +308,7 @@ export function GroupEditor({ authorName, defaultDate, residents, staffList, exi
           <div key={i}>
             {b.type === 'heading' && <HeadingBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} />}
             {b.type === 'text'    && <TextBlock    block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} />}
-            {b.type === 'image'   && <ImageBlock   block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} logDate={date} />}
+            {b.type === 'image'   && <ImageBlock   block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} logDate={date} activityTitle={title} />}
           </div>
         ))}
       </div>

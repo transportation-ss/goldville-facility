@@ -20,9 +20,10 @@ export async function POST(req: NextRequest) {
 
   const form = await req.formData()
   const file = form.get('file') as File | null
-  const residentName = (form.get('residentName') as string) || '未知住民'
-  const logDate = (form.get('logDate') as string) || new Date().toISOString().slice(0, 10)
-  const seqNum   = parseInt((form.get('seqNum') as string) || '0', 10) || 0
+  const residentName   = (form.get('residentName')   as string) || '未知住民'
+  const logDate        = (form.get('logDate')        as string) || new Date().toISOString().slice(0, 10)
+  const seqNum         = parseInt((form.get('seqNum') as string) || '0', 10) || 0
+  const activityTitle  = (form.get('activityTitle')  as string) || ''
 
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
@@ -30,9 +31,12 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const cld = getCloudinary()
 
-    // 上傳到 Cloudinary，照片放在 goldville/住民姓名/YYYY-MM 資料夾
     const yearMonth = logDate.slice(0, 7)
-    const folder = `goldville/${residentName}/${yearMonth}`
+    // 群組活動：goldville/_群組活動/YYYY-MM/活動名稱/
+    // 住民照片：goldville/住民名/YYYY-MM/
+    const folder = activityTitle
+      ? `goldville/${residentName}/${yearMonth}/${activityTitle}`
+      : `goldville/${residentName}/${yearMonth}`
 
     // 照片命名：20260706-01、20260706-02 …（seqNum=0 → auto）
     const dateStr   = logDate.replace(/-/g, '')
