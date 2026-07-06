@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Readable } from 'stream'
 import { createClient } from '@/lib/supabase/server'
 import { getDriveClient } from '@/lib/google-drive'
 
@@ -20,12 +21,13 @@ export async function POST(req: NextRequest) {
   try {
     const drive = getDriveClient()
     const buffer = Buffer.from(await file.arrayBuffer())
+    const stream = Readable.from(buffer)
     const ext = file.name.split('.').pop() ?? 'jpg'
     const fileName = `${logDate}_${Date.now()}.${ext}`
 
     const uploaded = await drive.files.create({
       requestBody: { name: fileName, parents: [folderId] },
-      media: { mimeType: 'image/jpeg', body: buffer },
+      media: { mimeType: 'image/jpeg', body: stream },
       fields: 'id',
     })
 
