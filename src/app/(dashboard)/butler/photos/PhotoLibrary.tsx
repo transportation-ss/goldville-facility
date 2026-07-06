@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Search, FolderOpen, Users, ChevronRight,
-  Download, X, ChevronLeft, Loader2,
+  Download, X, ChevronLeft, Loader2, Trash2,
 } from 'lucide-react'
 import type { ButlerResident } from '../residents/actions'
 
-// cloudName 由 server component 注入，避免使用 NEXT_PUBLIC_ 環境變數
+// cloudName / canDelete 由 server component 注入
 let CLOUD_NAME = ''
+let CAN_DELETE = false
 
 type Photo = {
   public_id: string
@@ -42,14 +43,37 @@ function extractActivity(publicId: string) {
 }
 
 // ─── Lightbox ─────────────────────────────────
-function Lightbox({ photos, index, onClose }: {
+function Lightbox({ photos: initialPhotos, index, onClose }: {
   photos: Photo[]
   index: number
   onClose: () => void
 }) {
-  const [cur, setCur] = useState(index)
+  const [photos, setPhotos] = useState(initialPhotos)
+  const [cur, setCur]       = useState(index)
+  const [deleting, setDeleting] = useState(false)
+
   const photo = photos[cur]
-  if (!photo) return null
+  if (!photo) { onClose(); return null }
+
+  async function handleDelete() {
+    if (!confirm('確定要刪除這張照片？此操作無法復原。')) return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/butler/delete-photo', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicId: photo.public_id }),
+      })
+      if (!res.ok) { alert('刪除失敗，請稍後再試'); return }
+      const next = photos.filter((_, i) => i !== cur)
+      if (!next.length) { onClose(); return }
+      setPhotos(next)
+      setCur(c => Math.min(c, next.length - 1))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3">
@@ -58,6 +82,12 @@ function Lightbox({ photos, index, onClose }: {
           <a href={dl(photo.public_id)} download className="text-white/70 hover:text-white">
             <Download className="w-5 h-5" />
           </a>
+          {CAN_DELETE && (
+            <button onClick={handleDelete} disabled={deleting}
+              className="text-red-400 hover:text-red-300 disabled:opacity-50">
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
           <button onClick={onClose} className="text-white/70 hover:text-white">
             <X className="w-5 h-5" />
           </button>
@@ -217,8 +247,13 @@ function ResidentList({ residents }: { residents: ButlerResident[] }) {
 }
 
 // ─── 主元件 ──────────────────────────────────
-export function PhotoLibrary({ residents, cloudName }: { residents: ButlerResident[]; cloudName: string }) {
+export function PhotoLibrary({ residents, cloudName, canDelete }: {
+  residents: ButlerResident[]
+  cloudName: string
+  canDelete: boolean
+}) {
   CLOUD_NAME = cloudName
+  CAN_DELETE = canDelete
   const [tab, setTab] = useState<'residents' | 'group'>('residents')
 
   return (
