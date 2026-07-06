@@ -126,7 +126,7 @@ function ImageBlock({ block, onChange, onDelete, residentId, residentName, logDa
       setStatus('uploading')
       const form = new FormData()
       form.append('file', new File([compressed], file.name, { type: 'image/jpeg' }))
-      form.append('folderId', folderId)
+      form.append('residentName', residentName)
       form.append('logDate', logDate)
       const upRes = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
       if (!upRes.ok) throw new Error(await upRes.text())
@@ -235,7 +235,7 @@ export function LogEditor({ resident, authorName, existingLog }: {
         const compressed = await compressImage(files[i])
         const form = new FormData()
         form.append('file', new File([compressed], files[i].name, { type: 'image/jpeg' }))
-        form.append('folderId', folderId)
+        form.append('residentName', resident.name)
         form.append('logDate', today)
         const upRes = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
         if (upRes.ok) {
