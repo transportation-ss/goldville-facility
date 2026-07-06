@@ -82,7 +82,7 @@ function ImageBlock({ block, onChange, onDelete, logDate }: {
       setStatus('uploading')
       const form = new FormData()
       form.append('file', new File([compressed], file.name, { type: 'image/jpeg' }))
-      form.append('folderId', folderId)
+      form.append('residentName', '_群組活動')
       form.append('logDate', logDate)
       const upRes = await fetch('/api/butler/upload-photo', { method: 'POST', body: form })
       if (!upRes.ok) throw new Error(await upRes.text())
