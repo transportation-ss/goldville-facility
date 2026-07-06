@@ -287,10 +287,11 @@ function ResidentCard({ resident, canManage, onEdit }: {
       <div className="flex flex-col items-end gap-2 shrink-0">
         <button onClick={openPhotoWall} disabled={folderLoading}
           title="照片資料夾"
-          className="text-blue-400 hover:text-blue-600 disabled:opacity-50">
+          className="flex items-center gap-1 text-blue-400 hover:text-blue-600 disabled:opacity-50">
           {folderLoading
             ? <Loader2 className="w-4 h-4 animate-spin" />
             : <FolderOpen className="w-4 h-4" />}
+          <span className="text-xs">照片</span>
         </button>
         <div className="flex gap-2">
           {canManage && (
