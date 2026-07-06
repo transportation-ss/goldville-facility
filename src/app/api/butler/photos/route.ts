@@ -18,6 +18,7 @@ export type CloudinaryPhoto = {
   bytes: number
   width: number
   height: number
+  context?: { custom?: { uploaded_by?: string } }
 }
 
 export async function GET(req: NextRequest) {
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
 
     const result = await cld.search
       .expression(expression)
+      .with_field('context')
       .sort_by('created_at', 'desc')
       .max_results(500)
       .execute()

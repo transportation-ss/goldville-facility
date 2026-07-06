@@ -27,6 +27,11 @@ export async function POST(req: NextRequest) {
 
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
+  // 取上傳人顯示名稱，存入 Cloudinary context
+  const { data: profile } = await supabase
+    .from('user_profiles').select('display_name').eq('id', user.id).single()
+  const uploadedBy = profile?.display_name ?? ''
+
   try {
     const buffer = Buffer.from(await file.arrayBuffer())
     const cld = getCloudinary()
@@ -46,7 +51,10 @@ export async function POST(req: NextRequest) {
 
     const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
       cld.uploader.upload_stream(
-        { folder, public_id: publicId, resource_type: 'image', format: 'jpg', quality: 'auto' },
+        {
+          folder, public_id: publicId, resource_type: 'image', format: 'jpg', quality: 'auto',
+          context: uploadedBy ? `uploaded_by=${uploadedBy}` : undefined,
+        },
         (error, result) => {
           if (error || !result) reject(error ?? new Error('upload failed'))
           else resolve(result as { secure_url: string; public_id: string })
