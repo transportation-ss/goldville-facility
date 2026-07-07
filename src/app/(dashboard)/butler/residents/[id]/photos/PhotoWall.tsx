@@ -24,14 +24,6 @@ function fullUrl(publicId: string, cloudName: string) {
   return `https://res.cloudinary.com/${cloudName}/image/upload/q_auto,f_auto/${publicId}`
 }
 
-function extractDate(publicId: string): string {
-  // public_id 格式: goldville/住民名/YYYY-MM/YYYY-MM-DD/xxx
-  const parts = publicId.split('/')
-  // 取日期段（第4段），舊格式可能沒有，fallback 到第3段前綴
-  const datePart = parts[3] ?? parts[2] ?? ''
-  return datePart.match(/^\d{4}-\d{2}-\d{2}$/) ? datePart : datePart.slice(0, 7)
-}
-
 function extractMonth(publicId: string): string {
   const parts = publicId.split('/')
   return parts[2] ?? ''   // YYYY-MM
@@ -64,18 +56,11 @@ export function PhotoWall({ resident, cloudName }: {
   // 月份清單（降冪）
   const months = [...new Set(photos.map(p => extractMonth(p.public_id)))].sort().reverse()
 
-  // 篩選當月照片，按日期分組
+  // 篩選當月照片
   const monthPhotos = photos.filter(p => extractMonth(p.public_id) === selectedMonth)
-  const grouped: Record<string, Photo[]> = {}
-  for (const p of monthPhotos) {
-    const d = extractDate(p.public_id)
-    if (!grouped[d]) grouped[d] = []
-    grouped[d].push(p)
-  }
-  const sortedDates = Object.keys(grouped).sort().reverse()
 
   // Lightbox 導覽
-  const allCurrentPhotos = sortedDates.flatMap(d => grouped[d])
+  const allCurrentPhotos = monthPhotos
   const lightboxIndex = lightbox ? allCurrentPhotos.findIndex(p => p.public_id === lightbox.public_id) : -1
 
   function prevPhoto() {
@@ -125,33 +110,21 @@ export function PhotoWall({ resident, cloudName }: {
         <div className="text-center py-16 text-gray-400 text-sm">尚無照片</div>
       )}
 
-      {/* 照片按日期分組 */}
-      {!loading && sortedDates.map(date => (
-        <div key={date} className="mb-6">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{date}</p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {grouped[date].map(photo => (
-              <div key={photo.public_id} className="relative group aspect-square">
-                <img
-                  src={thumbnailUrl(photo.public_id, cloudName)}
-                  alt=""
-                  className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                  onClick={() => setLightbox(photo)}
-                />
-                <a
-                  href={downloadUrl(photo.public_id, cloudName)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  className="absolute bottom-1 right-1 bg-black/60 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="下載">
-                  <Download className="w-3 h-3" />
-                </a>
-              </div>
-            ))}
-          </div>
+      {/* 照片牆 3 欄格狀 */}
+      {!loading && monthPhotos.length > 0 && (
+        <div className="grid grid-cols-3 gap-0.5">
+          {monthPhotos.map(photo => (
+            <div key={photo.public_id} className="relative aspect-square">
+              <img
+                src={thumbnailUrl(photo.public_id, cloudName)}
+                alt=""
+                className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setLightbox(photo)}
+              />
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
       {/* Lightbox */}
       {lightbox && (
@@ -177,7 +150,7 @@ export function PhotoWall({ resident, cloudName }: {
             <img src={fullUrl(lightbox.public_id, cloudName)} alt=""
               className="max-h-[80vh] max-w-full object-contain rounded-lg" />
             <div className="flex items-center gap-3">
-              <span className="text-white/50 text-xs">{extractDate(lightbox.public_id)}</span>
+              <span className="text-white/50 text-xs">{lightbox.public_id.split('/').pop()}</span>
               <a href={downloadUrl(lightbox.public_id, cloudName)} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full transition-colors">
                 <Download className="w-3.5 h-3.5" /> 下載
