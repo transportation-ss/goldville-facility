@@ -22,6 +22,7 @@ export type ButlerResident = {
   drive_folder_url: string | null
   primary_butler_id: string | null
   notes: string | null
+  privacy_consent: boolean
   created_at: string
   primary_butler?: { display_name: string } | null
 }
@@ -97,6 +98,7 @@ export async function createResident(input: {
   drive_folder_url?: string | null
   primary_butler_id?: string | null
   notes?: string | null
+  privacy_consent?: boolean
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -123,6 +125,7 @@ export async function updateResident(id: string, input: Partial<{
   drive_folder_url: string | null
   primary_butler_id: string | null
   notes: string | null
+  privacy_consent: boolean
 }>) {
   const supabase = await createClient()
   const { error } = await supabase

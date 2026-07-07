@@ -52,6 +52,7 @@ function ResidentModal({ resident, butlers, onClose }: {
     drive_folder_url: resident?.drive_folder_url ?? '',
     primary_butler_id: resident?.primary_butler_id ?? '',
     notes:            resident?.notes ?? '',
+    privacy_consent:  resident?.privacy_consent ?? false,
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -75,6 +76,7 @@ function ResidentModal({ resident, butlers, onClose }: {
         drive_folder_url: form.drive_folder_url.trim() || null,
         primary_butler_id: form.primary_butler_id || null,
         notes:            form.notes.trim() || null,
+        privacy_consent:  form.privacy_consent,
       }
       if (resident) { await updateResident(resident.id, payload) }
       else          { await createResident(payload) }
@@ -199,6 +201,12 @@ function ResidentModal({ resident, butlers, onClose }: {
             <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={2}
               value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="其他說明…" />
           </div>
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <input type="checkbox" checked={form.privacy_consent}
+              onChange={e => setForm(f => ({ ...f, privacy_consent: e.target.checked }))}
+              className="w-4 h-4 rounded accent-emerald-600 cursor-pointer" />
+            <span className="text-sm text-gray-700">同意個資蒐集與使用</span>
+          </label>
           {resident && (
             <button type="button" onClick={handleDelete} disabled={saving}
               className="w-full border border-red-200 text-red-500 rounded-lg py-2 text-sm">
@@ -279,6 +287,13 @@ function ResidentCard({ resident, canManage, onEdit }: {
               小天使 {resident.primary_butler.display_name}
             </span>
           )}
+          <span className={`text-xs px-1.5 py-0.5 rounded ${
+            resident.privacy_consent
+              ? 'bg-green-50 text-green-700'
+              : 'bg-red-50 text-red-500'
+          }`}>
+            {resident.privacy_consent ? '✓ 同意個資' : '✗ 未同意個資'}
+          </span>
         </div>
         {resident.notes && (
           <p className="text-xs text-gray-500 mt-1 truncate">{resident.notes}</p>
