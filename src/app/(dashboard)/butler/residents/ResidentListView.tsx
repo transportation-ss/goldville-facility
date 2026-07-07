@@ -367,6 +367,8 @@ export function ResidentListView({ residents, butlers, userRole }: {
         ))}
       </div>
 
+      <p className="text-xs text-gray-400 mb-2">點選卡片可查看服務紀錄</p>
+
       {/* 列表 */}
       <div className="space-y-3">
         {filtered.length === 0 && (
