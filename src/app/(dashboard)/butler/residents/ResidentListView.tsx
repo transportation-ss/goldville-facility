@@ -31,12 +31,14 @@ function isManager(role: string) {
 }
 
 // ── 住戶表單 Modal ────────────────────────────────────────
-function ResidentModal({ resident, butlers, onClose }: {
+function ResidentModal({ resident, butlers, residents, onClose }: {
   resident?: ButlerResident | null
   butlers: ButlerOption[]
+  residents: ButlerResident[]
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [form, setForm] = useState({
     name:             resident?.name ?? '',
     nickname:         resident?.nickname ?? '',
@@ -56,9 +58,30 @@ function ResidentModal({ resident, butlers, onClose }: {
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+
+  // 房號衝突檢查（排除自己）
+  function roomConflict(room: string): ButlerResident | null {
+    if (!room.trim()) return null
+    return residents.find(r =>
+      r.id !== resident?.id &&
+      r.room === room.trim() &&
+      ['active_resident', 'service_only'].includes(r.status)
+    ) ?? null
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) return
+    setFormError('')
+
+    // 房號衝突警示
+    const conflict = roomConflict(form.room)
+    if (conflict) {
+      const go = confirm(`房號 ${form.room.trim()} 目前已有在住住戶「${conflict.name}」。確定要繼續儲存？`)
+      if (!go) return
+    }
+
     setSaving(true)
     try {
       const payload = {
@@ -81,6 +104,25 @@ function ResidentModal({ resident, butlers, onClose }: {
       if (resident) { await updateResident(resident.id, payload) }
       else          { await createResident(payload) }
       onClose()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : '儲存失敗，請稍後再試')
+    } finally { setSaving(false) }
+  }
+
+  // 快速退租：狀態→inactive、清空房號、設退租日
+  async function handleCheckOut() {
+    if (!resident) return
+    if (!confirm(`確定將「${resident.name}」標記為已退租？房號將自動清空。`)) return
+    setSaving(true)
+    try {
+      await updateResident(resident.id, {
+        status: 'inactive',
+        room: null,
+        move_out_date: today,
+      })
+      onClose()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : '操作失敗')
     } finally { setSaving(false) }
   }
 
@@ -89,6 +131,7 @@ function ResidentModal({ resident, butlers, onClose }: {
     if (!confirm(`確定要刪除「${resident.name}」？此操作無法還原，相關日誌也會一併刪除。`)) return
     setSaving(true)
     try { await deleteResident(resident.id); onClose() }
+    catch (err) { setFormError(err instanceof Error ? err.message : '刪除失敗') }
     finally { setSaving(false) }
   }
 
@@ -184,19 +227,6 @@ function ResidentModal({ resident, butlers, onClose }: {
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Google Drive 資料夾 ID</label>
-            <input className="w-full border rounded-lg px-3 py-2 text-sm font-mono"
-              value={form.drive_folder_id} onChange={e => set('drive_folder_id', e.target.value)}
-              placeholder="1aBcDeFgHiJkLmNoPqRsTuVwXyZ" />
-            <p className="text-[10px] text-gray-400 mt-0.5">Drive URL 中 /folders/ 後面的那串 ID</p>
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Drive 資料夾連結（給管家快速開啟）</label>
-            <input className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={form.drive_folder_url} onChange={e => set('drive_folder_url', e.target.value)}
-              placeholder="https://drive.google.com/drive/folders/..." />
-          </div>
-          <div>
             <label className="text-xs text-gray-500 mb-1 block">備注</label>
             <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={2}
               value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="其他說明…" />
@@ -207,6 +237,15 @@ function ResidentModal({ resident, butlers, onClose }: {
               className="w-4 h-4 rounded accent-emerald-600 cursor-pointer" />
             <span className="text-sm text-gray-700">同意個資蒐集與使用</span>
           </label>
+          {formError && (
+            <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formError}</p>
+          )}
+          {resident && ['active_resident', 'service_only'].includes(resident.status) && (
+            <button type="button" onClick={handleCheckOut} disabled={saving}
+              className="w-full border border-amber-300 text-amber-600 rounded-lg py-2 text-sm hover:bg-amber-50">
+              確認退租（清空房號，移至已退租）
+            </button>
+          )}
           {resident && (
             <button type="button" onClick={handleDelete} disabled={saving}
               className="w-full border border-red-200 text-red-500 rounded-lg py-2 text-sm">
@@ -380,7 +419,7 @@ export function ResidentListView({ residents, butlers, userRole }: {
       </div>
 
       {showModal && (
-        <ResidentModal resident={editing} butlers={butlers} onClose={closeModal} />
+        <ResidentModal resident={editing} butlers={butlers} residents={residents} onClose={closeModal} />
       )}
     </div>
   )
