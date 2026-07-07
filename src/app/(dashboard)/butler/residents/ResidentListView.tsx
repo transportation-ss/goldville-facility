@@ -249,10 +249,12 @@ function ResidentCard({ resident, canManage, onEdit }: {
 
   return (
     <div className="bg-white border rounded-xl p-4 flex gap-3">
-      <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-        <User className="w-5 h-5 text-gray-400" />
-      </div>
-      <div className="flex-1 min-w-0">
+      <button onClick={handleOpenResident} disabled={navLoading}
+        className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 hover:bg-gray-200 transition-colors">
+        {navLoading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : <User className="w-5 h-5 text-gray-400" />}
+      </button>
+      <button onClick={handleOpenResident} disabled={navLoading}
+        className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-gray-900">{resident.name}</span>
           {resident.nickname && (
@@ -298,7 +300,7 @@ function ResidentCard({ resident, canManage, onEdit }: {
         {resident.notes && (
           <p className="text-xs text-gray-500 mt-1 truncate">{resident.notes}</p>
         )}
-      </div>
+      </button>
       <div className="flex flex-col items-end gap-2 shrink-0">
         <button onClick={openPhotoWall} disabled={folderLoading}
           title="照片資料夾"
@@ -308,21 +310,12 @@ function ResidentCard({ resident, canManage, onEdit }: {
             : <FolderOpen className="w-4 h-4" />}
           <span className="text-xs">照片</span>
         </button>
-        <div className="flex gap-2">
-          {canManage && (
-            <button onClick={() => onEdit(resident)}
-              className="text-xs text-gray-400 hover:text-gray-600 border rounded px-2 py-0.5">
-              編輯
-            </button>
-          )}
-          {(resident.status === 'active_resident' || resident.status === 'service_only') && (
-            <button onClick={handleOpenResident} disabled={navLoading}
-              className="text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded px-2 py-0.5 disabled:opacity-60 flex items-center gap-1">
-              {navLoading && <Loader2 className="w-3 h-3 animate-spin" />}
-              {navLoading ? '開啟中…' : '撰寫紀錄'}
-            </button>
-          )}
-        </div>
+        {canManage && (
+          <button onClick={() => onEdit(resident)}
+            className="text-xs text-gray-400 hover:text-gray-600 border rounded px-2 py-0.5">
+            編輯
+          </button>
+        )}
       </div>
     </div>
   )
