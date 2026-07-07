@@ -511,12 +511,23 @@ export async function generateEODReport() {
       const name  = isAdhoc ? (item as any).title : (room?.name ?? '（未指定）')
       const label = !isAdhoc && room?.floor ? `${room.floor} ${name}` : name
 
+      const itemNotes = (item as any).completion_notes as string | null
       contents.push({
-        type: 'box', layout: 'horizontal', margin: 'sm', alignItems: 'center',
+        type: 'box', layout: 'vertical', margin: 'sm',
         contents: [
-          { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0, contents: [] },
-          { type: 'text', text: label, size: 'sm', color: '#374151', flex: 1, margin: 'sm', wrap: true },
-          { type: 'text', text: typeLabel, size: 'xxs', color: '#9CA3AF', align: 'end', flex: 0 },
+          {
+            type: 'box', layout: 'horizontal', alignItems: 'center',
+            contents: [
+              { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0, contents: [] },
+              { type: 'text', text: label, size: 'sm', color: '#374151', flex: 1, margin: 'sm', wrap: true },
+              { type: 'text', text: typeLabel, size: 'xxs', color: '#9CA3AF', align: 'end', flex: 0 },
+            ],
+          },
+          ...(itemNotes ? [{
+            type: 'box', layout: 'vertical', margin: 'xs',
+            backgroundColor: '#FFFBEB', cornerRadius: '4px', paddingAll: 'xs',
+            contents: [{ type: 'text', text: `💬 ${itemNotes}`, size: 'xxs', color: '#92400E', wrap: true, offsetStart: '14px' }],
+          }] : []),
         ],
       })
     }
