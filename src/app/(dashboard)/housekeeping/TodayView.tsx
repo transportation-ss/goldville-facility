@@ -139,7 +139,9 @@ function TaskRow({ task, onComplete, onUncomplete, onEditNotes, showType, showFl
             </p>
           )}
           {task.completion_notes
-            ? <p className="text-xs text-emerald-700 bg-emerald-50 rounded px-2 py-1">💬 {task.completion_notes}</p>
+            ? <p className={`text-xs rounded px-2 py-1 ${done ? 'text-emerald-700 bg-emerald-50' : 'text-amber-800 bg-amber-50 font-medium'}`}>
+                💬 {task.completion_notes}
+              </p>
             : done && <p className="text-xs text-gray-400">點此新增備註…</p>
           }
         </div>
@@ -193,7 +195,9 @@ function AdhocRow({ order, onComplete, onUncomplete, onEditNotes }: {
             </p>
           )}
           {order.completion_notes
-            ? <p className="text-xs text-emerald-700 bg-emerald-50 rounded px-2 py-1">💬 {order.completion_notes}</p>
+            ? <p className={`text-xs rounded px-2 py-1 ${done ? 'text-emerald-700 bg-emerald-50' : 'text-amber-800 bg-amber-50 font-medium'}`}>
+                💬 {order.completion_notes}
+              </p>
             : done && <p className="text-xs text-gray-400">點此新增備註…</p>
           }
         </div>
