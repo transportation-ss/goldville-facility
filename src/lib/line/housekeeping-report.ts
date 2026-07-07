@@ -95,6 +95,11 @@ function taskRow(t: any): any[] {
         backgroundColor: '#FFFBEB', cornerRadius: '4px', paddingAll: 'xs',
         contents: [{ type: 'text', text: `📝 ${t.special_notes}`, size: 'xxs', color: '#92400E', wrap: true }],
       }] : []),
+      ...(t.completion_notes ? [{
+        type: 'box', layout: 'vertical', margin: 'xs', offsetStart: '28px',
+        backgroundColor: '#F0FDF4', cornerRadius: '4px', paddingAll: 'xs',
+        contents: [{ type: 'text', text: `💬 ${t.completion_notes}`, size: 'xxs', color: '#166534', wrap: true }],
+      }] : []),
     ],
   }]
 }
@@ -117,6 +122,11 @@ function adhocRow(o: any): any[] {
       ...(location ? [{ type: 'text', text: location, size: 'xxs', color: '#6B7280', margin: 'xs', offsetStart: '28px' }] : []),
       ...(o.description ? [{ type: 'text', text: o.description, size: 'xxs', color: '#6B7280', margin: 'xs', wrap: true, offsetStart: '28px' }] : []),
       ...(o.assignee ? [{ type: 'text', text: `→ ${o.assignee.display_name}`, size: 'xxs', color: '#9CA3AF', margin: 'xs', offsetStart: '28px' }] : []),
+      ...(o.completion_notes ? [{
+        type: 'box', layout: 'vertical', margin: 'xs', offsetStart: '28px',
+        backgroundColor: '#F0FDF4', cornerRadius: '4px', paddingAll: 'xs',
+        contents: [{ type: 'text', text: `💬 ${o.completion_notes}`, size: 'xxs', color: '#166534', wrap: true }],
+      }] : []),
     ],
   }]
 }
@@ -506,6 +516,27 @@ export async function generateEODReport() {
           { type: 'box', layout: 'vertical', width: '10px', height: '10px', backgroundColor: typeColor, cornerRadius: '5px', flex: 0, contents: [] },
           { type: 'text', text: label, size: 'sm', color: '#374151', flex: 1, margin: 'sm', wrap: true },
           { type: 'text', text: typeLabel, size: 'xxs', color: '#9CA3AF', align: 'end', flex: 0 },
+        ],
+      })
+    }
+  }
+
+  // 完成且有備註的項目
+  const completedWithNotes = all.filter(i => i.status === 'completed' && (i as any).completion_notes)
+  if (completedWithNotes.length > 0) {
+    contents.push({ type: 'separator', margin: 'lg' })
+    contents.push({ type: 'text', text: '完成備註', size: 'xs', color: '#9CA3AF', weight: 'bold', margin: 'md' })
+    for (const item of completedWithNotes) {
+      const isAdhoc = typeof (item as any).title === 'string'
+      const room  = (item as any).room
+      const name  = isAdhoc ? (item as any).title : (room?.name ?? '（未指定）')
+      const label = !isAdhoc && room?.floor ? `${room.floor} ${name}` : name
+      contents.push({
+        type: 'box', layout: 'vertical', margin: 'sm',
+        backgroundColor: '#F0FDF4', cornerRadius: '4px', paddingAll: 'sm',
+        contents: [
+          { type: 'text', text: label, size: 'xs', color: '#374151', weight: 'bold' },
+          { type: 'text', text: `💬 ${(item as any).completion_notes}`, size: 'xxs', color: '#166534', wrap: true, margin: 'xs' },
         ],
       })
     }

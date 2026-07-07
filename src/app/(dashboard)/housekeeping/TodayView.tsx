@@ -95,16 +95,18 @@ function Toast({ message, type }: { message: string; type: 'loading' | 'success'
 }
 
 // ── Task 行 ───────────────────────────────────────────────
-function TaskRow({ task, onComplete, onUncomplete, onEditNotes, showType }: {
+function TaskRow({ task, onComplete, onUncomplete, onEditNotes, showType, showFloor }: {
   task: HousekeepingTask
   onComplete:   (id: string, label: string) => void
   onUncomplete: (id: string) => void
   onEditNotes:  (id: string, label: string, current: string) => void
   showType?:    boolean
+  showFloor?:   boolean
 }) {
   const done     = task.status === 'completed'
   const isUrgent = task.priority === 'urgent'
-  const label    = task.room?.name ?? '（未指定空間）'
+  const roomName = task.room?.name ?? '（未指定空間）'
+  const label    = showFloor && task.room?.floor ? `${task.room.floor} ${roomName}` : roomName
 
   return (
     <div className={`flex items-start gap-3 py-3 border-b border-gray-100 last:border-0 ${done ? 'opacity-60' : ''}`}>
@@ -136,9 +138,10 @@ function TaskRow({ task, onComplete, onUncomplete, onEditNotes, showType }: {
               {task.completed_at && <span className="text-gray-400 ml-1">{twTime(task.completed_at)}</span>}
             </p>
           )}
-          <p className="text-xs text-gray-400">
-            {task.completion_notes ? `💬 ${task.completion_notes}` : '點此新增備註…'}
-          </p>
+          {task.completion_notes
+            ? <p className="text-xs text-emerald-700 bg-emerald-50 rounded px-2 py-1">💬 {task.completion_notes}</p>
+            : done && <p className="text-xs text-gray-400">點此新增備註…</p>
+          }
         </div>
       </div>
     </div>
@@ -170,10 +173,12 @@ function AdhocRow({ order, onComplete, onUncomplete, onEditNotes }: {
         <div className="flex items-center gap-2 flex-wrap">
           {isUrgent && !done && <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>}
           <span className={`text-sm font-semibold ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{order.title}</span>
-          {order.room && (
-            <span className="text-xs text-gray-400">{order.room.name}</span>
-          )}
         </div>
+        {order.room && (
+          <p className="text-xs font-medium text-gray-600 mt-0.5">
+            {order.room.floor ? `${order.room.floor} ${order.room.name}` : order.room.name}
+          </p>
+        )}
         {order.description && <p className="text-xs text-gray-500 mt-0.5">{order.description}</p>}
         {order.assignee && <p className="text-xs text-gray-400 mt-0.5">負責：{order.assignee.display_name}</p>}
         <p className="text-xs text-orange-400 mt-0.5 flex items-center gap-1">
@@ -187,9 +192,10 @@ function AdhocRow({ order, onComplete, onUncomplete, onEditNotes }: {
               {order.completed_at && <span className="text-gray-400 ml-1">{twTime(order.completed_at)}</span>}
             </p>
           )}
-          <p className="text-xs text-gray-400">
-            {order.completion_notes ? `💬 ${order.completion_notes}` : '點此新增備註…'}
-          </p>
+          {order.completion_notes
+            ? <p className="text-xs text-emerald-700 bg-emerald-50 rounded px-2 py-1">💬 {order.completion_notes}</p>
+            : done && <p className="text-xs text-gray-400">點此新增備註…</p>
+          }
         </div>
       </div>
     </div>
@@ -512,7 +518,7 @@ export function TodayView({ today, plan, tasks, adhocOrders, canDispatch, curren
           {urgentSection.map(item =>
             item.kind === 'task' ? (
               <TaskRow
-                key={item.data.id} task={item.data} showType
+                key={item.data.id} task={item.data} showType showFloor
                 onComplete={(id, label) => handleComplete(id, label, 'task')}
                 onUncomplete={id => handleUncomplete(id, 'task')}
                 onEditNotes={(id, label, cur) => handleEditNotes(id, label, cur, 'task')}
