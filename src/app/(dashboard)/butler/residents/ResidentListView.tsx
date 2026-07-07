@@ -27,7 +27,7 @@ const TABS: { key: ResidentStatus | 'all'; label: string }[] = [
 ]
 
 function isManager(role: string) {
-  return ['admin', 'manager', 'butler_manager'].includes(role)
+  return ['admin', 'manager', 'butler_manager', 'sales'].includes(role)
 }
 
 // ── 住戶表單 Modal ────────────────────────────────────────
