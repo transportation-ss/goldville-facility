@@ -330,7 +330,8 @@ function urgentBubble(urgentTasks: any[], urgentAdhoc: any[], showFooter = false
         // 第四層：房號/位置
         for (const item of floorItems) {
           const isDone  = item.status === 'completed'
-          const name    = isAdhoc ? item.title : (item.room?.name ?? '（未指定）')
+          const roomSuffix = isAdhoc && item.room?.name ? `（${item.room.name}）` : ''
+          const name    = isAdhoc ? `${item.title}${roomSuffix}` : (item.room?.name ?? '（未指定）')
           const notes   = isAdhoc ? item.description : item.special_notes
           contents.push({
             type: 'box', layout: 'vertical', margin: 'xs',
