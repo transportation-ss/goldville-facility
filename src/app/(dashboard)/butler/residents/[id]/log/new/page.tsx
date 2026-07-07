@@ -19,6 +19,7 @@ export default async function NewLogPage({ params }: { params: Promise<{ id: str
     <LogEditor
       resident={resident}
       authorName={profile?.display_name ?? ''}
+      cloudName={process.env.CLOUDINARY_CLOUD_NAME ?? ''}
     />
   )
 }

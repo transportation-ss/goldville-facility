@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Type, Camera, Heading, Trash2, GripVertical, Loader2 } from 'lucide-react'
+import { ArrowLeft, Type, Camera, Heading, Trash2, GripVertical, Loader2, Images, Check, X } from 'lucide-react'
 import type { ButlerResident, LogBlock, ServiceLog } from '../../../actions'
 import { createServiceLog, updateServiceLog } from '../../../actions'
 
@@ -183,11 +183,96 @@ function ImageBlock({ block, onChange, onDelete, residentId, residentName, logDa
   )
 }
 
+// ── 照片庫選取器 ─────────────────────────────────────────
+type CldPhoto = { public_id: string; secure_url: string }
+
+function PhotoPicker({ residentName, cloudName, onConfirm, onClose }: {
+  residentName: string
+  cloudName: string
+  onConfirm: (photos: CldPhoto[]) => void
+  onClose: () => void
+}) {
+  const [photos, setPhotos]   = useState<CldPhoto[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    fetch(`/api/butler/photos?residentName=${encodeURIComponent(residentName)}`)
+      .then(r => r.json())
+      .then(d => setPhotos((d.photos ?? []) as CldPhoto[]))
+      .finally(() => setLoading(false))
+  }, [residentName])
+
+  function toggle(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function thumb(publicId: string) {
+    return `https://res.cloudinary.com/${cloudName}/image/upload/c_fill,w_200,h_200,q_auto,f_auto/${publicId}`
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex flex-col">
+      <div className="flex-1 flex flex-col bg-white mt-16 rounded-t-2xl overflow-hidden">
+        {/* header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+          <span className="font-semibold text-sm text-gray-900">從照片庫選取</span>
+          <button
+            disabled={selected.size === 0}
+            onClick={() => onConfirm(photos.filter(p => selected.has(p.public_id)))}
+            className="text-sm font-medium text-emerald-600 disabled:text-gray-300">
+            插入 {selected.size > 0 ? `${selected.size} 張` : ''}
+          </button>
+        </div>
+
+        {/* grid */}
+        <div className="flex-1 overflow-y-auto">
+          {loading && (
+            <div className="flex justify-center py-16 text-gray-400">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
+          )}
+          {!loading && photos.length === 0 && (
+            <p className="text-center text-gray-400 py-16 text-sm">尚無已上傳的照片</p>
+          )}
+          {!loading && photos.length > 0 && (
+            <div className="grid grid-cols-3 gap-0.5">
+              {photos.map(p => {
+                const sel = selected.has(p.public_id)
+                return (
+                  <button key={p.public_id} onClick={() => toggle(p.public_id)}
+                    className="aspect-square relative overflow-hidden bg-gray-100">
+                    <img src={thumb(p.public_id)} alt="" loading="lazy"
+                      className="w-full h-full object-cover" />
+                    {sel && (
+                      <div className="absolute inset-0 bg-emerald-600/40 flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── 主元件 ───────────────────────────────────────────────
-export function LogEditor({ resident, authorName, existingLog }: {
+export function LogEditor({ resident, authorName, existingLog, cloudName = '' }: {
   resident: ButlerResident
   authorName: string
   existingLog?: ServiceLog
+  cloudName?: string
 }) {
   const router = useRouter()
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
@@ -208,6 +293,8 @@ export function LogEditor({ resident, authorName, existingLog }: {
   const [saving, setSaving] = useState(false)
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null)
   const batchFileRef = useRef<HTMLInputElement>(null)
+  const [showPhotoChoice, setShowPhotoChoice] = useState(false)
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false)
 
   async function handleBatchFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -255,6 +342,13 @@ export function LogEditor({ resident, authorName, existingLog }: {
   function updatePeriod(type: PeriodType, start: string, end: string) {
     setPeriodType(type); setPeriodStart(start); setPeriodEnd(end)
     if (!titleCustom) setTitle(genTitle(resident.name, start, end))
+  }
+
+  function insertFromLibrary(photos: CldPhoto[]) {
+    const newBlocks: LogBlock[] = photos.map(p => ({ type: 'image', url: p.secure_url, caption: '' }))
+    setBlocks(b => [...b, ...newBlocks])
+    setShowPhotoPicker(false)
+    setShowPhotoChoice(false)
   }
 
   function addBlock(type: LogBlock['type']) {
@@ -406,7 +500,7 @@ export function LogEditor({ resident, authorName, existingLog }: {
                 </div>
                 <span className="text-[10px]">文字</span>
               </button>
-              <button onClick={() => batchFileRef.current?.click()}
+              <button onClick={() => setShowPhotoChoice(true)}
                 disabled={!!batchProgress}
                 className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-700 transition-colors disabled:opacity-40">
                 <div className="w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-gray-400">
@@ -420,6 +514,45 @@ export function LogEditor({ resident, authorName, existingLog }: {
         <input ref={batchFileRef} type="file" accept="image/*" multiple
           className="hidden" onChange={handleBatchFiles} />
       </div>
+
+      {/* 照片來源選擇 bottom sheet */}
+      {showPhotoChoice && (
+        <div className="fixed inset-0 z-40 bg-black/50 flex flex-col justify-end"
+          onClick={() => setShowPhotoChoice(false)}>
+          <div className="bg-white rounded-t-2xl p-4 pb-8 space-y-2"
+            onClick={e => e.stopPropagation()}>
+            <p className="text-xs text-gray-400 text-center mb-3">選擇照片來源</p>
+            <button
+              onClick={() => { setShowPhotoChoice(false); batchFileRef.current?.click() }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left">
+              <Camera className="w-5 h-5 text-gray-500" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">從裝置上傳</p>
+                <p className="text-xs text-gray-400">拍照或從相簿選取</p>
+              </div>
+            </button>
+            <button
+              onClick={() => { setShowPhotoChoice(false); setShowPhotoPicker(true) }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-left">
+              <Images className="w-5 h-5 text-emerald-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-800">從照片庫選取</p>
+                <p className="text-xs text-gray-400">使用已上傳的照片</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 照片庫選取器 */}
+      {showPhotoPicker && (
+        <PhotoPicker
+          residentName={resident.name}
+          cloudName={cloudName}
+          onConfirm={insertFromLibrary}
+          onClose={() => setShowPhotoPicker(false)}
+        />
+      )}
     </div>
   )
 }
