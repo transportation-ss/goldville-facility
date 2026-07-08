@@ -12,12 +12,14 @@ const FLOOR_ROOMS: { floor: string; rooms: string[] }[] = [
   { floor: '7F', rooms: ['703','705','706','707','708','709','710','711','712','713','715'] },
 ]
 
-function isExpiringSoon(contractEnd: string | null): boolean {
-  if (!contractEnd) return false
-  const end = new Date(contractEnd)
-  const now = new Date()
-  const diff = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  return diff <= 30
+type ContractState = 'urgent' | 'warning' | 'no_date' | 'ok'
+
+function contractState(contractEnd: string | null): ContractState {
+  if (!contractEnd) return 'no_date'
+  const diff = (new Date(contractEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  if (diff <= 5)  return 'urgent'
+  if (diff <= 20) return 'warning'
+  return 'ok'
 }
 
 export function RoomMapView({ residents }: { residents: ButlerResident[] }) {
@@ -49,14 +51,22 @@ export function RoomMapView({ residents }: { residents: ButlerResident[] }) {
       </div>
 
       {/* 圖例 */}
-      <div className="flex gap-4 mb-5 text-xs text-gray-500">
+      <div className="flex flex-wrap gap-3 mb-5 text-xs text-gray-500">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-white border border-gray-200 inline-block" />
           入住
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-amber-50 border border-amber-200 inline-block" />
-          合約即將到期
+          <span className="w-3 h-3 rounded-sm bg-red-50 border border-red-200 inline-block" />
+          注意續約（5天內/已到期）
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-yellow-50 border border-yellow-200 inline-block" />
+          即將到期（20天內）
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-blue-50 border border-blue-200 inline-block" />
+          無到期日
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-gray-50 border border-dashed border-gray-300 inline-block" />
@@ -78,13 +88,49 @@ export function RoomMapView({ residents }: { residents: ButlerResident[] }) {
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {rooms.map(roomNo => {
                 const occupants = byRoom.get(roomNo)
-                const expiring  = occupants?.some(r => isExpiringSoon(r.contract_end))
+                // 取最嚴重的合約狀態
+                const state: ContractState = occupants
+                  ? (['urgent','warning','no_date','ok'] as ContractState[]).find(
+                      s => occupants.some(r => contractState(r.contract_end) === s)
+                    ) ?? 'ok'
+                  : 'ok'
+
+                const cardStyle: Record<ContractState, string> = {
+                  urgent:  'bg-red-50 border-red-200',
+                  warning: 'bg-yellow-50 border-yellow-200',
+                  no_date: 'bg-blue-50 border-blue-200',
+                  ok:      'bg-white border-gray-200',
+                }
+                const roomNoStyle: Record<ContractState, string> = {
+                  urgent:  'text-red-400',
+                  warning: 'text-yellow-500',
+                  no_date: 'text-blue-400',
+                  ok:      'text-blue-400',
+                }
+                const nameStyle: Record<ContractState, string> = {
+                  urgent:  'text-red-800',
+                  warning: 'text-yellow-800',
+                  no_date: 'text-blue-800',
+                  ok:      'text-gray-800',
+                }
+                const tagLabel: Record<ContractState, string> = {
+                  urgent:  '注意續約',
+                  warning: '即將到期',
+                  no_date: '無到期日',
+                  ok:      '',
+                }
+                const tagStyle: Record<ContractState, string> = {
+                  urgent:  'text-red-400',
+                  warning: 'text-yellow-500',
+                  no_date: 'text-blue-400',
+                  ok:      '',
+                }
 
                 if (!occupants) {
                   return (
                     <div key={roomNo}
                       className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-2.5 min-h-[64px] flex flex-col">
-                      <p className="text-[11px] font-medium text-blue-400">{roomNo}</p>
+                      <p className="text-[11px] font-medium text-gray-400">{roomNo}</p>
                       <p className="text-xs text-gray-300 mt-auto">空房</p>
                     </div>
                   )
@@ -92,24 +138,16 @@ export function RoomMapView({ residents }: { residents: ButlerResident[] }) {
 
                 return (
                   <div key={roomNo}
-                    className={`rounded-lg border p-2.5 min-h-[64px] flex flex-col cursor-pointer transition-opacity hover:opacity-75 ${
-                      expiring
-                        ? 'bg-amber-50 border-amber-200'
-                        : 'bg-white border-gray-200'
-                    }`}
+                    className={`rounded-lg border p-2.5 min-h-[64px] flex flex-col cursor-pointer transition-opacity hover:opacity-75 ${cardStyle[state]}`}
                     onClick={() => {
-                      if (occupants.length === 1) {
-                        router.push(`/butler/residents/${occupants[0].id}`)
-                      }
+                      if (occupants.length === 1) router.push(`/butler/residents/${occupants[0].id}`)
                     }}
                   >
-                    <p className={`text-[11px] font-medium ${expiring ? 'text-amber-500' : 'text-blue-400'}`}>
-                      {roomNo}
-                    </p>
+                    <p className={`text-[11px] font-medium ${roomNoStyle[state]}`}>{roomNo}</p>
                     <div className="mt-1 space-y-0.5">
                       {occupants.map(r => (
                         <p key={r.id}
-                          className={`text-xs leading-tight font-medium ${expiring ? 'text-amber-800' : 'text-gray-800'}`}
+                          className={`text-xs leading-tight font-medium ${nameStyle[state]}`}
                           onClick={e => {
                             if (occupants.length > 1) {
                               e.stopPropagation()
@@ -121,8 +159,8 @@ export function RoomMapView({ residents }: { residents: ButlerResident[] }) {
                         </p>
                       ))}
                     </div>
-                    {expiring && (
-                      <p className="text-[10px] text-amber-400 mt-auto pt-1">合約到期</p>
+                    {state !== 'ok' && (
+                      <p className={`text-[10px] mt-auto pt-1 ${tagStyle[state]}`}>{tagLabel[state]}</p>
                     )}
                   </div>
                 )
