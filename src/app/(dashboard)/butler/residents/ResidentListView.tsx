@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, User, Home, X, FolderOpen, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, User, Home, X, FolderOpen, Loader2, LayoutGrid } from 'lucide-react'
 import type { ButlerResident, ResidentStatus, ButlerOption } from './actions'
 import { createResident, updateResident, deleteResident } from './actions'
 
@@ -406,7 +407,15 @@ export function ResidentListView({ residents, butlers, userRole }: {
         ))}
       </div>
 
-      <p className="text-xs text-gray-400 mb-2">點選卡片可查看服務紀錄</p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs text-gray-400">點選卡片可查看服務紀錄</p>
+        <Link href="/butler/residents/roommap"
+          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-emerald-600 transition-colors"
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          房間配置圖
+        </Link>
+      </div>
 
       {/* 列表 */}
       <div className="space-y-3">
