@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileNav } from '@/components/layout/MobileNav'
+import { RouteLoadingBar } from '@/components/layout/RouteLoadingBar'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -11,6 +13,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex h-full">
+      <Suspense fallback={null}>
+        <RouteLoadingBar />
+      </Suspense>
       <Sidebar />
       <main className="flex-1 md:ml-56 overflow-y-auto">
         <div className="p-4 md:p-6 pb-24 md:pb-6">

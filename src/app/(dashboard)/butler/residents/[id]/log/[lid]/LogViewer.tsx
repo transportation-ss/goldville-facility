@@ -45,7 +45,7 @@ export function LogViewer({ log, residentId, canEdit }: {
   async function generatePdfBlob(): Promise<Blob | null> {
     if (!printRef.current) return null
     const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-      import('html2canvas'), import('jspdf'),
+      import('html2canvas-pro'), import('jspdf'),
     ])
     const node = printRef.current
     const prevDisplay = node.style.display
@@ -92,6 +92,8 @@ export function LogViewer({ log, residentId, canEdit }: {
       a.download = `${log.title}_${log.log_date}.pdf`
       a.click()
       URL.revokeObjectURL(url)
+    } catch (err) {
+      alert(`下載失敗：${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setExporting(false)
     }

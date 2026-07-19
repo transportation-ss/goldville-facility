@@ -627,6 +627,13 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '' }:
           onClose={() => setShowPhotoPicker(false)}
         />
       )}
+
+      {/* 底部儲存按鈕 */}
+      <button onClick={handleSave} disabled={saving}
+        className="w-full mt-5 bg-emerald-600 text-white text-sm font-medium py-3 rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+        {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+        {saving ? '儲存中…' : '儲存'}
+      </button>
     </div>
   )
 }
