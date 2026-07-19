@@ -50,23 +50,23 @@ export function LogViewer({ log, residentId, canEdit }: {
     const node = printRef.current
     const prevDisplay = node.style.display
     node.style.display = 'block'
-    const canvas = await html2canvas(node, { scale: 2, useCORS: true })
+    const canvas = await html2canvas(node, { scale: 1.5, useCORS: true })
     node.style.display = prevDisplay
 
     const pdf = new jsPDF('p', 'mm', 'a4')
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
     const imgHeight = canvas.height * pageWidth / canvas.width
-    const imgData = canvas.toDataURL('image/png')
+    const imgData = canvas.toDataURL('image/jpeg', 0.85)
 
     let heightLeft = imgHeight
     let position = 0
-    pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight)
+    pdf.addImage(imgData, 'JPEG', 0, position, pageWidth, imgHeight)
     heightLeft -= pageHeight
     while (heightLeft > 0) {
       position -= pageHeight
       pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight)
+      pdf.addImage(imgData, 'JPEG', 0, position, pageWidth, imgHeight)
       heightLeft -= pageHeight
     }
     return pdf.output('blob')
