@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Type, Camera, Heading, Trash2, GripVertical, Loader2, Images, Check, X, Sparkles } from 'lucide-react'
+import { ArrowLeft, Type, Camera, Heading, Trash2, GripVertical, Loader2, Images, Check, X, Sparkles, Wand2 } from 'lucide-react'
 import type { ButlerResident, LogBlock, ServiceLog } from '../../../actions'
-import { createServiceLog, updateServiceLog } from '../../../actions'
+import { createServiceLog, updateServiceLog, getServiceLogsInRange } from '../../../actions'
 
 type PeriodType = 'day' | 'week' | 'month' | 'custom'
 
@@ -368,6 +368,55 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '' }:
   const batchFileRef = useRef<HTMLInputElement>(null)
   const [showPhotoChoice, setShowPhotoChoice] = useState(false)
   const [showPhotoPicker, setShowPhotoPicker] = useState(false)
+  const [summarizing, setSummarizing] = useState(false)
+  const [summarizeError, setSummarizeError] = useState('')
+
+  async function handleSummarizeRange() {
+    if (summarizing) return
+    const hasContent = blocks.some(b => (b.type === 'text' && b.text.trim()) || (b.type === 'image' && b.url))
+    if (hasContent && !confirm('目前內容會被彙整結果覆蓋，確定要繼續嗎？')) return
+
+    setSummarizing(true)
+    setSummarizeError('')
+    try {
+      const sourceLogs = await getServiceLogsInRange(resident.id, periodStart, periodEnd, existingLog?.id)
+      const entries = sourceLogs
+        .map(l => ({
+          date: l.period_start === l.period_end ? l.period_start : `${l.period_start}~${l.period_end}`,
+          text: (l.content as LogBlock[])
+            .filter((b): b is Extract<LogBlock, { type: 'text' }> => b.type === 'text')
+            .map(b => b.text.trim()).filter(Boolean).join('\n'),
+        }))
+        .filter(e => e.text)
+
+      if (entries.length === 0) {
+        setSummarizeError('這段期間內找不到可彙整的日紀錄文字')
+        return
+      }
+
+      const imageBlocks: LogBlock[] = sourceLogs.flatMap(l =>
+        (l.content as LogBlock[]).filter((b): b is Extract<LogBlock, { type: 'image' }> => b.type === 'image' && !!b.url)
+      )
+
+      const res = await fetch('/api/butler/ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'summary', entries }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '彙整失敗')
+
+      setBlocks([
+        { type: 'heading', text: '服務摘要' },
+        { type: 'text', text: data.result },
+        ...imageBlocks,
+      ])
+    } catch (err) {
+      setSummarizeError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSummarizing(false)
+    }
+  }
 
   async function handleBatchFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -514,6 +563,20 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '' }:
               onChange={e => updatePeriod(periodType, periodStart, e.target.value)} />
           </div>
         </div>
+        {/* AI 彙整區間內日紀錄 */}
+        {periodType !== 'day' && (
+          <div>
+            <button
+              type="button"
+              onClick={handleSummarizeRange}
+              disabled={summarizing}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg py-2 disabled:opacity-50">
+              {summarizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              {summarizing ? '彙整中…' : `AI 彙整 ${periodStart}～${periodEnd} 的日紀錄`}
+            </button>
+            {summarizeError && <p className="text-xs text-red-500 mt-1">{summarizeError}</p>}
+          </div>
+        )}
         {/* 標題 */}
         <div>
           <label className="text-xs text-gray-500 mb-1 block">標題</label>

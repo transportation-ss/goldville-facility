@@ -169,6 +169,23 @@ export async function getAllServiceLogs(): Promise<ServiceLog[]> {
   return (data ?? []) as ServiceLog[]
 }
 
+// 抓某住戶在區間內（重疊即算）的其他服務紀錄，供週記/月記彙整參考
+export async function getServiceLogsInRange(
+  residentId: string, start: string, end: string, excludeId?: string
+): Promise<ServiceLog[]> {
+  const supabase = createAdminClient()
+  let query = supabase
+    .from('butler_service_logs')
+    .select('*, author:user_profiles!butler_service_logs_author_id_fkey(display_name)')
+    .eq('resident_id', residentId)
+    .lte('period_start', end)
+    .gte('period_end', start)
+    .order('period_start', { ascending: true })
+  if (excludeId) query = query.neq('id', excludeId)
+  const { data } = await query
+  return (data ?? []) as ServiceLog[]
+}
+
 export async function getServiceLog(id: string): Promise<ServiceLog | null> {
   const supabase = createAdminClient()
   const { data } = await supabase

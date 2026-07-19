@@ -14,6 +14,17 @@ function getDaysInMonth(year: number, month: number) {
 function getFirstDayOfWeek(year: number, month: number) {
   return new Date(year, month, 1).getDay() // 0=Sun
 }
+// 展開 period_start ~ period_end 區間內的每一天（含頭尾）
+function expandDateRange(start: string, end: string): string[] {
+  const dates: string[] = []
+  const cur = new Date(`${start}T00:00:00`)
+  const last = new Date(`${end}T00:00:00`)
+  while (cur <= last) {
+    dates.push(cur.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }))
+    cur.setDate(cur.getDate() + 1)
+  }
+  return dates
+}
 
 // ── 新增選擇 Modal ───────────────────────────────────────
 function NewEntryModal({ residents, defaultDate, onClose }: {
@@ -147,12 +158,13 @@ export function ButlerLogsView({ logs, activities, residents }: {
   const firstDow    = getFirstDayOfWeek(year, month)
   const todayStr    = today.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
 
-  // 建立每天的 dot 資料
+  // 建立每天的 dot 資料：以服務區間（period_start ~ period_end）為準，非填寫當天
   const dotMap: Record<string, { personal: boolean; group: boolean }> = {}
   for (const log of logs) {
-    const d = log.log_date
-    if (!dotMap[d]) dotMap[d] = { personal: false, group: false }
-    dotMap[d].personal = true
+    for (const d of expandDateRange(log.period_start, log.period_end)) {
+      if (!dotMap[d]) dotMap[d] = { personal: false, group: false }
+      dotMap[d].personal = true
+    }
   }
   for (const act of activities) {
     const d = act.activity_date
@@ -160,8 +172,10 @@ export function ButlerLogsView({ logs, activities, residents }: {
     dotMap[d].group = true
   }
 
-  // 選定日期的紀錄
-  const dayLogs       = selectedDate ? logs.filter(l => l.log_date === selectedDate) : []
+  // 選定日期的紀錄：落在該紀錄服務區間內即算
+  const dayLogs       = selectedDate
+    ? logs.filter(l => l.period_start <= selectedDate && selectedDate <= l.period_end)
+    : []
   const dayActivities = selectedDate ? activities.filter(a => a.activity_date === selectedDate) : []
 
   const defaultDate = selectedDate ?? todayStr
