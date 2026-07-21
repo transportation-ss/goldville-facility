@@ -307,7 +307,7 @@ function SubNavLink({ item, pathname, onClick }: { item: NavItem; pathname: stri
   const isActive = !isExternal && (item.exact ? pathname === item.href : (pathname === item.href || pathname.startsWith(item.href + '/')))
   const Icon = item.icon
   return (
-    <Link href={item.href} onClick={onClick}
+    <Link href={item.href} onClick={isExternal ? undefined : onClick}
       {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       className={`flex items-center gap-2.5 pl-7 pr-3 py-1.5 rounded-lg mb-0.5 text-sm transition-colors ${
         isActive ? 'text-emerald-700 font-medium' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
