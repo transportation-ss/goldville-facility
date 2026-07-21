@@ -43,6 +43,32 @@ export async function getGroupActivities(): Promise<GroupActivity[]> {
   return (data ?? []) as GroupActivity[]
 }
 
+// 抓某住戶被標記參與的所有團體活動，供住戶服務紀錄頁面一併顯示
+export async function getGroupActivitiesForResident(residentId: string): Promise<GroupActivity[]> {
+  const supabase = createAdminClient()
+  const { data: participantRows } = await supabase
+    .from('butler_activity_participants')
+    .select('activity_id')
+    .eq('resident_id', residentId)
+  const activityIds = [...new Set((participantRows ?? []).map(r => r.activity_id))]
+  if (activityIds.length === 0) return []
+
+  const { data } = await supabase
+    .from('butler_group_activities')
+    .select(`
+      *,
+      author:user_profiles!butler_group_activities_author_id_fkey(display_name),
+      participants:butler_activity_participants(
+        id, resident_id, staff_id,
+        resident:butler_residents(name, room),
+        staff:user_profiles(display_name)
+      )
+    `)
+    .in('id', activityIds)
+    .order('activity_date', { ascending: false })
+  return (data ?? []) as GroupActivity[]
+}
+
 export async function getGroupActivity(id: string): Promise<GroupActivity | null> {
   const supabase = createAdminClient()
   const { data } = await supabase

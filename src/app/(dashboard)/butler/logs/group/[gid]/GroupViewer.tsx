@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, FileDown, Pencil, Trash2, Users, User, Loader2 } from 'lucide-react'
+import { ArrowLeft, FileDown, Pencil, Trash2, Users, User, Loader2, Share2 } from 'lucide-react'
 import type { GroupActivity } from '../../actions'
 import { deleteGroupActivity } from '../../actions'
 import type { LogBlock } from '@/app/(dashboard)/butler/residents/actions'
@@ -30,35 +30,74 @@ export function GroupViewer({ activity, canManage }: {
   const router = useRouter()
   const printRef = useRef<HTMLDivElement>(null)
   const [exporting, setExporting] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState(false)
 
   const residents = activity.participants?.filter(p => p.resident_id) ?? []
   const staff     = activity.participants?.filter(p => p.staff_id) ?? []
 
+  async function generatePdfBlob(): Promise<Blob | null> {
+    if (!printRef.current) return null
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas-pro'), import('jspdf'),
+    ])
+    const node = printRef.current
+    const prev = node.style.display
+    node.style.display = 'block'
+    const canvas = await html2canvas(node, { scale: 1.5, useCORS: true })
+    node.style.display = prev
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pageW = pdf.internal.pageSize.getWidth()
+    const pageH = pdf.internal.pageSize.getHeight()
+    const imgH  = canvas.height * pageW / canvas.width
+    const img   = canvas.toDataURL('image/jpeg', 0.85)
+    let left = imgH; let pos = 0
+    pdf.addImage(img, 'JPEG', 0, pos, pageW, imgH)
+    left -= pageH
+    while (left > 0) { pos -= pageH; pdf.addPage(); pdf.addImage(img, 'JPEG', 0, pos, pageW, imgH); left -= pageH }
+    return pdf.output('blob')
+  }
+
   async function handleExportPDF() {
-    if (!printRef.current) return
     setExporting(true)
     try {
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import('html2canvas'), import('jspdf'),
-      ])
-      const node = printRef.current
-      const prev = node.style.display
-      node.style.display = 'block'
-      const canvas = await html2canvas(node, { scale: 2, useCORS: true })
-      node.style.display = prev
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const pageW = pdf.internal.pageSize.getWidth()
-      const pageH = pdf.internal.pageSize.getHeight()
-      const imgH  = canvas.height * pageW / canvas.width
-      const img   = canvas.toDataURL('image/png')
-      let left = imgH; let pos = 0
-      pdf.addImage(img, 'PNG', 0, pos, pageW, imgH)
-      left -= pageH
-      while (left > 0) { pos -= pageH; pdf.addPage(); pdf.addImage(img, 'PNG', 0, pos, pageW, imgH); left -= pageH }
-      pdf.save(`${activity.title}_${activity.activity_date}.pdf`)
+      const blob = await generatePdfBlob()
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${activity.title}_${activity.activity_date}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert(`下載失敗：${err instanceof Error ? err.message : String(err)}`)
     } finally { setExporting(false) }
+  }
+
+  async function handleShareLine() {
+    setSharing(true)
+    try {
+      const blob = await generatePdfBlob()
+      if (!blob) return
+      const file = new File([blob], `${activity.title}_${activity.activity_date}.pdf`, { type: 'application/pdf' })
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: activity.title, files: [file] })
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name
+        a.click()
+        URL.revokeObjectURL(url)
+        alert('此瀏覽器不支援直接分享檔案，PDF 已下載，請手動附加到 LINE 訊息中傳送。')
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        alert(`分享失敗：${err.message}`)
+      }
+    } finally { setSharing(false) }
   }
 
   async function handleDelete() {
@@ -81,8 +120,12 @@ export function GroupViewer({ activity, canManage }: {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleExportPDF} disabled={exporting}
-            className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50" title="匯出 PDF">
+            className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50" title="下載 PDF">
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+          </button>
+          <button onClick={handleShareLine} disabled={sharing}
+            className="p-2 text-gray-400 hover:text-emerald-600 disabled:opacity-50" title="分享到 LINE">
+            {sharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
           </button>
           {canManage && (
             <>

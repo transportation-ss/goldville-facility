@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, ExternalLink, ArrowLeft, BookOpen, Trash2 } from 'lucide-react'
+import { Plus, ExternalLink, ArrowLeft, BookOpen, Trash2, Users } from 'lucide-react'
 import { getResident, getServiceLogs, deleteServiceLog } from '../actions'
+import { getGroupActivitiesForResident } from '../../logs/actions'
 import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -15,13 +16,37 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
   const { data: profile } = await supabase
     .from('user_profiles').select('role, display_name').eq('id', user!.id).single()
 
-  const [resident, logs] = await Promise.all([
+  const [resident, logs, groupActivities] = await Promise.all([
     getResident(id),
     getServiceLogs(id),
+    getGroupActivitiesForResident(id),
   ])
   if (!resident) notFound()
 
   const canManage = ['admin', 'manager', 'butler_manager'].includes(profile?.role ?? '')
+
+  const entries = [
+    ...logs.map(log => ({
+      kind: 'personal' as const,
+      date: log.period_start,
+      href: `/butler/residents/${resident.id}/log/${log.id}`,
+      title: log.title,
+      periodLabel: PERIOD_LABEL[log.period_type],
+      period: `${log.period_start} ～ ${log.period_end}`,
+      author: log.author?.display_name,
+      logDate: log.log_date,
+    })),
+    ...groupActivities.map(act => ({
+      kind: 'group' as const,
+      date: act.activity_date,
+      href: `/butler/logs/group/${act.id}`,
+      title: act.title,
+      periodLabel: '多人活動',
+      period: act.activity_date,
+      author: act.author?.display_name,
+      logDate: act.activity_date,
+    })),
+  ].sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
@@ -74,7 +99,7 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
           <BookOpen className="w-4 h-4 text-gray-400" /> 服務紀錄
-          <span className="text-xs text-gray-400 font-normal">（{logs.length} 篇）</span>
+          <span className="text-xs text-gray-400 font-normal">（{entries.length} 篇）</span>
         </h2>
         <Link href={`/butler/residents/${resident.id}/log/new`}
           className="flex items-center gap-1 bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium">
@@ -83,26 +108,26 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
       </div>
 
       {/* 日誌列表 */}
-      {logs.length === 0 && (
+      {entries.length === 0 && (
         <p className="text-sm text-gray-400 text-center py-12">尚無服務紀錄</p>
       )}
       <div className="space-y-2">
-        {logs.map(log => (
-          <div key={log.id} className="bg-white border rounded-xl">
-            <Link href={`/butler/residents/${resident.id}/log/${log.id}`}
-              className="flex items-start gap-3 p-4">
+        {entries.map(entry => (
+          <div key={entry.href} className="bg-white border rounded-xl">
+            <Link href={entry.href} className="flex items-start gap-3 p-4">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{log.title}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
                 <div className="flex gap-2 mt-0.5">
-                  <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-                    {PERIOD_LABEL[log.period_type]}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                    entry.kind === 'group' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {entry.kind === 'group' && <Users className="w-2.5 h-2.5" />}
+                    {entry.periodLabel}
                   </span>
-                  <span className="text-xs text-gray-400">
-                    {log.period_start} ～ {log.period_end}
-                  </span>
+                  <span className="text-xs text-gray-400">{entry.period}</span>
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {log.author?.display_name} · {log.log_date}
+                  {entry.author} · {entry.logDate}
                 </p>
               </div>
             </Link>
