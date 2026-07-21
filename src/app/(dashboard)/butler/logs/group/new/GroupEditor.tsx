@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, Type, Camera, Heading, Trash2, GripVertical, X, Users, User } from 'lucide-react'
+import { ArrowLeft, Plus, Type, Camera, Heading, Trash2, GripVertical, X, Users, User, Sparkles, Loader2 } from 'lucide-react'
 import type { LogBlock } from '../../../residents/actions'
 import type { GroupActivity, ResidentOption, StaffOption } from '../../actions'
 import { createGroupActivity, updateGroupActivity } from '../../actions'
@@ -26,11 +26,47 @@ function TextBlock({ block, onChange, onDelete }: {
   block: Extract<LogBlock, { type: 'text' }>
   onChange: (b: LogBlock) => void; onDelete: () => void
 }) {
+  const [polishing, setPolishing] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handlePolish() {
+    if (!block.text.trim() || polishing) return
+    setPolishing(true)
+    setError('')
+    try {
+      const res = await fetch('/api/butler/ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'polish', text: block.text }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '潤飾失敗')
+      onChange({ ...block, text: data.result })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPolishing(false)
+    }
+  }
+
   return (
     <div className="group flex gap-2 items-start">
       <div className="mt-2 text-gray-200 group-hover:text-gray-400 cursor-grab"><GripVertical className="w-4 h-4" /></div>
-      <textarea className="flex-1 text-sm text-gray-700 border border-gray-100 rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-gray-300 min-h-[80px] bg-gray-50/50"
-        value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} placeholder="輸入內容…" rows={3} />
+      <div className="flex-1 space-y-1">
+        <textarea className="w-full text-sm text-gray-700 border border-gray-100 rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-gray-300 min-h-[80px] bg-gray-50/50"
+          value={block.text} onChange={e => onChange({ ...block, text: e.target.value })} placeholder="輸入內容…" rows={3} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePolish}
+            disabled={polishing || !block.text.trim()}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            {polishing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {polishing ? 'AI 潤飾中…' : 'AI 潤飾'}
+          </button>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
+      </div>
       <button onClick={onDelete} className="mt-2 text-gray-200 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
     </div>
   )
@@ -59,9 +95,30 @@ function ImageBlock({ block, onChange, onDelete, logDate, activityTitle }: {
   const fileRef = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<'idle' | 'compressing' | 'folder' | 'uploading'>('idle')
   const [error, setError] = useState('')
+  const [captioning, setCaptioning] = useState(false)
 
   const uploading = status !== 'idle'
   const statusLabel = status === 'compressing' ? '壓縮中…' : status === 'folder' ? '準備中…' : status === 'uploading' ? '上傳中…' : '點擊選取照片'
+
+  async function handleAiCaption() {
+    if (!block.url || captioning) return
+    setCaptioning(true)
+    setError('')
+    try {
+      const res = await fetch('/api/butler/ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'caption', imageUrl: block.url }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '產生說明失敗')
+      onChange({ ...block, caption: data.result })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCaptioning(false)
+    }
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return
@@ -113,8 +170,20 @@ function ImageBlock({ block, onChange, onDelete, logDate, activityTitle }: {
           </button>
         )}
         {error && <p className="text-xs text-red-500">{error}</p>}
-        <input className="w-full text-xs border border-gray-100 rounded-lg px-3 py-1.5 focus:outline-none focus:border-gray-300 bg-gray-50/50"
-          value={block.caption} onChange={e => onChange({ ...block, caption: e.target.value })} placeholder="照片說明文字（選填）…" />
+        <div className="flex items-center gap-1.5">
+          <input className="flex-1 text-xs border border-gray-100 rounded-lg px-3 py-1.5 focus:outline-none focus:border-gray-300 bg-gray-50/50"
+            value={block.caption} onChange={e => onChange({ ...block, caption: e.target.value })} placeholder="照片說明文字（選填）…" />
+          {block.url && (
+            <button
+              type="button"
+              onClick={handleAiCaption}
+              disabled={captioning}
+              className="shrink-0 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-40 disabled:cursor-not-allowed px-2 py-1.5">
+              {captioning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              AI
+            </button>
+          )}
+        </div>
         <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
       </div>
       <button onClick={onDelete} className="mt-2 text-gray-200 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>

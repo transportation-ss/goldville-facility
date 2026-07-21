@@ -9,6 +9,38 @@ import { LogEditor } from '../new/LogEditor'
 
 const PERIOD_LABEL = { day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間' }
 
+function PrintBlockView({ block }: { block: LogBlock }) {
+  if (block.type === 'heading') {
+    return (
+      <h2 style={{ fontSize: '19px', fontWeight: 700, color: '#0f172a', margin: '28px 0 10px' }}>
+        {block.text}
+      </h2>
+    )
+  }
+  if (block.type === 'text') {
+    return (
+      <p style={{ fontSize: '14px', color: '#334155', lineHeight: 1.9, whiteSpace: 'pre-wrap', margin: '0 0 8px' }}>
+        {block.text}
+      </p>
+    )
+  }
+  if (block.type === 'image') {
+    return (
+      <figure style={{ margin: '16px 0' }}>
+        <img src={block.url} alt={block.caption || '服務照片'} crossOrigin="anonymous"
+          style={{ width: '100%', maxHeight: '360px', objectFit: 'cover', borderRadius: '10px', display: 'block' }} />
+        {block.caption && (
+          <figcaption style={{
+            fontSize: '12px', color: '#64748b', marginTop: '8px', padding: '8px 12px',
+            border: '1px solid #E2E8F0', borderRadius: '8px', lineHeight: 1.6,
+          }}>{block.caption}</figcaption>
+        )}
+      </figure>
+    )
+  }
+  return null
+}
+
 function BlockView({ block }: { block: LogBlock }) {
   if (block.type === 'heading') {
     return <h2 className="text-base font-semibold text-gray-900 mt-4 mb-1">{block.text}</h2>
@@ -140,13 +172,22 @@ export function LogViewer({ log, residentId, canEdit }: {
   return (
     <>
       {/* 列印 / PDF 匯出用 */}
-      <div ref={printRef} className="hidden print:block p-8 text-black" style={{ width: '794px' }}>
-        <h1 className="text-xl font-bold mb-1">{log.title}</h1>
-        <p className="text-sm text-gray-500 mb-4">
-          {log.period_start} ～ {log.period_end} · {log.author?.display_name} · {log.log_date}
-        </p>
-        <hr className="mb-4" />
-        {(log.content as LogBlock[]).map((b, i) => <BlockView key={i} block={b} />)}
+      <div ref={printRef} className="hidden print:block text-black" style={{ width: '794px', fontFamily: 'sans-serif', background: '#fff' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #2dd4bf, #059669)',
+          color: '#fff', padding: '40px 48px', borderRadius: '0 0 24px 24px',
+        }}>
+          <p style={{ fontSize: '13px', opacity: 0.9, margin: '0 0 8px', letterSpacing: '.5px' }}>
+            {log.period_start} ～ {log.period_end}
+          </p>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, margin: 0 }}>{log.title}</h1>
+          <p style={{ fontSize: '12px', opacity: 0.85, margin: '10px 0 0' }}>
+            {PERIOD_LABEL[log.period_type]} · {log.author?.display_name} · {log.log_date}
+          </p>
+        </div>
+        <div style={{ padding: '32px 48px 48px' }}>
+          {(log.content as LogBlock[]).map((b, i) => <PrintBlockView key={i} block={b} />)}
+        </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 print:hidden">

@@ -192,31 +192,49 @@ export function GroupViewer({ activity, canManage }: {
       </div>
 
       {/* 隱藏 PDF 列印區 */}
-      <div ref={printRef} style={{ display: 'none', width: '794px', padding: '48px', fontFamily: 'sans-serif', background: 'white' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <span style={{ fontSize: '11px', color: '#3B82F6' }}>多人活動</span>
+      <div ref={printRef} style={{ display: 'none', width: '794px', fontFamily: 'sans-serif', background: 'white' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #2dd4bf, #059669)',
+          color: '#fff', padding: '40px 48px', borderRadius: '0 0 24px 24px',
+        }}>
+          <p style={{ fontSize: '13px', opacity: 0.9, margin: '0 0 8px', letterSpacing: '.5px' }}>多人活動</p>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, margin: 0 }}>{activity.title}</h1>
+          <p style={{ fontSize: '12px', opacity: 0.85, margin: '10px 0 0' }}>
+            {activity.activity_date} · {activity.author?.display_name}
+          </p>
         </div>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#111' }}>{activity.title}</h1>
-        <p style={{ fontSize: '11px', color: '#9CA3AF', margin: '4px 0 20px' }}>
-          {activity.activity_date} · {activity.author?.display_name}
-        </p>
-        {(residents.length > 0 || staff.length > 0) && (
-          <div style={{ background: '#F0FDF4', borderRadius: '8px', padding: '12px', marginBottom: '20px', fontSize: '12px' }}>
-            {residents.length > 0 && <p style={{ marginBottom: '4px' }}>住民：{residents.map(p => p.resident?.name).join('、')}</p>}
-            {staff.length > 0 && <p>管家：{staff.map(p => p.staff?.display_name).join('、')}</p>}
-          </div>
-        )}
-        {activity.content.map((b, i) => {
-          if (b.type === 'heading') return <h2 key={i} style={{ fontSize: '15px', fontWeight: 600, margin: '16px 0 4px' }}>{b.text}</h2>
-          if (b.type === 'text')    return <p  key={i} style={{ fontSize: '13px', color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{b.text}</p>
-          if (b.type === 'image')   return (
-            <div key={i} style={{ margin: '12px 0', textAlign: 'center' }}>
-              <img src={b.url} alt={b.caption} style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '8px' }} />
-              {b.caption && <p style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>{b.caption}</p>}
+        <div style={{ padding: '32px 48px 48px' }}>
+          {(residents.length > 0 || staff.length > 0) && (
+            <div style={{
+              border: '1px solid #E2E8F0', borderRadius: '10px', padding: '14px 16px',
+              marginBottom: '24px', fontSize: '13px', color: '#334155', lineHeight: 1.8,
+            }}>
+              {residents.length > 0 && <p style={{ margin: 0 }}>住民：{residents.map(p => p.resident?.name).join('、')}</p>}
+              {staff.length > 0 && <p style={{ margin: 0 }}>管家：{staff.map(p => p.staff?.display_name).join('、')}</p>}
             </div>
-          )
-          return null
-        })}
+          )}
+          {activity.content.map((b, i) => {
+            if (b.type === 'heading') return (
+              <h2 key={i} style={{ fontSize: '19px', fontWeight: 700, color: '#0f172a', margin: '28px 0 10px' }}>{b.text}</h2>
+            )
+            if (b.type === 'text') return (
+              <p key={i} style={{ fontSize: '14px', color: '#334155', lineHeight: 1.9, whiteSpace: 'pre-wrap', margin: '0 0 8px' }}>{b.text}</p>
+            )
+            if (b.type === 'image') return (
+              <figure key={i} style={{ margin: '16px 0' }}>
+                <img src={b.url} alt={b.caption || '活動照片'}
+                  style={{ width: '100%', maxHeight: '360px', objectFit: 'cover', borderRadius: '10px', display: 'block' }} />
+                {b.caption && (
+                  <figcaption style={{
+                    fontSize: '12px', color: '#64748b', marginTop: '8px', padding: '8px 12px',
+                    border: '1px solid #E2E8F0', borderRadius: '8px', lineHeight: 1.6,
+                  }}>{b.caption}</figcaption>
+                )}
+              </figure>
+            )
+            return null
+          })}
+        </div>
       </div>
     </div>
   )
