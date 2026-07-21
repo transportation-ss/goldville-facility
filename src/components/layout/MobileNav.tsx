@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images,
+  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -76,10 +76,11 @@ function getNavByRole(role: string): RoleNav {
           {
             label: '管理',
             items: [
-              { label: '房間登錄', href: '/rooms',            icon: DoorOpen },
-              { label: '帳號管理', href: '/admin/users',      icon: Users    },
-              { label: '財產清單', href: '/assets',           icon: Archive  },
-              { label: '樓層配置', href: '/butler/floorplan', icon: Layers   },
+              { label: '房間登錄', href: '/rooms',            icon: DoorOpen  },
+              { label: '帳號管理', href: '/admin/users',      icon: Users     },
+              { label: '財產清單', href: '/assets',           icon: Archive   },
+              { label: '樓層配置', href: '/butler/floorplan', icon: Layers    },
+              { label: '數據後台', href: process.env.NEXT_PUBLIC_USAGE_DASHBOARD_URL || 'http://localhost:3002', icon: BarChart3 },
             ],
           },
         ],
@@ -323,13 +324,15 @@ export function MobileNav() {
                 )}
                 <div className="grid grid-cols-4 gap-1">
                   {section.items.map(item => {
-                    const Icon   = item.icon
-                    const active = isActive(item.href)
+                    const Icon       = item.icon
+                    const isExternal = item.href.startsWith('http')
+                    const active     = !isExternal && isActive(item.href)
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
                         onClick={() => setShowMore(false)}
+                        {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                         className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-colors ${
                           active ? 'bg-emerald-50' : 'hover:bg-gray-50'
                         }`}

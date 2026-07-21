@@ -8,7 +8,7 @@ import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, BedDouble, History,
-  Sparkles, UserCog, Loader2, Layers, Images,
+  Sparkles, UserCog, Loader2, Layers, Images, BarChart3,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -50,6 +50,7 @@ const adminNav: NavItem[] = [
   { label: '財產清單',     href: '/assets',            icon: Archive  },
   { label: '房間登錄',     href: '/rooms',             icon: DoorOpen },
   { label: '樓層配置',     href: '/butler/floorplan',  icon: Layers   },
+  { label: '數據後台',     href: process.env.NEXT_PUBLIC_USAGE_DASHBOARD_URL || 'http://localhost:3002', icon: BarChart3 },
 ]
 
 // ─── 全員主導航（admin/manager）────────────────
@@ -302,10 +303,12 @@ function NavLink({ item, pathname, onClick }: { item: NavItem; pathname: string;
 }
 
 function SubNavLink({ item, pathname, onClick }: { item: NavItem; pathname: string; onClick?: () => void }) {
-  const isActive = item.exact ? pathname === item.href : (pathname === item.href || pathname.startsWith(item.href + '/'))
+  const isExternal = item.href.startsWith('http')
+  const isActive = !isExternal && (item.exact ? pathname === item.href : (pathname === item.href || pathname.startsWith(item.href + '/')))
   const Icon = item.icon
   return (
     <Link href={item.href} onClick={onClick}
+      {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       className={`flex items-center gap-2.5 pl-7 pr-3 py-1.5 rounded-lg mb-0.5 text-sm transition-colors ${
         isActive ? 'text-emerald-700 font-medium' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
       }`}>
