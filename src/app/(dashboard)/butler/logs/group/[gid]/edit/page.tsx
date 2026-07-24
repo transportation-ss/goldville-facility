@@ -25,6 +25,7 @@ export default async function GroupActivityEditPage({ params }: { params: Promis
       residents={residents}
       staffList={staffList}
       existing={activity}
+      cloudName={process.env.CLOUDINARY_CLOUD_NAME ?? ''}
     />
   )
 }

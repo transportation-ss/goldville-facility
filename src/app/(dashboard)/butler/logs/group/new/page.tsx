@@ -24,6 +24,7 @@ export default async function GroupActivityNewPage({
       defaultDate={date ?? today}
       residents={residents}
       staffList={staffList}
+      cloudName={process.env.CLOUDINARY_CLOUD_NAME ?? ''}
     />
   )
 }
