@@ -48,6 +48,14 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
     })),
   ].sort((a, b) => b.date.localeCompare(a.date))
 
+  // 依月份分組，組內再分「個人紀錄」「多人活動」兩類
+  const months = [...new Set(entries.map(e => e.date.slice(0, 7)))].sort().reverse()
+  const monthGroups = months.map(month => ({
+    month,
+    personal: entries.filter(e => e.date.slice(0, 7) === month && e.kind === 'personal'),
+    group: entries.filter(e => e.date.slice(0, 7) === month && e.kind === 'group'),
+  }))
+
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
       {/* Back */}
@@ -107,30 +115,68 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
         </Link>
       </div>
 
-      {/* 日誌列表 */}
+      {/* 日誌列表：依月份 → 個人／團體分組 */}
       {entries.length === 0 && (
         <p className="text-sm text-gray-400 text-center py-12">尚無服務紀錄</p>
       )}
-      <div className="space-y-2">
-        {entries.map(entry => (
-          <div key={entry.href} className="bg-white border rounded-xl">
-            <Link href={entry.href} className="flex items-start gap-3 p-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
-                <div className="flex gap-2 mt-0.5">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
-                    entry.kind === 'group' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {entry.kind === 'group' && <Users className="w-2.5 h-2.5" />}
-                    {entry.periodLabel}
-                  </span>
-                  <span className="text-xs text-gray-400">{entry.period}</span>
+      <div className="space-y-6">
+        {monthGroups.map(({ month, personal, group }) => (
+          <div key={month}>
+            <p className="text-xs font-semibold text-gray-400 mb-2 px-1">
+              {month.slice(0, 4)} 年 {month.slice(5, 7)} 月
+            </p>
+
+            {personal.length > 0 && (
+              <div className="mb-3">
+                <p className="text-[11px] text-gray-400 mb-1.5 px-1">個人紀錄</p>
+                <div className="space-y-2">
+                  {personal.map(entry => (
+                    <div key={entry.href} className="bg-white border rounded-xl">
+                      <Link href={entry.href} className="flex items-start gap-3 p-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
+                          <div className="flex gap-2 mt-0.5">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                              {entry.periodLabel}
+                            </span>
+                            <span className="text-xs text-gray-400">{entry.period}</span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {entry.author} · {entry.logDate}
+                          </p>
+                        </div>
+                      </Link>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {entry.author} · {entry.logDate}
-                </p>
               </div>
-            </Link>
+            )}
+
+            {group.length > 0 && (
+              <div>
+                <p className="text-[11px] text-gray-400 mb-1.5 px-1">多人活動</p>
+                <div className="space-y-2">
+                  {group.map(entry => (
+                    <div key={entry.href} className="bg-white border rounded-xl">
+                      <Link href={entry.href} className="flex items-start gap-3 p-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{entry.title}</p>
+                          <div className="flex gap-2 mt-0.5">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 flex items-center gap-0.5 w-fit">
+                              <Users className="w-2.5 h-2.5" /> {entry.periodLabel}
+                            </span>
+                            <span className="text-xs text-gray-400">{entry.period}</span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {entry.author} · {entry.logDate}
+                          </p>
+                        </div>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
