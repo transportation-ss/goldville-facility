@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Info } from 'lucide-react'
 import type { AppointmentCase } from './actions'
 
 // ── 月曆工具 ────────────────────────────────────
@@ -13,23 +13,35 @@ function getFirstDayOfWeek(year: number, month: number) {
 }
 
 // ── 顯示格式 ────────────────────────────────────
-const STATUS_LABELS: Record<AppointmentCase['status'], string> = {
-  pending: '待接單',
-  matched: '已媒合',
-  dispatched: '已派車',
-  notified: '已通知',
-  done: '已完成',
+// 用「還缺什麼」而非「已經發生什麼」來標示狀態，比較貼近管家實際在看的角度：
+// pending→待媒合、matched→待派車、dispatched 依回診時間是否已過分成 待回診/已完成
+// （已完成是前端算出來的，不是 DB status——bot 從不寫入 done，回診時間過了才視為完成）
+type DisplayTier = 'toMatch' | 'toDispatch' | 'toVisit' | 'completed' | 'cancelled'
+
+const TIER_LABELS: Record<DisplayTier, string> = {
+  toMatch: '待媒合',
+  toDispatch: '待派車',
+  toVisit: '待回診',
+  completed: '已完成',
   cancelled: '已取消',
 }
-const STATUS_COLORS: Record<AppointmentCase['status'], string> = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  matched: 'bg-blue-50 text-blue-700 border-blue-200',
-  dispatched: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  notified: 'bg-purple-50 text-purple-700 border-purple-200',
-  done: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+const TIER_BADGE_COLORS: Record<DisplayTier, string> = {
+  toMatch: 'bg-amber-50 text-amber-700 border-amber-200',
+  toDispatch: 'bg-blue-50 text-blue-700 border-blue-200',
+  toVisit: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   cancelled: 'bg-gray-100 text-gray-500 border-gray-200',
 }
-const NEEDS_ATTENTION: AppointmentCase['status'][] = ['pending', 'matched']
+const TIER_DOT_COLORS: Record<DisplayTier, string> = {
+  toMatch: 'bg-amber-500',
+  toDispatch: 'bg-blue-500',
+  toVisit: 'bg-indigo-500',
+  completed: 'bg-emerald-500',
+  cancelled: 'bg-gray-400',
+}
+const TIER_ORDER: DisplayTier[] = ['toMatch', 'toDispatch', 'toVisit', 'completed', 'cancelled']
+// 目前實際會出現、值得放上方圖例的四個等級
+const ACTIVE_TIERS: DisplayTier[] = ['toMatch', 'toDispatch', 'toVisit', 'completed']
 
 function formatTime(t: string | null) {
   return t ? t.slice(0, 5) : null
@@ -41,14 +53,31 @@ function formatDateTime(iso: string | null) {
   const time = d.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
   return `${date} ${time}`
 }
+function nowTaipeiString() {
+  const now = new Date()
+  const date = now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+  const time = now.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${date} ${time}`
+}
+function getDisplayTier(c: AppointmentCase, nowStr: string): DisplayTier {
+  if (c.status === 'cancelled') return 'cancelled'
+  if (c.status === 'pending') return 'toMatch'
+  if (c.status === 'matched') return 'toDispatch'
+  // dispatched（含 schema 保留但目前不會出現的 notified/done）依回診時間是否已過判斷
+  const apptStr = `${c.appointment_date} ${formatTime(c.appointment_time) ?? '23:59'}`
+  return apptStr < nowStr ? 'completed' : 'toVisit'
+}
 
 // ── 單筆案件卡片 ─────────────────────────────────
-function CaseRow({ c, expanded, onToggle }: { c: AppointmentCase; expanded: boolean; onToggle: () => void }) {
+function CaseRow({ c, nowStr }: { c: AppointmentCase; nowStr: string }) {
+  const [showTimeline, setShowTimeline] = useState(false)
+  const tier = getDisplayTier(c, nowStr)
+
   return (
-    <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-start gap-3 p-4 text-left">
-        <span className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[c.status]}`}>
-          {STATUS_LABELS[c.status]}
+    <div className="bg-white border border-gray-100 rounded-xl p-4">
+      <div className="flex items-start gap-3">
+        <span className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full border ${TIER_BADGE_COLORS[tier]}`}>
+          {TIER_LABELS[tier]}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-gray-900 truncate">
@@ -58,16 +87,27 @@ function CaseRow({ c, expanded, onToggle }: { c: AppointmentCase; expanded: bool
             {formatTime(c.appointment_time) ?? '時間未定'}{c.appointment_location ? ` · ${c.appointment_location}` : ''}
           </p>
         </div>
-      </button>
-      {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-gray-50 space-y-1.5 text-xs text-gray-500">
+      </div>
+
+      {(c.matched_staff || c.notes) && (
+        <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5 text-xs text-gray-500">
           {c.matched_staff && <p>媒合人員：<span className="text-gray-700">{c.matched_staff}</span></p>}
           {c.notes && <p>備註：<span className="text-gray-700">{c.notes}</span></p>}
-          <div className="pt-1.5 space-y-1 text-gray-400">
-            <p>新增時間：{formatDateTime(c.requested_at)}</p>
-            {c.claimed_at && <p>接單時間：{formatDateTime(c.claimed_at)}</p>}
-            {c.dispatched_at && <p>管家確認時間：{formatDateTime(c.dispatched_at)}</p>}
-          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => setShowTimeline(v => !v)}
+        className="mt-2.5 flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600"
+      >
+        {showTimeline ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        時間紀錄
+      </button>
+      {showTimeline && (
+        <div className="mt-1.5 space-y-1 text-xs text-gray-400">
+          <p>新增時間：{formatDateTime(c.requested_at)}</p>
+          {c.claimed_at && <p>接單時間：{formatDateTime(c.claimed_at)}</p>}
+          {c.dispatched_at && <p>管家確認時間：{formatDateTime(c.dispatched_at)}</p>}
         </div>
       )}
     </div>
@@ -82,7 +122,6 @@ export function AppointmentsView({ cases }: { cases: AppointmentCase[] }) {
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   function prevMonth() {
     if (month === 0) { setYear(y => y - 1); setMonth(11) }
@@ -98,14 +137,18 @@ export function AppointmentsView({ cases }: { cases: AppointmentCase[] }) {
   const daysInMonth = getDaysInMonth(year, month)
   const firstDow = getFirstDayOfWeek(year, month)
   const todayStr = today.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+  const nowStr = nowTaipeiString()
 
-  // 每天的案件數與是否有待處理案件
-  const dayMap: Record<string, { count: number; needsAttention: boolean }> = {}
+  // 每天出現過的階段（去重，依 TIER_ORDER 排序）
+  const dayMap: Record<string, DisplayTier[]> = {}
   for (const c of cases) {
     const d = c.appointment_date
-    if (!dayMap[d]) dayMap[d] = { count: 0, needsAttention: false }
-    dayMap[d].count += 1
-    if (NEEDS_ATTENTION.includes(c.status)) dayMap[d].needsAttention = true
+    const tier = getDisplayTier(c, nowStr)
+    if (!dayMap[d]) dayMap[d] = []
+    if (!dayMap[d].includes(tier)) dayMap[d].push(tier)
+  }
+  for (const d in dayMap) {
+    dayMap[d].sort((a, b) => TIER_ORDER.indexOf(a) - TIER_ORDER.indexOf(b))
   }
 
   const dayCases = selectedDate
@@ -121,9 +164,19 @@ export function AppointmentsView({ cases }: { cases: AppointmentCase[] }) {
       </div>
 
       {/* 提示文字 */}
-      <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 mb-4">
+      <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 mb-3">
         <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
         <p className="text-xs text-blue-700">新增回診單請通知主管於 LINE 群組登記，此頁僅供檢視。</p>
+      </div>
+
+      {/* 狀態圖例 */}
+      <div className="flex justify-center gap-4 mb-4 text-xs text-gray-500">
+        {ACTIVE_TIERS.map(tier => (
+          <span key={tier} className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full inline-block ${TIER_DOT_COLORS[tier]}`} />
+            {TIER_LABELS[tier]}
+          </span>
+        ))}
       </div>
 
       {/* 月曆導覽 */}
@@ -149,40 +202,28 @@ export function AppointmentsView({ cases }: { cases: AppointmentCase[] }) {
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-            const info = dayMap[dateStr]
+            const tiers = dayMap[dateStr]
             const isToday = dateStr === todayStr
             const isSelected = dateStr === selectedDate
 
             return (
-              <button key={day} onClick={() => { setSelectedDate(isSelected ? null : dateStr); setExpandedId(null) }}
+              <button key={day} onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                 className={`relative flex flex-col items-center py-1.5 rounded-xl transition-colors ${
                   isSelected ? 'bg-gray-900 text-white' :
                   isToday ? 'bg-emerald-50 text-emerald-700 font-semibold' :
                             'hover:bg-gray-50 text-gray-700'
                 }`}>
                 <span className="text-sm leading-none">{day}</span>
-                {info && (
+                {tiers && (
                   <div className="flex items-center gap-0.5 mt-1">
-                    <span className={`w-1.5 h-1.5 rounded-full ${
-                      isSelected ? (info.needsAttention ? 'bg-amber-300' : 'bg-emerald-300')
-                                  : (info.needsAttention ? 'bg-amber-500' : 'bg-emerald-500')
-                    }`} />
-                    {info.count > 1 && (
-                      <span className={`text-[9px] leading-none ${isSelected ? 'text-white/70' : 'text-gray-400'}`}>
-                        {info.count}
-                      </span>
-                    )}
+                    {tiers.map(tier => (
+                      <span key={tier} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'opacity-70' : ''} ${TIER_DOT_COLORS[tier]}`} />
+                    ))}
                   </div>
                 )}
               </button>
             )
           })}
-        </div>
-
-        {/* 圖例 */}
-        <div className="flex justify-center gap-4 pb-3 text-[11px] text-gray-400">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />待處理</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />已完成/已派車</span>
         </div>
       </div>
 
@@ -195,10 +236,7 @@ export function AppointmentsView({ cases }: { cases: AppointmentCase[] }) {
             <p className="text-sm text-gray-400 text-center py-6">這天沒有回診案件</p>
           )}
 
-          {dayCases.map(c => (
-            <CaseRow key={c.id} c={c} expanded={expandedId === c.id}
-              onToggle={() => setExpandedId(id => id === c.id ? null : c.id)} />
-          ))}
+          {dayCases.map(c => <CaseRow key={c.id} c={c} nowStr={nowStr} />)}
         </div>
       )}
     </div>
