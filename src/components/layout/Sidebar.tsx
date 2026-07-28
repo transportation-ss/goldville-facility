@@ -8,7 +8,7 @@ import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, BedDouble, History,
-  Sparkles, UserCog, Loader2, Layers, Images, BarChart3,
+  Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -95,6 +95,7 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '管家派工',     href: '/butler/plan',      icon: ClipboardList },
       { label: '住戶列表',     href: '/butler/residents', icon: Users         },
       { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
+      { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
       { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
       { label: '班表管理',     href: '/butler/schedule',  icon: History       },
       { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
@@ -240,6 +241,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '住戶列表', href: '/butler/residents',  icon: Users         },
       { label: '管家清單', href: '/butler/staff',      icon: UserCog       },
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
+      { label: '回診表單', href: '/butler/appointments', icon: Stethoscope },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
       { label: '照片庫',   href: '/butler/photos',     icon: Images        },
       { label: '使用指引(管)', href: '/butler/guide',      icon: BookOpen      },
@@ -262,6 +264,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '管家任務', href: '/butler',           icon: Sparkles, exact: true },
       { label: '住戶列表', href: '/butler/residents', icon: Users     },
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
+      { label: '回診表單', href: '/butler/appointments', icon: Stethoscope },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
       { label: '照片庫',   href: '/butler/photos',    icon: Images    },
       { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },

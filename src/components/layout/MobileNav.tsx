@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3,
+  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -59,6 +59,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '管家派工',     href: '/butler/plan',      icon: ClipboardList },
               { label: '住戶列表',     href: '/butler/residents', icon: Users         },
               { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
+              { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
               { label: '班表管理',     href: '/butler/schedule',  icon: History       },
               { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
@@ -221,6 +222,7 @@ function getNavByRole(role: string): RoleNav {
           {
             items: [
               { label: '住戶列表',     href: '/butler/residents', icon: Users     },
+              { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '班表',         href: '/butler/schedule',  icon: History   },
               { label: '照片庫',       href: '/butler/photos',    icon: Images    },
               { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },
@@ -243,6 +245,7 @@ function getNavByRole(role: string): RoleNav {
         more: [
           {
             items: [
+              { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '照片庫',       href: '/butler/photos', icon: Images    },
               { label: '使用指引(管)', href: '/butler/guide',  icon: BookOpen  },
               { label: '設備說明書',   href: '/manuals',       icon: BookOpen  },
