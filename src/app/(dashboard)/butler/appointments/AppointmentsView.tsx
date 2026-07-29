@@ -46,6 +46,10 @@ const ACTIVE_TIERS: DisplayTier[] = ['toMatch', 'toDispatch', 'toVisit', 'comple
 function formatTime(t: string | null) {
   return t ? t.slice(0, 5) : null
 }
+function formatMatchedTime(iso: string | null) {
+  if (!iso) return null
+  return new Date(iso).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
+}
 function formatDateTime(iso: string | null) {
   if (!iso) return null
   const d = new Date(iso)
@@ -92,6 +96,7 @@ function CaseRow({ c, nowStr }: { c: AppointmentCase; nowStr: string }) {
       {(c.matched_staff || c.notes) && (
         <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5 text-xs text-gray-500">
           {c.matched_staff && <p>媒合人員：<span className="text-gray-700">{c.matched_staff}</span></p>}
+          {c.matched_time && <p>約車時間：<span className="text-gray-700">{formatMatchedTime(c.matched_time)}</span></p>}
           {c.notes && <p>備註：<span className="text-gray-700">{c.notes}</span></p>}
         </div>
       )}
