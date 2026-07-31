@@ -46,6 +46,10 @@ const ACTIVE_TIERS: DisplayTier[] = ['toMatch', 'toDispatch', 'toVisit', 'comple
 function formatTime(t: string | null) {
   return t ? t.slice(0, 5) : null
 }
+function periodLabel(t: string | null) {
+  if (!t) return null
+  return t.slice(0, 5) <= '12:00' ? '上午' : '下午'
+}
 function formatMatchedTime(iso: string | null) {
   if (!iso) return null
   return new Date(iso).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false })
@@ -88,7 +92,7 @@ function CaseRow({ c, nowStr }: { c: AppointmentCase; nowStr: string }) {
             {c.resident?.name ?? '未知住民'}{c.resident?.room ? ` · ${c.resident.room}` : ''}
           </p>
           <p className="text-xs text-gray-400 mt-0.5">
-            {formatTime(c.appointment_time) ?? '時間未定'}{c.appointment_location ? ` · ${c.appointment_location}` : ''}
+            {periodLabel(c.appointment_time) ?? '時間未定'}{c.appointment_location ? ` · ${c.appointment_location}` : ''}
           </p>
         </div>
       </div>
