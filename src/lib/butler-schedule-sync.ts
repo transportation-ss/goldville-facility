@@ -4,13 +4,14 @@
  *
  * 已知分頁 GID（之後有 Google API Key 時改為動態抓取）：
  *   2015301849 → 3/30–5/3（舊資料）
- *   1878188924 → 6/29–7/31（目前使用中）
+ *   1878188924 → 6/29–7/31（舊資料）
+ *   545316291  → 分頁「11508」，115年8月（目前使用中）
  */
 
 const SHEET_ID = '1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM'
 
 // 已知的分頁 GID 清單，從最新到最舊排列（未來有 API Key 後可動態取得）
-const KNOWN_GIDS = ['1878188924', '1672694789', '2015301849']
+const KNOWN_GIDS = ['545316291', '1878188924', '1672694789', '2015301849']
 
 export type SheetEntry = {
   date: string            // YYYY-MM-DD
