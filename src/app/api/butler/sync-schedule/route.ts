@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchSheetSchedule, getCurrentSyncRange } from '@/lib/butler-schedule-sync'
-import { generateCleaningDuty } from '@/lib/cleaning-duty'
+import { generateCleaningDuty, getCleaningTargetWeek } from '@/lib/cleaning-duty'
 
 // GET: 除錯用，回傳 raw CSV 前幾列讓我們看格式
 export async function GET() {
@@ -75,7 +75,9 @@ export async function POST(req: NextRequest) {
       if (error) { failed++ } else { synced++ }
     }
 
-    const { generated: cleaningGenerated } = await generateCleaningDuty(start, end)
+    // 清潔值班表只看「最新一週」，不用跟著班表一次產出兩週
+    const cleaningWeek = getCleaningTargetWeek()
+    const { generated: cleaningGenerated } = await generateCleaningDuty(cleaningWeek.start, cleaningWeek.end)
 
     return NextResponse.json({
       ok: true, synced, failed,

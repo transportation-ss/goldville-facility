@@ -1,5 +1,20 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 
+// 清潔值班表永遠只呈現「最新一週」（週一～週日）。
+// 週日 17:30 同步跑完時，「今天」還是週日，這時要看的是明天開始的那一週，
+// 所以用「明天」去找週一，週日當天算出來就會是下週一～下週日。
+export function getCleaningTargetWeek(): { start: string; end: string } {
+  const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+  const tomorrow = new Date(todayStr)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const day = tomorrow.getDay()
+  const mon = new Date(tomorrow)
+  mon.setDate(tomorrow.getDate() - (day === 0 ? 6 : day - 1))
+  const end = new Date(mon)
+  end.setDate(mon.getDate() + 6)
+  return { start: mon.toISOString().split('T')[0], end: end.toISOString().split('T')[0] }
+}
+
 const AM_START = '09:30'
 const PM_START = '15:30'
 const LEAD_NAME = '敬翔' // 只要當天上班就一定安排上下午兩節
