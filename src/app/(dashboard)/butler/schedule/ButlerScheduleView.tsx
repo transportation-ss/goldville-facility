@@ -115,11 +115,27 @@ export function ButlerScheduleView({ today, year, month, schedules, staff, userR
   const canManage = isManager(userRole)
   const [viewMonth, setViewMonth] = useState(month)
   const [viewYear, setViewYear]   = useState(year)
+  const [viewSchedules, setViewSchedules] = useState(schedules)
+  const [loadingMonth, setLoadingMonth]   = useState(false)
   const [modal, setModal]         = useState<{ staffId: string; date: string; existing?: ButlerSchedule | null } | null>(null)
   const [syncing, setSyncing]     = useState(false)
   const [syncResult, setSyncResult] = useState<string | null>(null)
   const [showDiffs, setShowDiffs]   = useState(diffs.length > 0)
   const [, startTransition]         = useTransition()
+
+  async function loadMonth(y: number, m: number) {
+    // 目前伺服器已經帶了本月+下月的資料，不用再重新抓
+    if (y === year && (m === month || m === (month === 12 ? 1 : month + 1))) {
+      setViewSchedules(schedules)
+      return
+    }
+    setLoadingMonth(true)
+    try {
+      const res = await fetch(`/api/butler/schedule?year=${y}&month=${m}`)
+      const data = await res.json()
+      setViewSchedules(data.schedules ?? [])
+    } finally { setLoadingMonth(false) }
+  }
 
   const monthDays = getMonthDays(viewYear, viewMonth)
   const firstDow  = getFirstDayOfWeek(viewYear, viewMonth)
@@ -129,16 +145,18 @@ export function ButlerScheduleView({ today, year, month, schedules, staff, userR
   while (calDays.length % 7 !== 0) calDays.push(null)
 
   function prevMonth() {
-    if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12) }
-    else setViewMonth(m => m - 1)
+    const y = viewMonth === 1 ? viewYear - 1 : viewYear
+    const m = viewMonth === 1 ? 12 : viewMonth - 1
+    setViewYear(y); setViewMonth(m); loadMonth(y, m)
   }
   function nextMonth() {
-    if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1) }
-    else setViewMonth(m => m + 1)
+    const y = viewMonth === 12 ? viewYear + 1 : viewYear
+    const m = viewMonth === 12 ? 1 : viewMonth + 1
+    setViewYear(y); setViewMonth(m); loadMonth(y, m)
   }
 
   function getSchedulesForDay(date: string) {
-    return schedules.filter(s => s.schedule_date === date)
+    return viewSchedules.filter(s => s.schedule_date === date)
   }
 
   async function handleSync() {
@@ -230,7 +248,7 @@ export function ButlerScheduleView({ today, year, month, schedules, staff, userR
           <ChevronLeft className="w-5 h-5" />
         </button>
         <h2 className="text-base font-semibold text-gray-800">
-          {viewYear} 年 {MONTH_LABELS[viewMonth - 1]}
+          {viewYear} 年 {MONTH_LABELS[viewMonth - 1]}{loadingMonth ? '…' : ''}
         </h2>
         <button onClick={nextMonth} className="text-gray-400 hover:text-gray-600 p-1">
           <ChevronRight className="w-5 h-5" />
