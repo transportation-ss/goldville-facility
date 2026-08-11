@@ -105,7 +105,16 @@ export function CleaningDutyView({
     setSharing(true)
     try {
       const { default: html2canvas } = await import('html2canvas-pro')
-      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const node = printRef.current
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: node.scrollWidth,
+        height: node.scrollHeight,
+        windowWidth: node.scrollWidth,
+        windowHeight: node.scrollHeight,
+      })
       const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
       if (!blob) return
       const file = new File([blob], `清潔值班表_${start}.png`, { type: 'image/png' })
