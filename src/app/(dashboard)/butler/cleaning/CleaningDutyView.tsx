@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, Pencil } from 'lucide-react'
+import { RefreshCw, Pencil, Share2 } from 'lucide-react'
 import { regenerateCleaningDuty, updateCleaningDuty, updateRoomSchedule } from './actions'
 
 type DutyRow = { schedule_date: string; period: 'AM' | 'PM'; staff_names: string[] }
@@ -11,21 +11,26 @@ type Kind = 'staff' | 'room'
 
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日']
 
+// 純日曆運算，全程用 UTC 當「無時區」的日期軸，避免 toISOString/getDay
+// 在伺服器時區不是 +08:00 時把日期滾動成前一天
 function dateRange(start: string, end: string): string[] {
+  const [sy, sm, sd] = start.split('-').map(Number)
+  const [ey, em, ed] = end.split('-').map(Number)
+  const cur = new Date(Date.UTC(sy, sm - 1, sd))
+  const endD = new Date(Date.UTC(ey, em - 1, ed))
   const dates: string[] = []
-  const cur = new Date(start + 'T00:00:00+08:00')
-  const endD = new Date(end + 'T00:00:00+08:00')
   while (cur <= endD) {
     dates.push(cur.toISOString().split('T')[0])
-    cur.setDate(cur.getDate() + 1)
+    cur.setUTCDate(cur.getUTCDate() + 1)
   }
   return dates
 }
 
-// JS getDay(): 0=日...6=六 → 我們用 1=一...7=日
+// getUTCDay(): 0=日...6=六 → 我們用 1=一...7=日
 function weekdayOf(date: string): number {
-  const d = new Date(date + 'T00:00:00+08:00').getDay()
-  return d === 0 ? 7 : d
+  const [y, m, d] = date.split('-').map(Number)
+  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+  return day === 0 ? 7 : day
 }
 
 export function CleaningDutyView({
@@ -54,13 +59,15 @@ export function CleaningDutyView({
     if (kind === 'staff') {
       setDraft((byKey.get(`${date}|${period}`) ?? []).join('、'))
     } else {
-      setDraft((roomByWeekday.get(`${weekdayOf(date)}|${period}`) ?? []).join('、'))
+      setDraft((roomByWeekday.get(`${weekdayOf(date)}|${period}`) ?? []).join('\n'))
     }
   }
 
   function saveEdit() {
     if (!editing) return
-    const items = draft.split(/[、,，\s]+/).map(n => n.trim()).filter(Boolean)
+    const items = editing.kind === 'staff'
+      ? draft.split(/[、,，\s]+/).map(n => n.trim()).filter(Boolean)
+      : draft.split('\n').map(n => n.trim()).filter(Boolean)
     startTransition(async () => {
       if (editing.kind === 'staff') {
         await updateCleaningDuty(editing.date, editing.period, items)
@@ -72,18 +79,46 @@ export function CleaningDutyView({
     })
   }
 
+  function shareToLine() {
+    const lines: string[] = [`清潔值班表 ${start} ～ ${end}`, '']
+    dates.forEach((date, i) => {
+      const wd = weekdayOf(date)
+      lines.push(`【${WEEKDAY_LABELS[i]} ${date.slice(5)}】`)
+      for (const period of ['AM', 'PM'] as const) {
+        const rooms = roomByWeekday.get(`${wd}|${period}`) ?? []
+        const staff = byKey.get(`${date}|${period}`) ?? []
+        const label = period === 'AM' ? '上午' : '下午'
+        if (rooms.length === 0 && staff.length === 0) continue
+        lines.push(`${label} ${staff.join('、') || '未排'}`)
+        for (const r of rooms) lines.push(`　${r}`)
+      }
+      lines.push('')
+    })
+    const text = lines.join('\n')
+    window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank')
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold text-gray-800">清潔值班表 {start} ～ {end}</h1>
-        <button
-          onClick={regenerate}
-          disabled={isPending}
-          className="flex items-center gap-1.5 text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={isPending ? 'animate-spin' : ''} />
-          產生本週未排的值班
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={shareToLine}
+            className="flex items-center gap-1.5 text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg"
+          >
+            <Share2 size={14} />
+            分享到LINE
+          </button>
+          <button
+            onClick={regenerate}
+            disabled={isPending}
+            className="flex items-center gap-1.5 text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={isPending ? 'animate-spin' : ''} />
+            產生本週未排的值班
+          </button>
+        </div>
       </div>
 
       <p className="text-xs text-gray-500 mb-3">
@@ -120,14 +155,26 @@ export function CleaningDutyView({
                       <td key={date} className="p-1 text-center align-top border-b border-dashed border-gray-100">
                         {isEditing ? (
                           <div className="flex flex-col gap-1">
-                            <input
+                            <textarea
                               autoFocus
-                              list="resident-room-options"
+                              rows={4}
                               value={draft}
                               onChange={e => setDraft(e.target.value)}
-                              onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                              placeholder="一行一位長輩／房間"
                               className="w-full text-xs border border-blue-400 rounded px-1 py-1"
                             />
+                            <select
+                              defaultValue=""
+                              onChange={e => {
+                                if (!e.target.value) return
+                                setDraft(d => d ? `${d}\n${e.target.value}` : e.target.value)
+                                e.target.value = ''
+                              }}
+                              className="w-full text-xs border rounded px-1 py-1 text-gray-500"
+                            >
+                              <option value="">＋ 從住戶列表新增</option>
+                              {residentRoomOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
                             <div className="flex gap-1 justify-center">
                               <button onClick={saveEdit} className="text-xs text-blue-600">儲存</button>
                               <button onClick={() => setEditing(null)} className="text-xs text-gray-400">取消</button>
