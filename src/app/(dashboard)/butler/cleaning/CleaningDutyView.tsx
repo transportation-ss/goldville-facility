@@ -7,9 +7,19 @@ import { regenerateCleaningDuty, updateCleaningDuty, updateRoomSchedule } from '
 
 type DutyRow = { schedule_date: string; period: 'AM' | 'PM'; staff_names: string[] }
 type RoomRow = { weekday: number; period: 'AM' | 'PM'; room_names: string[] }
-type Kind = 'staff' | 'room'
+type Editing =
+  | { date: string; period: 'AM' | 'PM'; kind: 'staff' }
+  | { date: string; period: 'AM' | 'PM'; kind: 'room'; slotIndex: number }
 
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日']
+
+// 房間欄位是依照參考表的時間順序存放（index 0 = 該節次第一個時段…），
+// 不另外存時間欄位，靠這份固定時間表對應每個 index 代表幾點
+const AM_SLOTS = ['09:30', '10:00', '10:30', '11:00', '11:30']
+const PM_SLOTS = ['15:30', '16:00']
+function slotsOf(period: 'AM' | 'PM') {
+  return period === 'AM' ? AM_SLOTS : PM_SLOTS
+}
 
 // 純日曆運算，全程用 UTC 當「無時區」的日期軸，避免 toISOString/getDay
 // 在伺服器時區不是 +08:00 時把日期滾動成前一天
@@ -41,7 +51,7 @@ export function CleaningDutyView({
   const router = useRouter()
   const printRef = useRef<HTMLDivElement>(null)
   const [isPending, startTransition] = useTransition()
-  const [editing, setEditing] = useState<{ date: string; period: 'AM' | 'PM'; kind: Kind } | null>(null)
+  const [editing, setEditing] = useState<Editing | null>(null)
   const [draft, setDraft] = useState('')
   const [sharing, setSharing] = useState(false)
 
@@ -56,29 +66,38 @@ export function CleaningDutyView({
     })
   }
 
-  function startEdit(date: string, period: 'AM' | 'PM', kind: Kind) {
-    setEditing({ date, period, kind })
-    if (kind === 'staff') {
-      setDraft((byKey.get(`${date}|${period}`) ?? []).join('、'))
-    } else {
-      setDraft((roomByWeekday.get(`${weekdayOf(date)}|${period}`) ?? []).join('\n'))
-    }
+  function startEditStaff(date: string, period: 'AM' | 'PM') {
+    setEditing({ date, period, kind: 'staff' })
+    setDraft((byKey.get(`${date}|${period}`) ?? []).join('、'))
+  }
+
+  function startEditRoom(date: string, period: 'AM' | 'PM', slotIndex: number) {
+    setEditing({ date, period, kind: 'room', slotIndex })
+    const rooms = roomByWeekday.get(`${weekdayOf(date)}|${period}`) ?? []
+    setDraft(rooms[slotIndex]?.trim() ?? '')
   }
 
   function saveEdit() {
     if (!editing) return
-    const items = editing.kind === 'staff'
-      ? draft.split(/[、,，\s]+/).map(n => n.trim()).filter(Boolean)
-      : draft.split('\n').map(n => n.trim()).filter(Boolean)
-    startTransition(async () => {
-      if (editing.kind === 'staff') {
+    if (editing.kind === 'staff') {
+      const items = draft.split(/[、,，\s]+/).map(n => n.trim()).filter(Boolean)
+      startTransition(async () => {
         await updateCleaningDuty(editing.date, editing.period, items)
-      } else {
-        await updateRoomSchedule(weekdayOf(editing.date), editing.period, items)
-      }
-      setEditing(null)
-      router.refresh()
-    })
+        setEditing(null)
+        router.refresh()
+      })
+    } else {
+      const weekday = weekdayOf(editing.date)
+      const slots = slotsOf(editing.period)
+      const current = [...(roomByWeekday.get(`${weekday}|${editing.period}`) ?? [])]
+      while (current.length < slots.length) current.push('')
+      current[editing.slotIndex] = draft.trim()
+      startTransition(async () => {
+        await updateRoomSchedule(weekday, editing.period, current)
+        setEditing(null)
+        router.refresh()
+      })
+    }
   }
 
   async function shareToLine() {
@@ -136,7 +155,7 @@ export function CleaningDutyView({
       </div>
 
       <p className="text-xs text-gray-500 mb-3">
-        已經有值班紀錄的日期不會被覆蓋（含手動調整過的）。點格子可直接編輯，房間可參照住戶列表輸入。
+        已經有值班紀錄的日期不會被覆蓋（含手動調整過的）。點時段格子可直接編輯，房間/長輩可參照住戶列表輸入。
       </p>
 
       <datalist id="resident-room-options">
@@ -161,58 +180,49 @@ export function CleaningDutyView({
           <tbody>
             {(['AM', 'PM'] as const).map(period => (
               <Fragment key={period}>
-                <tr className="border-t border-gray-100">
-                  <td className="p-2 text-gray-500 font-medium align-top" rowSpan={2}>
-                    {period === 'AM' ? '上午' : '下午'}
-                  </td>
-                  {dates.map(date => {
-                    const rooms = roomByWeekday.get(`${weekdayOf(date)}|${period}`) ?? []
-                    const isEditing = editing?.date === date && editing.period === period && editing.kind === 'room'
-                    return (
-                      <td key={date} className="p-1 text-center align-top border-b border-dashed border-gray-100">
-                        {isEditing ? (
-                          <div className="flex flex-col gap-1">
-                            <textarea
-                              autoFocus
-                              rows={4}
-                              value={draft}
-                              onChange={e => setDraft(e.target.value)}
-                              placeholder="一行一位長輩／房間"
-                              className="w-full text-xs border border-blue-400 rounded px-1 py-1"
-                            />
-                            <select
-                              defaultValue=""
-                              onChange={e => {
-                                if (!e.target.value) return
-                                setDraft(d => d ? `${d}\n${e.target.value}` : e.target.value)
-                                e.target.value = ''
-                              }}
-                              className="w-full text-xs border rounded px-1 py-1 text-gray-500"
-                            >
-                              <option value="">＋ 從住戶列表新增</option>
-                              {residentRoomOptions.map(r => <option key={r} value={r}>{r}</option>)}
-                            </select>
-                            <div className="flex gap-1 justify-center">
-                              <button onClick={saveEdit} className="text-xs text-blue-600">儲存</button>
-                              <button onClick={() => setEditing(null)} className="text-xs text-gray-400">取消</button>
+                {slotsOf(period).map((slotTime, si) => (
+                  <tr key={slotTime} className={si === 0 ? 'border-t border-gray-100' : ''}>
+                    <td className="p-2 text-gray-400 text-xs font-medium align-top">{slotTime}</td>
+                    {dates.map(date => {
+                      const rooms = roomByWeekday.get(`${weekdayOf(date)}|${period}`) ?? []
+                      const value = rooms[si]?.trim() ?? ''
+                      const isEditing = editing?.date === date && editing.period === period
+                        && editing.kind === 'room' && editing.slotIndex === si
+                      return (
+                        <td key={date} className="p-1 text-center align-top border-b border-dashed border-gray-100">
+                          {isEditing ? (
+                            <div className="flex flex-col gap-1">
+                              <input
+                                autoFocus
+                                list="resident-room-options"
+                                value={draft}
+                                onChange={e => setDraft(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                                className="w-full text-xs border border-blue-400 rounded px-1 py-1"
+                              />
+                              <div className="flex gap-1 justify-center">
+                                <button onClick={saveEdit} className="text-xs text-blue-600">儲存</button>
+                                <button onClick={() => setEditing(null)} className="text-xs text-gray-400">取消</button>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => startEdit(date, period, 'room')}
-                            className="w-full min-h-[40px] flex items-center justify-center gap-1 rounded hover:bg-gray-50 text-gray-700 group"
-                          >
-                            <span className="whitespace-pre-wrap leading-tight">
-                              {rooms.length > 0 ? rooms.join('、') : <span className="text-gray-300">—</span>}
-                            </span>
-                            <Pencil size={10} className="opacity-0 group-hover:opacity-40" />
-                          </button>
-                        )}
-                      </td>
-                    )
-                  })}
-                </tr>
-                <tr className="border-b border-gray-200">
+                          ) : (
+                            <button
+                              onClick={() => startEditRoom(date, period, si)}
+                              className="w-full min-h-[32px] flex items-center justify-center gap-1 rounded hover:bg-gray-50 text-gray-700 group"
+                            >
+                              {value || <span className="text-gray-300">—</span>}
+                              <Pencil size={10} className="opacity-0 group-hover:opacity-40" />
+                            </button>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+                <tr className="border-b border-gray-200 bg-gray-50/60">
+                  <td className="p-2 text-gray-500 font-medium align-top">
+                    {period === 'AM' ? '上午人員' : '下午人員'}
+                  </td>
                   {dates.map(date => {
                     const names = byKey.get(`${date}|${period}`) ?? []
                     const isEditing = editing?.date === date && editing.period === period && editing.kind === 'staff'
@@ -246,8 +256,8 @@ export function CleaningDutyView({
                           </div>
                         ) : (
                           <button
-                            onClick={() => startEdit(date, period, 'staff')}
-                            className="w-full min-h-[36px] flex items-center justify-center gap-1 rounded hover:bg-gray-50 text-blue-700 font-medium group"
+                            onClick={() => startEditStaff(date, period)}
+                            className="w-full min-h-[36px] flex items-center justify-center gap-1 rounded hover:bg-gray-100 text-blue-700 font-medium group"
                           >
                             {names.length > 0 ? names.join('、') : <span className="text-gray-300">—</span>}
                             <Pencil size={10} className="opacity-0 group-hover:opacity-40" />
