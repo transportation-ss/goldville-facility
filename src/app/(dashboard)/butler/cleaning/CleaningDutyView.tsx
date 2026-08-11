@@ -106,6 +106,10 @@ export function CleaningDutyView({
     try {
       const { default: html2canvas } = await import('html2canvas-pro')
       const node = printRef.current
+      const prevOverflow = node.style.overflow
+      const prevWidth = node.style.width
+      node.style.overflow = 'visible'
+      node.style.width = `${node.scrollWidth}px`
       const canvas = await html2canvas(node, {
         scale: 2,
         useCORS: true,
@@ -115,6 +119,8 @@ export function CleaningDutyView({
         windowWidth: node.scrollWidth,
         windowHeight: node.scrollHeight,
       })
+      node.style.overflow = prevOverflow
+      node.style.width = prevWidth
       const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
       if (!blob) return
       const file = new File([blob], `清潔值班表_${start}.png`, { type: 'image/png' })
