@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope,
+  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope, Brush,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -60,6 +60,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '住戶列表',     href: '/butler/residents', icon: Users         },
               { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
+              { label: '清潔值班',     href: '/butler/cleaning',  icon: Brush         },
               { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
               { label: '班表管理',     href: '/butler/schedule',  icon: History       },
               { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
@@ -210,11 +211,11 @@ function getNavByRole(role: string): RoleNav {
 
     // ── 管家主管 ────────────────────────────────
     case 'butler_manager':
-    case 'sales':
       return {
         primary: [
           { label: '管家任務', href: '/butler',      icon: Sparkles      },
           { label: '管家派工', href: '/butler/plan', icon: ClipboardList },
+          { label: '清潔值班', href: '/butler/cleaning', icon: Brush     },
           { label: '管家清單', href: '/butler/staff', icon: UserCog      },
           { label: '服務紀錄', href: '/butler/logs', icon: BookOpen      },
         ],
@@ -233,12 +234,38 @@ function getNavByRole(role: string): RoleNav {
         ],
       }
 
+    // ── 業務 ────────────────────────────────────
+    case 'sales':
+      return {
+        primary: [
+          { label: '管家任務', href: '/butler',      icon: Sparkles      },
+          { label: '管家派工', href: '/butler/plan', icon: ClipboardList },
+          { label: '管家清單', href: '/butler/staff', icon: UserCog      },
+          { label: '服務紀錄', href: '/butler/logs', icon: BookOpen      },
+        ],
+        more: [
+          {
+            items: [
+              { label: '清潔值班',     href: '/butler/cleaning',  icon: Brush     },
+              { label: '住戶列表',     href: '/butler/residents', icon: Users     },
+              { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
+              { label: '班表',         href: '/butler/schedule',  icon: History   },
+              { label: '照片庫',       href: '/butler/photos',    icon: Images    },
+              { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },
+              { label: '設備說明書',   href: '/manuals',          icon: BookOpen  },
+              { label: '緊急維修',     href: '/hardware',         icon: Wrench    },
+            ],
+          },
+        ],
+      }
+
     // ── 管家 ────────────────────────────────────
     case 'butler':
       return {
         primary: [
           { label: '管家任務', href: '/butler',           icon: Sparkles },
           { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen },
+          { label: '清潔值班', href: '/butler/cleaning',  icon: Brush    },
           { label: '住戶列表', href: '/butler/residents', icon: Users    },
           { label: '班表',     href: '/butler/schedule',  icon: History  },
         ],

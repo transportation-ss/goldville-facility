@@ -34,9 +34,9 @@ function weekdayOf(date: string): number {
 }
 
 export function CleaningDutyView({
-  start, end, duty, roomSchedule, residentRoomOptions,
+  start, end, duty, roomSchedule, residentRoomOptions, staffOptions,
 }: {
-  start: string; end: string; duty: DutyRow[]; roomSchedule: RoomRow[]; residentRoomOptions: string[]
+  start: string; end: string; duty: DutyRow[]; roomSchedule: RoomRow[]; residentRoomOptions: string[]; staffOptions: string[]
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -210,6 +210,18 @@ export function CleaningDutyView({
                               onKeyDown={e => e.key === 'Enter' && saveEdit()}
                               className="w-full text-xs border border-blue-400 rounded px-1 py-1"
                             />
+                            <select
+                              defaultValue=""
+                              onChange={e => {
+                                if (!e.target.value) return
+                                setDraft(d => d ? `${d}、${e.target.value}` : e.target.value)
+                                e.target.value = ''
+                              }}
+                              className="w-full text-xs border rounded px-1 py-1 text-gray-500"
+                            >
+                              <option value="">＋ 從管家清單新增</option>
+                              {staffOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
                             <div className="flex gap-1 justify-center">
                               <button onClick={saveEdit} className="text-xs text-blue-600">儲存</button>
                               <button onClick={() => setEditing(null)} className="text-xs text-gray-400">取消</button>

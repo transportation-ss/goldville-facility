@@ -1,4 +1,4 @@
-import { getCleaningDuty, getRoomSchedule, getResidentRoomOptions } from './actions'
+import { getCleaningDuty, getRoomSchedule, getResidentRoomOptions, getCleaningStaffOptions } from './actions'
 import { CleaningDutyView } from './CleaningDutyView'
 import { getCleaningTargetWeek } from '@/lib/cleaning-duty'
 
@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic'
 export default async function CleaningDutyPage() {
   const { start, end } = getCleaningTargetWeek()
 
-  const [duty, roomSchedule, residentRoomOptions] = await Promise.all([
+  const [duty, roomSchedule, residentRoomOptions, staffOptions] = await Promise.all([
     getCleaningDuty(start, end),
     getRoomSchedule(),
     getResidentRoomOptions(),
+    getCleaningStaffOptions(),
   ])
 
   return (
@@ -20,6 +21,7 @@ export default async function CleaningDutyPage() {
       duty={duty}
       roomSchedule={roomSchedule}
       residentRoomOptions={residentRoomOptions}
+      staffOptions={staffOptions}
     />
   )
 }

@@ -79,3 +79,15 @@ export async function getResidentRoomOptions(): Promise<string[]> {
     .order('room')
   return (data ?? []).map(r => `${r.room ?? ''}${r.name}`.trim())
 }
+
+// 供編輯值班人員時參照管家 pool（有「清潔」標籤的人）
+export async function getCleaningStaffOptions(): Promise<string[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('butler_staff_roster')
+    .select('schedule_name, tags')
+    .order('schedule_name')
+  return (data ?? [])
+    .filter(r => (r.tags ?? []).includes('清潔') && r.schedule_name)
+    .map(r => r.schedule_name as string)
+}
