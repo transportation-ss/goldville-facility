@@ -1,8 +1,8 @@
 'use client'
 
-import { Fragment, useState, useTransition } from 'react'
+import { Fragment, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, Pencil, Share2 } from 'lucide-react'
+import { RefreshCw, Pencil, Share2, Loader2 } from 'lucide-react'
 import { regenerateCleaningDuty, updateCleaningDuty, updateRoomSchedule } from './actions'
 
 type DutyRow = { schedule_date: string; period: 'AM' | 'PM'; staff_names: string[] }
@@ -39,9 +39,11 @@ export function CleaningDutyView({
   start: string; end: string; duty: DutyRow[]; roomSchedule: RoomRow[]; residentRoomOptions: string[]; staffOptions: string[]
 }) {
   const router = useRouter()
+  const printRef = useRef<HTMLDivElement>(null)
   const [isPending, startTransition] = useTransition()
   const [editing, setEditing] = useState<{ date: string; period: 'AM' | 'PM'; kind: Kind } | null>(null)
   const [draft, setDraft] = useState('')
+  const [sharing, setSharing] = useState(false)
 
   const dates = dateRange(start, end)
   const byKey = new Map(duty.map(d => [`${d.schedule_date}|${d.period}`, d.staff_names]))
@@ -79,23 +81,34 @@ export function CleaningDutyView({
     })
   }
 
-  function shareToLine() {
-    const lines: string[] = [`清潔值班表 ${start} ～ ${end}`, '']
-    dates.forEach((date, i) => {
-      const wd = weekdayOf(date)
-      lines.push(`【${WEEKDAY_LABELS[i]} ${date.slice(5)}】`)
-      for (const period of ['AM', 'PM'] as const) {
-        const rooms = roomByWeekday.get(`${wd}|${period}`) ?? []
-        const staff = byKey.get(`${date}|${period}`) ?? []
-        const label = period === 'AM' ? '上午' : '下午'
-        if (rooms.length === 0 && staff.length === 0) continue
-        lines.push(`${label} ${staff.join('、') || '未排'}`)
-        for (const r of rooms) lines.push(`　${r}`)
+  async function shareToLine() {
+    if (!printRef.current) return
+    setSharing(true)
+    try {
+      const { default: html2canvas } = await import('html2canvas-pro')
+      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
+      const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+      if (!blob) return
+      const file = new File([blob], `清潔值班表_${start}.png`, { type: 'image/png' })
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: `清潔值班表 ${start} ～ ${end}`, files: [file] })
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name
+        a.click()
+        URL.revokeObjectURL(url)
+        alert('此瀏覽器不支援直接分享圖片，已下載到裝置，請手動附加到 LINE 訊息中傳送。')
       }
-      lines.push('')
-    })
-    const text = lines.join('\n')
-    window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank')
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        alert(`分享失敗：${err.message}`)
+      }
+    } finally {
+      setSharing(false)
+    }
   }
 
   return (
@@ -105,9 +118,10 @@ export function CleaningDutyView({
         <div className="flex gap-2">
           <button
             onClick={shareToLine}
-            className="flex items-center gap-1.5 text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg"
+            disabled={sharing}
+            className="flex items-center gap-1.5 text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
           >
-            <Share2 size={14} />
+            {sharing ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
             分享到LINE
           </button>
           <button
@@ -129,7 +143,10 @@ export function CleaningDutyView({
         {residentRoomOptions.map(r => <option key={r} value={r} />)}
       </datalist>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div ref={printRef} className="bg-white overflow-x-auto rounded-lg border border-gray-200">
+        <p className="p-2 text-center text-sm font-semibold text-gray-700 border-b border-gray-200">
+          清潔值班表 {start} ～ {end}
+        </p>
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50">
