@@ -8,6 +8,8 @@
  *   545316291  → 分頁「11508」，115年8月（目前使用中）
  */
 
+import { createAdminClient } from '@/lib/supabase/admin'
+
 const SHEET_ID = '1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM'
 
 // 已知的分頁 GID 清單，從最新到最舊排列（未來有 API Key 後可動態取得）
@@ -261,6 +263,49 @@ export type ScheduleDiff = {
   type: 'added' | 'changed' | 'removed'
   sheetData: { shiftStart: string | null; shiftEnd: string | null; isDayOff: boolean; notes: string | null } | null
   dbData: { shiftStart: string | null; shiftEnd: string | null; isDayOff: boolean; notes: string | null } | null
+}
+
+// ── 抓表單並寫入資料庫（不含清潔值班產生，供手動按鈕與 cron 共用）──
+export async function syncScheduleToDb(range?: { start: string; end: string }) {
+  const { start, end } = range ?? getCurrentSyncRange()
+  const sheetEntries = await fetchSheetSchedule({ start, end })
+  const supabase = createAdminClient()
+
+  // 優先用 schedule_alias（班表姓名跟帳號顯示名稱不同時填寫），沒設定才用 display_name
+  const [{ data: staffList }, { data: aliasProfiles }, { data: existingRows }] = await Promise.all([
+    supabase.from('user_profiles').select('id, display_name').in('role', ['butler_manager', 'butler']),
+    supabase.from('butler_staff_profiles').select('id, schedule_alias'),
+    supabase.from('butler_schedules').select('sheet_name, schedule_date').gte('schedule_date', start).lte('schedule_date', end),
+  ])
+
+  const aliasById = new Map((aliasProfiles ?? []).map(p => [p.id, p.schedule_alias]))
+  const nameToId: Record<string, string> = {}
+  for (const s of staffList ?? []) {
+    const key = aliasById.get(s.id) || s.display_name
+    if (key) nameToId[key] = s.id
+  }
+
+  // 已經同步過的 (sheet_name, schedule_date) 一律跳過，不覆蓋既有資料
+  const existingKeys = new Set((existingRows ?? []).map(r => `${r.sheet_name}|${r.schedule_date}`))
+  const newEntries = sheetEntries.filter(e => !existingKeys.has(`${e.staffName}|${e.date}`))
+
+  let synced = 0
+  let failed = 0
+
+  for (const entry of newEntries) {
+    const { error } = await supabase.from('butler_schedules').insert({
+      sheet_name:    entry.staffName,
+      staff_id:      nameToId[entry.staffName] ?? null,
+      schedule_date: entry.date,
+      shift_start:   entry.isDayOff ? null : entry.shiftStart,
+      shift_end:     entry.isDayOff ? null : entry.shiftEnd,
+      is_day_off:    entry.isDayOff,
+      notes:         entry.notes,
+    })
+    if (error) { failed++ } else { synced++ }
+  }
+
+  return { synced, failed, skipped: sheetEntries.length - newEntries.length, total: sheetEntries.length }
 }
 
 export function diffSchedules(
