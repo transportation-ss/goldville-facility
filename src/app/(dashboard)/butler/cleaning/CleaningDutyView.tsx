@@ -125,7 +125,11 @@ export function CleaningDutyView({
       if (!blob) return
       const file = new File([blob], `清潔值班表_${start}.png`, { type: 'image/png' })
 
-      if (navigator.canShare?.({ files: [file] })) {
+      // 手機才用系統分享面板；PC/Mac（含 Safari、Chrome）一律直接下載截圖，
+      // 避免跳出 AirDrop/郵件等桌面分享選單，PC 上更方便直接拖進 LINE 桌面版
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+      if (isMobile && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title: `清潔值班表 ${start} ～ ${end}`, files: [file] })
       } else {
         const url = URL.createObjectURL(blob)
@@ -134,7 +138,11 @@ export function CleaningDutyView({
         a.download = file.name
         a.click()
         URL.revokeObjectURL(url)
-        alert('此瀏覽器不支援直接分享圖片，已下載到裝置，請手動附加到 LINE 訊息中傳送。')
+        if (!isMobile) {
+          alert('截圖已下載，請手動附加到 LINE 訊息中傳送。')
+        } else {
+          alert('此瀏覽器不支援直接分享圖片，已下載到裝置，請手動附加到 LINE 訊息中傳送。')
+        }
       }
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
@@ -236,7 +244,7 @@ export function CleaningDutyView({
                 ))}
                 <tr className="border-b border-gray-200 bg-gray-50/60">
                   <td className="p-2 text-gray-500 font-medium align-top">
-                    {period === 'AM' ? '上午人員' : '下午人員'}
+                    {period === 'AM' ? <>上午<br />人員</> : <>下午<br />人員</>}
                   </td>
                   {dates.map(date => {
                     const names = byKey.get(`${date}|${period}`) ?? []
@@ -255,8 +263,9 @@ export function CleaningDutyView({
                             <select
                               defaultValue=""
                               onChange={e => {
-                                if (!e.target.value) return
-                                setDraft(d => d ? `${d}、${e.target.value}` : e.target.value)
+                                const name = e.target.value
+                                if (!name) return
+                                setDraft(d => d ? `${d}、${name}` : name)
                                 e.target.value = ''
                               }}
                               className="w-full text-xs border rounded px-1 py-1 text-gray-500"

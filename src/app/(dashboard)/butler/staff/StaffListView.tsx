@@ -19,6 +19,7 @@ function EditModal({ staff, onClose }: { staff: RosterStaff; onClose: () => void
     employment_type: staff.employment_type,
     hire_date:       staff.hire_date ?? '',
     notes:           staff.notes ?? '',
+    doesCleaning:    staff.tags.includes('清潔'),
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,6 +32,7 @@ function EditModal({ staff, onClose }: { staff: RosterStaff; onClose: () => void
         employment_type: form.employment_type,
         hire_date:       form.hire_date || null,
         notes:           form.notes.trim() || null,
+        tags:            form.doesCleaning ? ['清潔'] : [],
       })
       onClose()
     } finally { setSaving(false) }
@@ -81,6 +83,11 @@ function EditModal({ staff, onClose }: { staff: RosterStaff; onClose: () => void
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
           </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={form.doesCleaning}
+              onChange={e => setForm(f => ({ ...f, doesCleaning: e.target.checked }))} />
+            負責清潔排班（會出現在清潔值班表的人員選單）
+          </label>
           <button type="submit" disabled={saving}
             className="w-full bg-emerald-600 text-white rounded-lg py-2.5 text-sm font-medium disabled:opacity-50">
             {saving ? '儲存中…' : '儲存'}
@@ -166,6 +173,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
     role_type: 'butler' as 'butler_manager' | 'butler',
     employment_type: 'part_time' as 'full_time' | 'part_time',
     hire_date: '', notes: '',
+    doesCleaning: false,
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -181,6 +189,7 @@ function AddModal({ onClose }: { onClose: () => void }) {
         employment_type: form.employment_type,
         hire_date:       form.hire_date || null,
         notes:           form.notes.trim() || null,
+        tags:            form.doesCleaning ? ['清潔'] : [],
       })
       onClose()
     } finally { setSaving(false) }
@@ -238,6 +247,11 @@ function AddModal({ onClose }: { onClose: () => void }) {
               value={form.hire_date}
               onChange={e => setForm(f => ({ ...f, hire_date: e.target.value }))} />
           </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={form.doesCleaning}
+              onChange={e => setForm(f => ({ ...f, doesCleaning: e.target.checked }))} />
+            負責清潔排班（會出現在清潔值班表的人員選單）
+          </label>
           <button type="submit" disabled={saving}
             className="w-full bg-emerald-600 text-white rounded-lg py-2.5 text-sm font-medium disabled:opacity-50">
             {saving ? '新增中…' : '新增'}
@@ -288,6 +302,9 @@ function StaffCard({ staff, canManage, profiles, onEdit, onLink }: {
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
               {EMP_LABEL[staff.employment_type]}
             </span>
+            {staff.tags.includes('清潔') && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700">清潔</span>
+            )}
           </div>
           {staff.hire_date && (
             <p className="text-xs text-gray-400 mt-0.5">到職 {staff.hire_date}</p>

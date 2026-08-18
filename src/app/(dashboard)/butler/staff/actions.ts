@@ -14,6 +14,7 @@ export type RosterStaff = {
   hire_date: string | null
   user_profile_id: string | null
   notes: string | null
+  tags: string[]
   on_duty_today: boolean
   is_linked: boolean      // 已連結登入帳號
 }
@@ -54,6 +55,7 @@ export async function getRosterStaff(): Promise<RosterStaff[]> {
     hire_date: r.hire_date,
     user_profile_id: r.user_profile_id,
     notes: r.notes,
+    tags: r.tags ?? [],
     is_linked: r.user_profile_id != null,
     on_duty_today:
       (r.schedule_name ? onDutyNames.has(r.schedule_name) : false) ||
@@ -78,6 +80,7 @@ export async function updateRosterEntry(id: string, input: {
   employment_type: 'full_time' | 'part_time'
   hire_date: string | null
   notes: string | null
+  tags: string[]
 }) {
   const supabase = await createClient()
   const { error } = await supabase
@@ -106,6 +109,7 @@ export async function addRosterEntry(input: {
   employment_type: 'full_time' | 'part_time'
   hire_date: string | null
   notes: string | null
+  tags: string[]
 }) {
   const supabase = await createClient()
   const { error } = await supabase.from('butler_staff_roster').insert(input)
