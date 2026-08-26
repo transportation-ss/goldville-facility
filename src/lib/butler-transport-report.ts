@@ -81,12 +81,25 @@ async function getActiveResidents(): Promise<Resident[]> {
     .from('user_profiles')
     .select('id, display_name')
 
+  // user_profiles.display_name 對部分帳號存的是本名而非小天使暱稱（例：曾日暘的帳號 display_name
+  // 是「曾日暘」，暱稱其實是「小哈」），暱稱沒有其他欄位可查，只能維護這份對照表
+  const NICKNAME: Record<string, string> = {
+    'f9fc1be5-f9f6-4fe8-9945-c4d4eea9bc5a': '宸宸',
+    'f02ac2a1-a6ce-4800-ac24-3950bc6df7a1': '涵涵',
+    'f50ca810-9e77-4c54-8fc3-bdf4a5c45164': '湘湘',
+    '7bbdbb94-108e-4805-bff3-6ad13d72d21f': '小哈',
+    '08f00a10-2a78-42b3-a681-004729870ecb': '芒果',
+    '4da735e6-9d34-4ff1-8d55-254e59d5040a': '之妤',
+  }
+
   const nameById = new Map((profiles || []).map(p => [p.id, p.display_name as string]))
   return (residents || []).map(r => ({
     name: r.name,
     room: r.room,
     status: r.status,
-    butlerNickname: r.primary_butler_id ? (nameById.get(r.primary_butler_id) || '') : '',
+    butlerNickname: r.primary_butler_id
+      ? (NICKNAME[r.primary_butler_id] || nameById.get(r.primary_butler_id) || '')
+      : '',
   }))
 }
 
