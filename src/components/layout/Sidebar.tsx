@@ -8,7 +8,7 @@ import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, BedDouble, History,
-  Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope,
+  Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope, FileSpreadsheet,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -98,6 +98,7 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
       { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
       { label: '班表管理',     href: '/butler/schedule',  icon: History       },
+      { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
       { label: '清潔值班',     href: '/butler/cleaning',  icon: Droplets      },
       { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
       { label: '照片庫',       href: '/butler/photos',    icon: Images        },
@@ -244,6 +245,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '回診表單', href: '/butler/appointments', icon: Stethoscope },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
+      { label: '交通報表', href: '/butler/transport-report', icon: FileSpreadsheet },
       { label: '清潔值班', href: '/butler/cleaning',   icon: Droplets      },
       { label: '照片庫',   href: '/butler/photos',     icon: Images        },
       { label: '使用指引(管)', href: '/butler/guide',      icon: BookOpen      },
