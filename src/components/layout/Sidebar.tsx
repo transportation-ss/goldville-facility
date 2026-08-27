@@ -344,28 +344,12 @@ function renderNav(nav: (NavSingle | NavGroup)[], pathname: string, onClick?: ()
 }
 
 // ─── 主元件 ──────────────────────────────────
-export function Sidebar() {
+export function Sidebar({ role, displayName }: { role: string; displayName: string }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const [role, setRole]               = useState<string>('')
-  const [displayName, setDisplayName] = useState<string>('')
   const [isNavigating, setIsNavigating] = useState(false)
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    const checkRole = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const { data: profile } = await supabase
-          .from('user_profiles').select('role, display_name').eq('id', user.id).single()
-        setRole(profile?.role ?? '')
-        setDisplayName(profile?.display_name ?? '')
-      } catch {}
-    }
-    checkRole()
-  }, [])
 
   useEffect(() => {
     if (navTimerRef.current) {

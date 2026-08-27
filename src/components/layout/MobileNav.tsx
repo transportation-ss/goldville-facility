@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope, Brush,
+  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope, Brush, FileSpreadsheet,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -63,6 +63,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '清潔值班',     href: '/butler/cleaning',  icon: Brush         },
               { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
               { label: '班表管理',     href: '/butler/schedule',  icon: History       },
+              { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
               { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
               { label: '照片庫',       href: '/butler/photos',    icon: Images        },
               { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen      },
@@ -225,6 +226,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '住戶列表',     href: '/butler/residents', icon: Users     },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '班表',         href: '/butler/schedule',  icon: History   },
+              { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
               { label: '照片庫',       href: '/butler/photos',    icon: Images    },
               { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },
               { label: '設備說明書',   href: '/manuals',          icon: BookOpen  },
@@ -250,6 +252,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '住戶列表',     href: '/butler/residents', icon: Users     },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '班表',         href: '/butler/schedule',  icon: History   },
+              { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
               { label: '照片庫',       href: '/butler/photos',    icon: Images    },
               { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },
               { label: '設備說明書',   href: '/manuals',          icon: BookOpen  },
@@ -299,25 +302,11 @@ function getNavByRole(role: string): RoleNav {
 }
 
 // ─── 主元件 ──────────────────────────────────
-export function MobileNav() {
+export function MobileNav({ role }: { role: string }) {
   const pathname = usePathname()
   const router   = useRouter()
   const supabase = createClient()
   const [showMore, setShowMore] = useState(false)
-  const [role, setRole]         = useState<string>('')
-
-  useEffect(() => {
-    const fetchRole = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const { data: profile } = await supabase
-          .from('user_profiles').select('role').eq('id', user.id).single()
-        setRole(profile?.role ?? '')
-      } catch {}
-    }
-    fetchRole()
-  }, [])
 
   const { primary: primaryNav, more: moreSections } = role
     ? getNavByRole(role)
