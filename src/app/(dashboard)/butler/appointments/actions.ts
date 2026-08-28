@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 export type AppointmentCase = {
   id: string
   resident_id: string
-  status: 'pending' | 'matched' | 'dispatched' | 'notified' | 'done' | 'cancelled'
+  status: 'pending' | 'matched' | 'dispatched' | 'notified' | 'done'
   appointment_date: string
   appointment_time: string | null
   appointment_location: string | null

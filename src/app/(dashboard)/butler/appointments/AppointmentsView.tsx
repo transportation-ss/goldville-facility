@@ -14,32 +14,30 @@ function getFirstDayOfWeek(year: number, month: number) {
 
 // ── 顯示格式 ────────────────────────────────────
 // 用「還缺什麼」而非「已經發生什麼」來標示狀態，比較貼近管家實際在看的角度：
-// pending→待媒合、matched→待派車、dispatched 依回診時間是否已過分成 待回診/已完成
+// pending→待媒合、matched→待管家確認（媒合與派車是兩條獨立軸線，matched 只代表媒合完成，
+// 派不派車由管家自己決定）、dispatched/notified 依回診時間是否已過分成 待回診/已完成
 // （已完成是前端算出來的，不是 DB status——bot 從不寫入 done，回診時間過了才視為完成）
-type DisplayTier = 'toMatch' | 'toDispatch' | 'toVisit' | 'completed' | 'cancelled'
+type DisplayTier = 'toMatch' | 'toDispatch' | 'toVisit' | 'completed'
 
 const TIER_LABELS: Record<DisplayTier, string> = {
   toMatch: '待媒合',
-  toDispatch: '待派車',
+  toDispatch: '待管家確認',
   toVisit: '待回診',
   completed: '已完成',
-  cancelled: '已取消',
 }
 const TIER_BADGE_COLORS: Record<DisplayTier, string> = {
   toMatch: 'bg-amber-50 text-amber-700 border-amber-200',
   toDispatch: 'bg-blue-50 text-blue-700 border-blue-200',
   toVisit: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  cancelled: 'bg-gray-100 text-gray-500 border-gray-200',
 }
 const TIER_DOT_COLORS: Record<DisplayTier, string> = {
   toMatch: 'bg-amber-500',
   toDispatch: 'bg-blue-500',
   toVisit: 'bg-indigo-500',
   completed: 'bg-emerald-500',
-  cancelled: 'bg-gray-400',
 }
-const TIER_ORDER: DisplayTier[] = ['toMatch', 'toDispatch', 'toVisit', 'completed', 'cancelled']
+const TIER_ORDER: DisplayTier[] = ['toMatch', 'toDispatch', 'toVisit', 'completed']
 // 目前實際會出現、值得放上方圖例的四個等級
 const ACTIVE_TIERS: DisplayTier[] = ['toMatch', 'toDispatch', 'toVisit', 'completed']
 
@@ -68,10 +66,9 @@ function nowTaipeiString() {
   return `${date} ${time}`
 }
 function getDisplayTier(c: AppointmentCase, nowStr: string): DisplayTier {
-  if (c.status === 'cancelled') return 'cancelled'
   if (c.status === 'pending') return 'toMatch'
   if (c.status === 'matched') return 'toDispatch'
-  // dispatched（含 schema 保留但目前不會出現的 notified/done）依回診時間是否已過判斷
+  // dispatched/notified（含 schema 保留但目前不會出現的 done）依回診時間是否已過判斷
   const apptStr = `${c.appointment_date} ${formatTime(c.appointment_time) ?? '23:59'}`
   return apptStr < nowStr ? 'completed' : 'toVisit'
 }
