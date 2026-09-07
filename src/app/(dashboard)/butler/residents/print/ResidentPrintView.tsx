@@ -1,5 +1,7 @@
 'use client'
 
+import { useRef, useState } from 'react'
+import { Loader2, Share2 } from 'lucide-react'
 import type { ButlerResident, ResidentStatus } from '../actions'
 
 const STATUS_LABEL: Record<ResidentStatus, string> = {
@@ -9,6 +11,14 @@ const STATUS_LABEL: Record<ResidentStatus, string> = {
   vacant:          '空房',
 }
 
+const FLOOR_ROOMS: { floor: string; rooms: string[] }[] = [
+  { floor: '2F', rooms: ['201','202','203','205','206','207','208','209','210','211','212','213','215','216'] },
+  { floor: '3F', rooms: ['301','302','303','305','306','307','308','309','310','311','312','313','315','316'] },
+  { floor: '5F', rooms: ['503','505'] },
+  { floor: '6F', rooms: ['601','602','603','605','606','607','608','609','610','611','612','613','615'] },
+  { floor: '7F', rooms: ['703','705','706','707','708','709','710','711','712','713','715'] },
+]
+
 function roomSortKey(room: string | null) {
   if (!room) return Number.MAX_SAFE_INTEGER
   const n = parseInt(room, 10)
@@ -16,24 +26,91 @@ function roomSortKey(room: string | null) {
 }
 
 export function ResidentPrintView({ residents }: { residents: ButlerResident[] }) {
+  const printRef = useRef<HTMLDivElement>(null)
+  const [exporting, setExporting] = useState(false)
+
   const rows = [...residents].sort((a, b) => roomSortKey(a.room) - roomSortKey(b.room))
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
 
+  const byRoom = new Map<string, ButlerResident[]>()
+  for (const r of residents) {
+    if (!r.room || r.status === 'inactive') continue
+    if (!byRoom.has(r.room)) byRoom.set(r.room, [])
+    byRoom.get(r.room)!.push(r)
+  }
+
+  async function generatePdfBlob(): Promise<Blob | null> {
+    if (!printRef.current) return null
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas-pro'), import('jspdf'),
+    ])
+    const node = printRef.current
+    const prev = node.style.display
+    node.style.display = 'block'
+
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pageW = pdf.internal.pageSize.getWidth()
+    const pageH = pdf.internal.pageSize.getHeight()
+
+    async function addSection(el: HTMLElement | null, isFirst: boolean) {
+      if (!el) return
+      const canvas = await html2canvas(el, { scale: 1.5, useCORS: true })
+      const imgH = canvas.height * pageW / canvas.width
+      const img = canvas.toDataURL('image/jpeg', 0.85)
+      let left = imgH; let pos = 0
+      if (!isFirst) pdf.addPage()
+      pdf.addImage(img, 'JPEG', 0, pos, pageW, imgH)
+      left -= pageH
+      while (left > 0) { pos -= pageH; pdf.addPage(); pdf.addImage(img, 'JPEG', 0, pos, pageW, imgH); left -= pageH }
+    }
+
+    await addSection(node.querySelector('[data-pdf-section="table"]'), true)
+    await addSection(node.querySelector('[data-pdf-section="map"]'), false)
+
+    node.style.display = prev
+    return pdf.output('blob')
+  }
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const blob = await generatePdfBlob()
+      if (!blob) return
+      const filename = `住戶列表_${today}.pdf`
+      const file = new File([blob], filename, { type: 'application/pdf' })
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: '住戶列表', files: [file] })
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        alert(`匯出失敗：${err.message}`)
+      }
+    } finally { setExporting(false) }
+  }
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 print:p-0">
-      <div className="flex items-center justify-between mb-4 print:hidden">
-        <h1 className="text-lg font-bold text-gray-900">住戶列表（現況輸出）</h1>
-        <button onClick={() => window.print()}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-          列印／另存 PDF
+    <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900">住戶列表（現況輸出）</h1>
+          <p className="text-xs text-gray-400">共 {rows.length} 筆，含入住／退租／純服務／空房</p>
+        </div>
+        <button onClick={handleExport} disabled={exporting}
+          className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+          {exporting ? '產生中…' : '分享／下載 PDF'}
         </button>
       </div>
 
-      <div className="hidden print:block text-center mb-2">
-        <h1 className="text-lg font-bold">好好園館 住戶列表</h1>
-        <p className="text-xs text-gray-500">輸出日期：{today}（共 {rows.length} 筆）</p>
-      </div>
-
+      {/* 畫面預覽（跟輸出內容一致的表格） */}
       <table className="w-full text-xs border-collapse">
         <thead>
           <tr className="border-b-2 border-gray-800">
@@ -64,6 +141,70 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
           ))}
         </tbody>
       </table>
+
+      {/* 隱藏 PDF 輸出版面（獨立版型，避免 tailwind 顏色相容問題） */}
+      <div ref={printRef} style={{ display: 'none', width: '794px', fontFamily: 'sans-serif', background: '#fff' }}>
+        <div data-pdf-section="table" style={{ padding: '32px', background: '#fff' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', margin: 0 }}>好好園館 住戶列表</h1>
+          <p style={{ fontSize: '11px', color: '#666', textAlign: 'center', margin: '4px 0 16px' }}>
+            輸出日期：{today}（共 {rows.length} 筆，含入住／退租／純服務／空房）
+          </p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #111' }}>
+                {['房號','姓名','狀態','入住日期','合約迄日','餐點','方案','小天使','個資同意'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '4px 6px' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.id} style={{ borderBottom: '1px solid #ddd' }}>
+                  <td style={{ padding: '3px 6px' }}>{r.room ?? ''}</td>
+                  <td style={{ padding: '3px 6px' }}>{r.name}{r.nickname ? `（${r.nickname}）` : ''}</td>
+                  <td style={{ padding: '3px 6px' }}>{STATUS_LABEL[r.status]}</td>
+                  <td style={{ padding: '3px 6px' }}>{r.move_in_date ?? ''}</td>
+                  <td style={{ padding: '3px 6px' }}>{r.contract_end ?? ''}</td>
+                  <td style={{ padding: '3px 6px' }}>{r.meal_plan ?? ''}</td>
+                  <td style={{ padding: '3px 6px' }}>{r.membership_plan ?? ''}</td>
+                  <td style={{ padding: '3px 6px' }}>{r.primary_butler?.display_name ?? ''}</td>
+                  <td style={{ padding: '3px 6px' }}>{r.privacy_consent ? '同意' : '未同意'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div data-pdf-section="map" style={{ padding: '32px', background: '#fff' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 700, textAlign: 'center', margin: 0 }}>房間配置圖</h1>
+          <p style={{ fontSize: '11px', color: '#666', textAlign: 'center', margin: '4px 0 16px' }}>
+            {byRoom.size} / {FLOOR_ROOMS.reduce((s, f) => s + f.rooms.length, 0)} 間入住
+          </p>
+          {FLOOR_ROOMS.map(({ floor, rooms }) => (
+            <div key={floor} style={{ marginBottom: '18px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: '#555', margin: '0 0 6px' }}>{floor}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                {rooms.map(roomNo => {
+                  const occupants = byRoom.get(roomNo)
+                  return (
+                    <div key={roomNo} style={{
+                      border: '1px solid #ccc', borderRadius: '6px', padding: '6px',
+                      minHeight: '54px', background: occupants ? '#fff' : '#f7f7f7',
+                    }}>
+                      <p style={{ fontSize: '10px', color: '#3b82f6', margin: 0, fontWeight: 600 }}>{roomNo}</p>
+                      {occupants
+                        ? occupants.map(r => (
+                            <p key={r.id} style={{ fontSize: '11px', margin: '2px 0 0', color: '#222' }}>{r.name}</p>
+                          ))
+                        : <p style={{ fontSize: '10px', margin: '2px 0 0', color: '#aaa' }}>空房</p>}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
