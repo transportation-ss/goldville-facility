@@ -229,12 +229,16 @@ export function CleaningDutyView({
         <p className="p-2 text-center text-sm font-semibold text-gray-700 border-b border-gray-200">
           清潔值班表 {start} ～ {end}
         </p>
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col className="w-16" />
+            {dates.map(d => <col key={d} className="w-[110px]" />)}
+          </colgroup>
           <thead>
             <tr className="bg-gray-50">
-              <th className="p-2 text-left text-gray-500 font-medium w-16">節次</th>
+              <th className="p-2 text-left text-gray-500 font-medium">節次</th>
               {dates.map((d, i) => (
-                <th key={d} className="p-2 text-center text-gray-600 font-medium min-w-[90px]">
+                <th key={d} className="p-2 text-center text-gray-600 font-medium">
                   {WEEKDAY_LABELS[i]}<br /><span className="text-xs text-gray-400">{d.slice(5)}</span>
                 </th>
               ))}
