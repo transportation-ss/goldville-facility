@@ -232,7 +232,7 @@ export function CleaningDutyView({
         <table className="w-full text-sm table-fixed">
           <colgroup>
             <col className="w-16" />
-            {dates.map(d => <col key={d} className="w-[110px]" />)}
+            {dates.map(d => <col key={d} className="w-[130px]" />)}
           </colgroup>
           <thead>
             <tr className="bg-gray-50">
@@ -298,7 +298,7 @@ export function CleaningDutyView({
                                 </div>
                               </div>
                             ) : (
-                              <div key={idx} className="w-full grid grid-cols-[30px_1fr_12px] items-start gap-1 rounded hover:bg-gray-50 text-gray-700 group px-0.5 py-0.5">
+                              <div key={idx} className="w-full grid grid-cols-[30px_11ch_12px] items-start gap-1 rounded hover:bg-gray-50 text-gray-700 group px-0.5 py-0.5">
                                 <button
                                   onClick={() => startEditRoom(date, period, idx)}
                                   className="text-left text-[10px] text-gray-400 pt-px"
@@ -307,7 +307,7 @@ export function CleaningDutyView({
                                 </button>
                                 <button
                                   onClick={() => startEditRoom(date, period, idx)}
-                                  className="text-left text-xs leading-tight break-words"
+                                  className="text-left text-xs leading-tight break-words whitespace-normal"
                                 >
                                   {name}
                                 </button>
