@@ -210,10 +210,14 @@ async function fetchByName(sheetName: string, filterStart?: string, filterEnd?: 
   return parseSheetCsv(await res.text(), filterStart, filterEnd)
 }
 
-// ── 依日期算出分頁名稱（民國年 3 碼 + 月 2 碼，例：115年8月 → "11508"）──
+// ── 依日期算出分頁名稱 ─────────────────────────────────────
+// 1~9月：民國年3碼 + 月2碼（補0），例：115年8月 → "11508"
+// 10~12月：分頁實際命名為民國年3碼 + "0" + 月2碼（共6碼），
+// 例：114年10月 → "114010"、114年11月 → "114011"（已對照試算表實際分頁確認）
 function sheetNameForDate(date: string): string {
   const [y, m] = date.split('-').map(Number)
   const minguoYear = y - 1911
+  if (m >= 10) return `${minguoYear}0${m}`
   return `${minguoYear}${String(m).padStart(2, '0')}`
 }
 
