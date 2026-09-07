@@ -12,8 +12,8 @@ const PERIOD_LABEL: Record<PeriodType, string> = {
   day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間',
 }
 
-// 常用服務模組：點了直接帶入標題段落＋空白內容，方便快速填寫
-const SERVICE_MODULES: { key: string; label: string; heading: string }[] = [
+// 常用服務模組：點了直接帶入標題段落＋空白內容，並標記 category 供未來報告用 hashtag 兜起來
+const SERVICE_MODULES: { key: 'medication' | 'cleaning' | 'companion'; label: string; heading: string }[] = [
   { key: 'medication', label: '用藥管理', heading: '用藥紀錄' },
   { key: 'cleaning',   label: '清潔掃房', heading: '清掃摘要' },
   { key: 'companion',  label: '陪伴服務', heading: '陪伴紀錄' },
@@ -348,12 +348,13 @@ function PhotoPicker({ residentName, cloudName, onConfirm, onClose }: {
 }
 
 // ── 主元件 ───────────────────────────────────────────────
-export function LogEditor({ resident, authorName, existingLog, cloudName = '', cleaningPrefill }: {
+export function LogEditor({ resident, authorName, existingLog, cloudName = '', cleaningPrefill, initialCategory }: {
   resident: ButlerResident
   authorName: string
   existingLog?: ServiceLog
   cloudName?: string
   cleaningPrefill?: { title: string; blocks: LogBlock[]; meta: string }
+  initialCategory?: 'medication' | 'cleaning' | 'companion'
 }) {
   const router = useRouter()
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
@@ -370,6 +371,9 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
       { type: 'heading', text: '服務摘要' },
       { type: 'text',    text: '' },
     ]
+  )
+  const [category, setCategory] = useState<'medication' | 'cleaning' | 'companion' | 'other' | null>(
+    existingLog?.category ?? initialCategory ?? null
   )
   const [saving, setSaving] = useState(false)
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null)
@@ -481,13 +485,14 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
     setShowPhotoChoice(false)
   }
 
-  function applyModule(heading: string) {
+  function applyModule(m: typeof SERVICE_MODULES[number]) {
     const hasContent = blocks.some(b => (b.type === 'text' && b.text.trim()) || (b.type === 'image' && b.url))
     if (hasContent && !confirm('目前內容會被取代，確定要套用模組嗎？')) return
     setBlocks([
-      { type: 'heading', text: heading },
+      { type: 'heading', text: m.heading },
       { type: 'text', text: '' },
     ])
+    setCategory(m.key)
   }
 
   function addBlock(type: LogBlock['type']) {
@@ -512,7 +517,7 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
     try {
       if (existingLog) {
         await updateServiceLog(existingLog.id, {
-          title, content: blocks, period_start: periodStart, period_end: periodEnd, period_type: periodType,
+          title, content: blocks, period_start: periodStart, period_end: periodEnd, period_type: periodType, category,
         })
         router.back()
       } else {
@@ -524,6 +529,7 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
           period_type: periodType,
           title,
           content: blocks,
+          category,
         })
         router.push(`/butler/residents/${resident.id}/log/${id}`)
       }
@@ -616,8 +622,10 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
         <label className="text-xs text-gray-500 mb-1.5 block">選擇模組（選填，快速帶入內容）</label>
         <div className="flex gap-2 flex-wrap">
           {SERVICE_MODULES.map(m => (
-            <button key={m.key} onClick={() => applyModule(m.heading)}
-              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 font-medium hover:border-emerald-400 hover:text-emerald-700 transition-colors">
+            <button key={m.key} onClick={() => applyModule(m)}
+              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                category === m.key ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-700'
+              }`}>
               {m.label}
             </button>
           ))}

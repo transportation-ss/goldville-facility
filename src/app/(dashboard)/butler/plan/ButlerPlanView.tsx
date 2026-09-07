@@ -24,6 +24,13 @@ function slotToLabel(slot: number): string {
   return `${String(h).padStart(2, '0')}:${m}`
 }
 
+const CATEGORY_OPTIONS: { value: 'medication' | 'cleaning' | 'companion' | 'other'; label: string }[] = [
+  { value: 'medication', label: '用藥管理' },
+  { value: 'cleaning',   label: '清潔掃房' },
+  { value: 'companion',  label: '陪伴服務' },
+  { value: 'other',      label: '其他' },
+]
+
 // ── 任務 Modal ────────────────────────────────────────────
 function SlotModal({ staffId, startTime, today, staff, existingTask, onClose }: {
   staffId: string; startTime: string; today: string
@@ -39,6 +46,7 @@ function SlotModal({ staffId, startTime, today, staff, existingTask, onClose }: 
     notes:            existingTask?.notes ?? '',
     assigned_to:      existingTask?.assigned_to ?? staffId,
     priority:         existingTask?.priority ?? 'normal',
+    category:         existingTask?.category ?? 'other',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -54,6 +62,7 @@ function SlotModal({ staffId, startTime, today, staff, existingTask, onClose }: 
         space: form.space.trim() || null, notes: form.notes.trim() || null,
         assigned_to: form.assigned_to || null,
         priority: form.priority as 'normal' | 'urgent',
+        category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
       }
       if (existingTask) { await updateButlerTask(existingTask.id, payload) }
       else              { await createButlerTask(payload) }
@@ -80,6 +89,13 @@ function SlotModal({ staffId, startTime, today, staff, existingTask, onClose }: 
             <label className="text-xs text-gray-500 mb-1 block">工作內容 *</label>
             <input className="w-full border rounded-lg px-3 py-2 text-sm"
               value={form.title} onChange={e => set('title', e.target.value)} required />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">服務模組</label>
+            <select className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.category} onChange={e => set('category', e.target.value)}>
+              {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>

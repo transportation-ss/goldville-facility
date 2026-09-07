@@ -44,6 +44,7 @@ export type ServiceLog = {
   period_type: 'day' | 'week' | 'month' | 'custom'
   title: string
   content: LogBlock[]
+  category: 'medication' | 'cleaning' | 'companion' | 'other' | null
   created_at: string
   updated_at: string
   author?: { display_name: string } | null
@@ -208,6 +209,7 @@ export async function createServiceLog(input: {
   period_type: 'day' | 'week' | 'month' | 'custom'
   title: string
   content: LogBlock[]
+  category?: 'medication' | 'cleaning' | 'companion' | 'other' | null
 }): Promise<string> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -228,6 +230,7 @@ export async function updateServiceLog(id: string, input: {
   period_start?: string
   period_end?: string
   period_type?: 'day' | 'week' | 'month' | 'custom'
+  category?: 'medication' | 'cleaning' | 'companion' | 'other' | null
 }) {
   const supabase = await createClient()
   const { error } = await supabase

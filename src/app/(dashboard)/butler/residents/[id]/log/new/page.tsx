@@ -9,10 +9,10 @@ export default async function NewLogPage({
   params, searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ template?: string; space?: string; time?: string }>
+  searchParams: Promise<{ template?: string; space?: string; time?: string; category?: string }>
 }) {
   const { id } = await params
-  const { template, space, time } = await searchParams
+  const { template, space, time, category } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase
@@ -21,11 +21,18 @@ export default async function NewLogPage({
   const resident = await getResident(id)
   if (!resident) notFound()
 
-  const cleaningPrefill = template === 'cleaning'
+  const CATEGORY_HEADING: Record<string, string> = {
+    medication: '用藥紀錄',
+    cleaning: '清掃摘要',
+    companion: '陪伴紀錄',
+  }
+  const heading = (category && CATEGORY_HEADING[category]) ?? (template === 'cleaning' ? '清掃摘要' : undefined)
+
+  const cleaningPrefill = heading
     ? {
-        title: `${resident.name}_清潔紀錄_${space ?? ''}`.trim(),
+        title: `${resident.name}_${heading}_${space ?? ''}`.trim(),
         blocks: [
-          { type: 'heading' as const, text: '清掃摘要' },
+          { type: 'heading' as const, text: heading },
           { type: 'text' as const, text: '' },
         ],
         meta: [space, time, profile?.display_name].filter(Boolean).join(' · '),
@@ -38,6 +45,7 @@ export default async function NewLogPage({
       authorName={profile?.display_name ?? ''}
       cloudName={process.env.CLOUDINARY_CLOUD_NAME ?? ''}
       cleaningPrefill={cleaningPrefill}
+      initialCategory={(category ?? (template === 'cleaning' ? 'cleaning' : undefined)) as 'medication' | 'cleaning' | 'companion' | undefined}
     />
   )
 }
