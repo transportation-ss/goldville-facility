@@ -294,20 +294,24 @@ export function CleaningDutyView({
                                 </div>
                               </div>
                             ) : (
-                              <div key={idx} className="w-full flex items-center gap-0.5 rounded hover:bg-gray-50 text-gray-700 group">
+                              <div key={idx} className="w-full grid grid-cols-[30px_1fr_12px] items-start gap-1 rounded hover:bg-gray-50 text-gray-700 group px-0.5 py-0.5">
                                 <button
                                   onClick={() => startEditRoom(date, period, idx)}
-                                  className="flex-1 min-h-[28px] flex items-center justify-center gap-1 text-xs"
+                                  className="text-left text-[10px] text-gray-400 pt-px"
                                 >
-                                  <span className="text-gray-400">{room.times[idx]}</span>
-                                  <span>{name}</span>
-                                  <Pencil size={9} className="opacity-0 group-hover:opacity-40" />
+                                  {room.times[idx]}
+                                </button>
+                                <button
+                                  onClick={() => startEditRoom(date, period, idx)}
+                                  className="text-left text-xs leading-tight break-words"
+                                >
+                                  {name}
                                 </button>
                                 <button
                                   onClick={() => removeRoomEntry(date, period, idx)}
-                                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 shrink-0"
+                                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 pt-px"
                                 >
-                                  <X size={11} />
+                                  <X size={10} />
                                 </button>
                               </div>
                             )
