@@ -181,10 +181,6 @@ export function CleaningDutyView({
         已經有值班紀錄的日期不會被覆蓋（含手動調整過的）。點時段格子可直接編輯，房間/長輩可參照住戶列表輸入。
       </p>
 
-      <datalist id="resident-room-options">
-        {residentRoomOptions.map(r => <option key={r} value={r} />)}
-      </datalist>
-
       <div ref={printRef} className="bg-white overflow-x-auto rounded-lg border border-gray-200">
         <p className="p-2 text-center text-sm font-semibold text-gray-700 border-b border-gray-200">
           清潔值班表 {start} ～ {end}
@@ -217,12 +213,25 @@ export function CleaningDutyView({
                             <div className="flex flex-col gap-1">
                               <input
                                 autoFocus
-                                list="resident-room-options"
                                 value={draft}
                                 onChange={e => setDraft(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && saveEdit()}
                                 className="w-full text-xs border border-blue-400 rounded px-1 py-1"
                               />
+                              <select
+                                defaultValue=""
+                                onChange={e => {
+                                  const name = e.target.value
+                                  if (name) setDraft(name)
+                                  e.target.value = ''
+                                }}
+                                className="w-full text-xs border rounded px-1 py-1 text-gray-500"
+                              >
+                                <option value="">＋ 從住戶列表選擇</option>
+                                {residentRoomOptions
+                                  .filter(r => !draft || r.includes(draft))
+                                  .map(r => <option key={r} value={r}>{r}</option>)}
+                              </select>
                               <div className="flex gap-1 justify-center">
                                 <button onClick={saveEdit} className="text-xs text-blue-600">儲存</button>
                                 <button onClick={() => setEditing(null)} className="text-xs text-gray-400">取消</button>
