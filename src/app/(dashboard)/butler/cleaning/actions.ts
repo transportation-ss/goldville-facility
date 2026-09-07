@@ -193,8 +193,6 @@ export async function generateCleaningTasksForRange(start: string, end: string) 
           title: `清潔：${name}`,
           assigned_to: assignedIds[0] ?? null,
           assigned_to_ids: assignedIds,
-          priority: 'normal',
-          status: 'pending',
           created_by: user.id,
           source: 'cleaning',
           source_ref: `cleaning:${date}:${period}:${idx}`,
@@ -205,9 +203,11 @@ export async function generateCleaningTasksForRange(start: string, end: string) 
 
   if (rows.length === 0) return { generated: 0 }
 
+  // 重複（同 source_ref）就更新排班與指派，不再略過；status 不放進 payload，
+  // 交給欄位預設值（新建 pending），避免重新產生時把已完成的任務打回 pending。
   const { error } = await supabase
     .from('butler_tasks')
-    .upsert(rows, { onConflict: 'source_ref', ignoreDuplicates: true })
+    .upsert(rows, { onConflict: 'source_ref' })
   if (error) throw error
 
   revalidatePath('/butler')
