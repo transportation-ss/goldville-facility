@@ -2,7 +2,7 @@
 
 import { Fragment, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, Pencil, Share2, Loader2 } from 'lucide-react'
+import { RefreshCw, Pencil, Share2, Loader2, Users } from 'lucide-react'
 import { regenerateCleaningDuty, updateCleaningDuty, updateRoomSchedule } from './actions'
 
 type DutyRow = { schedule_date: string; period: 'AM' | 'PM'; staff_names: string[] }
@@ -54,6 +54,7 @@ export function CleaningDutyView({
   const [editing, setEditing] = useState<Editing | null>(null)
   const [draft, setDraft] = useState('')
   const [sharing, setSharing] = useState(false)
+  const [syncing, startSyncing] = useTransition()
 
   const dates = dateRange(start, end)
   const byKey = new Map(duty.map(d => [`${d.schedule_date}|${d.period}`, d.staff_names]))
@@ -62,6 +63,14 @@ export function CleaningDutyView({
   function regenerate() {
     startTransition(async () => {
       await regenerateCleaningDuty(start, end)
+      router.refresh()
+    })
+  }
+
+  // 住戶清單本來就是即時查資料庫（沒有快取），這裡只是重抓一次最新資料，
+  // 讓「開著頁面沒關」時也能看到剛新增/異動的住戶
+  function syncResidents() {
+    startSyncing(() => {
       router.refresh()
     })
   }
@@ -158,6 +167,14 @@ export function CleaningDutyView({
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-semibold text-gray-800">清潔值班表 {start} ～ {end}</h1>
         <div className="flex gap-2">
+          <button
+            onClick={syncResidents}
+            disabled={syncing}
+            className="flex items-center gap-1.5 text-sm bg-gray-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+          >
+            <Users size={14} className={syncing ? 'animate-pulse' : ''} />
+            同步住戶清單
+          </button>
           <button
             onClick={shareToLine}
             disabled={sharing}
