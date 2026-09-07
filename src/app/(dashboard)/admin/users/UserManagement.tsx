@@ -332,8 +332,18 @@ function UserRow({
   const [showResetPwd, setShowResetPwd]   = useState(false)
   const [action, setAction]               = useState<string | null>(null)
 
-  const handleApprove = () => { setAction('approve'); startTransition(() => approveUser(user.id)) }
-  const handleReject  = () => { setAction('reject');  startTransition(() => rejectUser(user.id)) }
+  const handleApprove = () => {
+    setAction('approve')
+    startTransition(async () => {
+      try { await approveUser(user.id) } catch (err) { alert(err instanceof Error ? err.message : '核准失敗') }
+    })
+  }
+  const handleReject = () => {
+    setAction('reject')
+    startTransition(async () => {
+      try { await rejectUser(user.id) } catch (err) { alert(err instanceof Error ? err.message : '拒絕失敗') }
+    })
+  }
   const handleRole    = (role: string) => {
     setShowRoleMenu(false); setAction('role')
     startTransition(() => updateUserRole(user.id, role))

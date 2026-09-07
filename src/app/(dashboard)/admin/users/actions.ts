@@ -7,19 +7,25 @@ import { revalidatePath } from 'next/cache'
 // ─── 審核 ─────────────────────────────────────────────────
 export async function approveUser(userId: string) {
   const supabase = await createClient()
-  await supabase
+  const { data, error } = await supabase
     .from('user_profiles')
     .update({ status: 'active' })
     .eq('id', userId)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) throw new Error('權限不足或帳號不存在，核准失敗')
   revalidatePath('/admin/users')
 }
 
 export async function rejectUser(userId: string) {
   const supabase = await createClient()
-  await supabase
+  const { data, error } = await supabase
     .from('user_profiles')
     .update({ status: 'disabled' })
     .eq('id', userId)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) throw new Error('權限不足或帳號不存在，拒絕失敗')
   revalidatePath('/admin/users')
 }
 
