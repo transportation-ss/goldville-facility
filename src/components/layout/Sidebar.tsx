@@ -350,17 +350,25 @@ export function Sidebar({ role, displayName }: { role: string; displayName: stri
   const supabase = createClient()
   const [isNavigating, setIsNavigating] = useState(false)
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (navTimerRef.current) {
       clearTimeout(navTimerRef.current)
       navTimerRef.current = null
     }
+    if (navTimeoutRef.current) {
+      clearTimeout(navTimeoutRef.current)
+      navTimeoutRef.current = null
+    }
     setIsNavigating(false)
   }, [pathname])
 
   function handleNavClick() {
     navTimerRef.current = setTimeout(() => setIsNavigating(true), 150)
+    // 點同一頁時 pathname 不變，上面的 effect 不會觸發清除，
+    // 5 秒後強制關閉遮罩避免卡死
+    navTimeoutRef.current = setTimeout(() => setIsNavigating(false), 5000)
   }
 
   const handleLogout = async () => {

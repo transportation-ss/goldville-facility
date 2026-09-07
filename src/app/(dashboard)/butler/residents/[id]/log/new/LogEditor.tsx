@@ -12,6 +12,13 @@ const PERIOD_LABEL: Record<PeriodType, string> = {
   day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間',
 }
 
+// 常用服務模組：點了直接帶入標題段落＋空白內容，方便快速填寫
+const SERVICE_MODULES: { key: string; label: string; heading: string }[] = [
+  { key: 'medication', label: '用藥管理', heading: '用藥紀錄' },
+  { key: 'cleaning',   label: '清潔掃房', heading: '清掃摘要' },
+  { key: 'companion',  label: '陪伴服務', heading: '陪伴紀錄' },
+]
+
 function formatDateCompact(d: string) {
   return d.replace(/-/g, '')
 }
@@ -474,6 +481,15 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
     setShowPhotoChoice(false)
   }
 
+  function applyModule(heading: string) {
+    const hasContent = blocks.some(b => (b.type === 'text' && b.text.trim()) || (b.type === 'image' && b.url))
+    if (hasContent && !confirm('目前內容會被取代，確定要套用模組嗎？')) return
+    setBlocks([
+      { type: 'heading', text: heading },
+      { type: 'text', text: '' },
+    ])
+  }
+
   function addBlock(type: LogBlock['type']) {
     const newBlock: LogBlock =
       type === 'heading' ? { type: 'heading', text: '' } :
@@ -593,6 +609,19 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
         {cleaningPrefill?.meta && (
           <p className="text-xs text-gray-400">來自清潔任務：{cleaningPrefill.meta}</p>
         )}
+      </div>
+
+      {/* 服務模組快速套用 */}
+      <div className="mb-5">
+        <label className="text-xs text-gray-500 mb-1.5 block">選擇模組（選填，快速帶入內容）</label>
+        <div className="flex gap-2 flex-wrap">
+          {SERVICE_MODULES.map(m => (
+            <button key={m.key} onClick={() => applyModule(m.heading)}
+              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 font-medium hover:border-emerald-400 hover:text-emerald-700 transition-colors">
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Blocks */}

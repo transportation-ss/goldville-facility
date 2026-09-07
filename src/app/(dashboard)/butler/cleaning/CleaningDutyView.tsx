@@ -204,9 +204,9 @@ export function CleaningDutyView({
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-semibold text-gray-800">清潔值班表 {start} ～ {end}</h1>
-        <div className="flex gap-2">
+      <div className="mb-4">
+        <h1 className="text-lg font-semibold text-gray-800 mb-2">清潔值班表 {start} ～ {end}</h1>
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={syncResidents}
             disabled={syncing}

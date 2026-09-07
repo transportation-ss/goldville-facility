@@ -162,17 +162,17 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
   const fileRef = useRef<HTMLInputElement>(null)
   const isAlreadyDone = task.status === 'completed'
 
-  // 清潔任務第一次完成時，問要不要順手填一筆服務紀錄（帶清掃摘要模板）
+  // 任務第一次完成時，問要不要順手填一筆服務紀錄（清潔任務會帶清掃摘要模板）
   async function promptServiceLog() {
-    if (task.source !== 'cleaning' || !task.space) return
+    if (!task.space) return
     const residentId = await findResidentIdBySpace(task.space)
     if (!residentId) return
     if (!confirm('是否填寫服務紀錄？')) return
     const params = new URLSearchParams({
-      template: 'cleaning',
       space: task.space,
       time: task.start_time ?? '',
     })
+    if (task.source === 'cleaning') params.set('template', 'cleaning')
     router.push(`/butler/residents/${residentId}/log/new?${params.toString()}`)
   }
 
