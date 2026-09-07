@@ -79,7 +79,9 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
       const filename = `住戶列表_${today}.pdf`
       const file = new File([blob], filename, { type: 'application/pdf' })
 
-      if (navigator.canShare?.({ files: [file] })) {
+      // 判斷手機/平板才走系統分享面板；PC（含 Windows/macOS 有分享 API 但無觸控）直接下載
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+      if (isMobile && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title: '住戶列表', files: [file] })
       } else {
         const url = URL.createObjectURL(blob)
