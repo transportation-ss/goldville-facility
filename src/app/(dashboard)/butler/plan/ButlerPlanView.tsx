@@ -93,7 +93,17 @@ function SlotModal({ staffId, startTime, today, staff, existingTask, onClose }: 
           <div>
             <label className="text-xs text-gray-500 mb-1 block">服務模組</label>
             <select className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={form.category} onChange={e => set('category', e.target.value)}>
+              value={form.category}
+              onChange={e => {
+                const value = e.target.value as typeof CATEGORY_OPTIONS[number]['value']
+                const picked = CATEGORY_OPTIONS.find(c => c.value === value)
+                setForm(f => ({
+                  ...f,
+                  category: value,
+                  // 選固定模組直接帶入標題省得打字；選「其他」則保留原本內容自己打
+                  title: picked && picked.value !== 'other' ? picked.label : f.title,
+                }))
+              }}>
               {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
