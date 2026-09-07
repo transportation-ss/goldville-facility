@@ -113,6 +113,92 @@ export async function getResidentRoomOptions(): Promise<string[]> {
   return (data ?? []).map(r => `${r.room ?? ''}${r.name}`.trim())
 }
 
+// ── 清潔值班 → 管家任務（手動按鈕觸發） ─────────────────────
+
+function dateRangeServer(start: string, end: string): string[] {
+  const [sy, sm, sd] = start.split('-').map(Number)
+  const [ey, em, ed] = end.split('-').map(Number)
+  const cur = new Date(Date.UTC(sy, sm - 1, sd))
+  const endD = new Date(Date.UTC(ey, em - 1, ed))
+  const dates: string[] = []
+  while (cur <= endD) {
+    dates.push(cur.toISOString().split('T')[0])
+    cur.setUTCDate(cur.getUTCDate() + 1)
+  }
+  return dates
+}
+
+function weekdayOfServer(date: string): number {
+  const [y, m, d] = date.split('-').map(Number)
+  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+  return day === 0 ? 7 : day
+}
+
+// 房間清潔的時間欄位是自由格式文字（例："9:00"、"9:00~10:00"），
+// butler_tasks.start_time 是 Postgres time 型別，只取得到開頭 HH:MM 才寫入，取不到就留空。
+function parseLeadingTime(raw: string): string | null {
+  const m = raw.trim().match(/^(\d{1,2}):(\d{2})/)
+  if (!m) return null
+  const h = m[1].padStart(2, '0')
+  return `${h}:${m[2]}`
+}
+
+// 手動按鈕：把指定週的每個房間清潔項目轉成 butler_tasks 的一筆任務（共用任務池，不指派）
+export async function generateCleaningTasksForRange(start: string, end: string) {
+  const authed = await createClient()
+  const { data: { user } } = await authed.auth.getUser()
+  const { data: profile } = await authed.from('user_profiles').select('role').eq('id', user?.id ?? '').single()
+  if (!user || !profile || !['admin', 'manager', 'butler_manager'].includes(profile.role)) {
+    throw new Error('Unauthorized')
+  }
+
+  const supabase = createAdminClient()
+  const { data: roomRows, error: roomErr } = await supabase
+    .from('cleaning_room_schedule')
+    .select('weekday, period, room_names, room_times')
+  if (roomErr) throw roomErr
+
+  const roomByWeekday = new Map(
+    (roomRows ?? []).map(r => [`${r.weekday}|${r.period}`, { names: r.room_names as string[], times: (r.room_times ?? []) as string[] }])
+  )
+
+  const rows: Record<string, unknown>[] = []
+  for (const date of dateRangeServer(start, end)) {
+    const weekday = weekdayOfServer(date)
+    for (const period of ['AM', 'PM'] as const) {
+      const room = roomByWeekday.get(`${weekday}|${period}`) ?? { names: [], times: [] }
+      room.names.forEach((rawName, idx) => {
+        const name = rawName.trim()
+        if (!name) return
+        rows.push({
+          task_date: date,
+          start_time: parseLeadingTime(room.times[idx] ?? ''),
+          space: name,
+          title: `清潔：${name}`,
+          assigned_to: null,
+          priority: 'normal',
+          status: 'pending',
+          created_by: user.id,
+          source: 'cleaning',
+          source_ref: `cleaning:${date}:${period}:${idx}`,
+        })
+      })
+    }
+  }
+
+  if (rows.length === 0) return { generated: 0 }
+
+  const { error } = await supabase
+    .from('butler_tasks')
+    .upsert(rows, { onConflict: 'source_ref', ignoreDuplicates: true })
+  if (error) throw error
+
+  revalidatePath('/butler')
+  revalidatePath('/butler/tasks')
+  revalidatePath('/butler/cleaning')
+  return { generated: rows.length }
+}
+
 // 供編輯值班人員時參照管家 pool（有「清潔」標籤的人）
 export async function getCleaningStaffOptions(): Promise<string[]> {
   const supabase = createAdminClient()

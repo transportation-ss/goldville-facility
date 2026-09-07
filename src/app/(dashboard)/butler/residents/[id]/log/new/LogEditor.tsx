@@ -341,11 +341,12 @@ function PhotoPicker({ residentName, cloudName, onConfirm, onClose }: {
 }
 
 // ── 主元件 ───────────────────────────────────────────────
-export function LogEditor({ resident, authorName, existingLog, cloudName = '' }: {
+export function LogEditor({ resident, authorName, existingLog, cloudName = '', cleaningPrefill }: {
   resident: ButlerResident
   authorName: string
   existingLog?: ServiceLog
   cloudName?: string
+  cleaningPrefill?: { title: string; blocks: LogBlock[]; meta: string }
 }) {
   const router = useRouter()
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
@@ -354,11 +355,11 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '' }:
   const [periodStart, setPeriodStart] = useState(existingLog?.period_start ?? today)
   const [periodEnd, setPeriodEnd]     = useState(existingLog?.period_end ?? today)
   const [title, setTitle]             = useState(
-    existingLog?.title ?? genTitle(resident.name, today, today)
+    existingLog?.title ?? cleaningPrefill?.title ?? genTitle(resident.name, today, today)
   )
-  const [titleCustom, setTitleCustom] = useState(false)
+  const [titleCustom, setTitleCustom] = useState(!!cleaningPrefill)
   const [blocks, setBlocks]           = useState<LogBlock[]>(
-    existingLog?.content ?? [
+    existingLog?.content ?? cleaningPrefill?.blocks ?? [
       { type: 'heading', text: '服務摘要' },
       { type: 'text',    text: '' },
     ]
@@ -589,6 +590,9 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '' }:
           <span>紀錄人：{authorName}</span>
           <span>紀錄日期：{today}</span>
         </div>
+        {cleaningPrefill?.meta && (
+          <p className="text-xs text-gray-400">來自清潔任務：{cleaningPrefill.meta}</p>
+        )}
       </div>
 
       {/* Blocks */}

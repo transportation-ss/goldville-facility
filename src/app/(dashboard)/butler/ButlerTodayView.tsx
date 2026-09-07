@@ -2,9 +2,10 @@
 
 import { useState, useTransition, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Plus, Clock, MapPin, User, CheckCircle2, Circle, AlertCircle, Pencil, Trash2, CalendarDays, History, Printer, X, Camera, RotateCcw } from 'lucide-react'
 import type { ButlerTask, ButlerStaff } from './actions'
-import { createButlerTask, updateButlerTask, deleteButlerTask, completeButlerTask, uncompleteButlerTask, updateCompletionData } from './actions'
+import { createButlerTask, updateButlerTask, deleteButlerTask, completeButlerTask, uncompleteButlerTask, updateCompletionData, findResidentIdBySpace } from './actions'
 
 interface Props {
   today: string
@@ -154,11 +155,26 @@ function TaskModal({ task, staff, today, onClose }: {
 
 // ── 完成 Modal（含照片上傳） ─────────────────────────────────
 function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => void }) {
+  const router = useRouter()
   const [notes, setNotes] = useState(task.completion_notes ?? '')
   const [photoPreview, setPhotoPreview] = useState<string | null>(task.completion_photo_url ?? null)
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const isAlreadyDone = task.status === 'completed'
+
+  // 清潔任務第一次完成時，問要不要順手填一筆服務紀錄（帶清掃摘要模板）
+  async function promptServiceLog() {
+    if (task.source !== 'cleaning' || !task.space) return
+    const residentId = await findResidentIdBySpace(task.space)
+    if (!residentId) return
+    if (!confirm('是否填寫服務紀錄？')) return
+    const params = new URLSearchParams({
+      template: 'cleaning',
+      space: task.space,
+      time: task.start_time ?? '',
+    })
+    router.push(`/butler/residents/${residentId}/log/new?${params.toString()}`)
+  }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -173,10 +189,12 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
     try {
       if (isAlreadyDone) {
         await updateCompletionData(task.id, notes, photoPreview)
+        onClose()
       } else {
         await completeButlerTask(task.id, notes, photoPreview)
+        onClose()
+        await promptServiceLog()
       }
-      onClose()
     } finally { setSaving(false) }
   }
 

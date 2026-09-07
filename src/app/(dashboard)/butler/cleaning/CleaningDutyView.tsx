@@ -2,8 +2,8 @@
 
 import { Fragment, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, Pencil, Share2, Loader2, Users, X } from 'lucide-react'
-import { regenerateCleaningDuty, updateCleaningDuty, updateRoomSchedule, syncRoomScheduleFromSheet } from './actions'
+import { RefreshCw, Pencil, Share2, Loader2, Users, X, ListChecks } from 'lucide-react'
+import { regenerateCleaningDuty, updateCleaningDuty, updateRoomSchedule, syncRoomScheduleFromSheet, generateCleaningTasksForRange } from './actions'
 
 type DutyRow = { schedule_date: string; period: 'AM' | 'PM'; staff_names: string[] }
 type RoomRow = { weekday: number; period: 'AM' | 'PM'; room_names: string[]; room_times: string[] }
@@ -49,6 +49,7 @@ export function CleaningDutyView({
   const [draftTime, setDraftTime] = useState('')
   const [sharing, setSharing] = useState(false)
   const [syncing, startSyncing] = useTransition()
+  const [generatingTasks, startGeneratingTasks] = useTransition()
 
   const dates = dateRange(start, end)
   const byKey = new Map(duty.map(d => [`${d.schedule_date}|${d.period}`, d.staff_names]))
@@ -100,6 +101,18 @@ export function CleaningDutyView({
     startTransition(async () => {
       await updateRoomSchedule(weekday, period, names, times)
       router.refresh()
+    })
+  }
+
+  // 手動點一次，把本週每個房間清潔項目轉成管家任務（共用任務池，不指派）
+  function generateTasks() {
+    startGeneratingTasks(async () => {
+      try {
+        const { generated } = await generateCleaningTasksForRange(start, end)
+        alert(`已產生 ${generated} 筆清潔任務到管家任務中`)
+      } catch (err) {
+        alert(err instanceof Error ? err.message : '產生任務失敗')
+      }
     })
   }
 
@@ -217,6 +230,14 @@ export function CleaningDutyView({
           >
             <RefreshCw size={14} className={isPending ? 'animate-spin' : ''} />
             產生本週未排的值班
+          </button>
+          <button
+            onClick={generateTasks}
+            disabled={generatingTasks}
+            className="flex items-center gap-1.5 text-sm bg-purple-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+          >
+            <ListChecks size={14} className={generatingTasks ? 'animate-pulse' : ''} />
+            {generatingTasks ? '產生中...' : '產生本週清潔任務'}
           </button>
         </div>
       </div>
