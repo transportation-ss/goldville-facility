@@ -430,7 +430,7 @@ export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props
   const [selected, setSelected] = useState<ButlerTask | null>(null)
   const [, startTransition] = useTransition()
 
-  const filtered = viewAll ? tasks : tasks.filter(t => t.assigned_to === userId)
+  const filtered = viewAll ? tasks : tasks.filter(t => t.assigned_to_ids?.includes(userId))
   const pending   = filtered.filter(t => t.status !== 'completed')
   const completed = filtered.filter(t => t.status === 'completed')
 

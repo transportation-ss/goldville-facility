@@ -135,7 +135,7 @@ export function ButlerWeekView({ today, weekStart, tasks, staff, userRole, userI
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const selectedDate = weekDates[selectedDay]
 
-  const filtered = viewAll ? tasks : tasks.filter(t => t.assigned_to === userId)
+  const filtered = viewAll ? tasks : tasks.filter(t => t.assigned_to_ids?.includes(userId))
   const dayTasks = filtered.filter(t => t.task_date === selectedDate)
 
   const weekLabel = (() => {

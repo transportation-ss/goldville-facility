@@ -53,7 +53,11 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
     duration_minutes: existingTask?.duration_minutes?.toString() ?? '60',
     space:            existingTask?.space ?? '',
     notes:            existingTask?.notes ?? '',
-    assigned_to:      existingTask?.assigned_to ?? staffId,
+    assigned_to_ids:  existingTask?.assigned_to_ids?.length
+      ? existingTask.assigned_to_ids
+      : existingTask
+        ? (existingTask.assigned_to ? [existingTask.assigned_to] : [])
+        : (staffId ? [staffId] : []),
     priority:         existingTask?.priority ?? 'normal',
     category:         existingTask?.category ?? 'other',
   })
@@ -69,7 +73,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
         start_time: form.start_time || null,
         duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
         space: form.space.trim() || null, notes: form.notes.trim() || null,
-        assigned_to: form.assigned_to || null,
+        assigned_to_ids: form.assigned_to_ids,
         priority: form.priority as 'normal' | 'urgent',
         category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
       }
@@ -141,11 +145,33 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
             </div>
           </div>
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">指派人員</label>
-            <select className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={form.assigned_to} onChange={e => set('assigned_to', e.target.value)}>
-              <option value="">未指派</option>
-              {staff.map(s => <option key={s.id} value={s.id}>{s.display_name}</option>)}
+            <label className="text-xs text-gray-500 mb-1 block">
+              指派人員{form.assigned_to_ids.length > 1 ? '（共同負責，任一人完成即算完成）' : ''}
+            </label>
+            {form.assigned_to_ids.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-1.5">
+                {form.assigned_to_ids.map(id => {
+                  const s = staff.find(x => x.id === id)
+                  return (
+                    <span key={id} className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs rounded-full pl-2 pr-1 py-0.5">
+                      {s?.display_name ?? '未知'}
+                      <button type="button"
+                        onClick={() => setForm(f => ({ ...f, assigned_to_ids: f.assigned_to_ids.filter(x => x !== id) }))}
+                        className="hover:bg-emerald-100 rounded-full w-4 h-4 flex items-center justify-center">✕</button>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+            <select className="w-full border rounded-lg px-3 py-2 text-sm" value=""
+              onChange={e => {
+                const id = e.target.value
+                if (id) setForm(f => ({ ...f, assigned_to_ids: [...f.assigned_to_ids, id] }))
+              }}>
+              <option value="">{form.assigned_to_ids.length > 0 ? '+ 新增其他人員…' : '未指派'}</option>
+              {staff.filter(s => !form.assigned_to_ids.includes(s.id)).map(s => (
+                <option key={s.id} value={s.id}>{s.display_name}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -262,10 +288,10 @@ export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
   const staffRows = staff.map(s => ({
     id: s.id,
     label: s.display_name,
-    rowTasks: tasks.filter(t => t.assigned_to === s.id && t.start_time),
+    rowTasks: tasks.filter(t => t.assigned_to_ids?.includes(s.id) && t.start_time),
   }))
   // 尚未指派管家的任務（例如清潔任務池）另外獨立一列，否則會在管家視圖中消失、無法指派
-  const unassignedStaffTasks = tasks.filter(t => !t.assigned_to && t.start_time)
+  const unassignedStaffTasks = tasks.filter(t => !t.assigned_to_ids?.length && t.start_time)
   if (unassignedStaffTasks.length > 0) {
     staffRows.unshift({ id: '__unassigned__', label: '未指派', rowTasks: unassignedStaffTasks })
   }

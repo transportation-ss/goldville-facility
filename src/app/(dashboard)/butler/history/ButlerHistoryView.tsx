@@ -147,7 +147,7 @@ function WeekBlock({ weekStart, tasks }: { weekStart: string; tasks: ButlerTask[
 export function ButlerHistoryView({ today, tasks, userRole, userId, prevWeekStart }: Props) {
   const [viewAll, setViewAll] = useState(false)
 
-  const filtered = viewAll ? tasks : tasks.filter(t => t.assigned_to === userId)
+  const filtered = viewAll ? tasks : tasks.filter(t => t.assigned_to_ids?.includes(userId))
 
   // 組出各週 start（從上週起往前 4 週）
   const weekStarts: string[] = []

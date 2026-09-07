@@ -13,6 +13,7 @@ export type ButlerTask = {
   title: string
   notes: string | null
   assigned_to: string | null
+  assigned_to_ids: string[]
   priority: 'normal' | 'urgent'
   status: 'pending' | 'in_progress' | 'completed'
   completion_notes: string | null
@@ -114,6 +115,7 @@ export async function createButlerTask(input: {
   title: string
   notes?: string | null
   assigned_to?: string | null
+  assigned_to_ids?: string[]
   priority?: 'normal' | 'urgent'
   category?: 'medication' | 'cleaning' | 'companion' | 'other' | null
 }) {
@@ -121,8 +123,14 @@ export async function createButlerTask(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('未登入')
 
+  const { assigned_to, assigned_to_ids, ...rest } = input
+  // assigned_to_ids 才是可以有多人的權威欄位；沒帶就從舊的單一 assigned_to 帶入相容
+  const ids = assigned_to_ids ?? (assigned_to ? [assigned_to] : [])
+
   const { error } = await supabase.from('butler_tasks').insert({
-    ...input,
+    ...rest,
+    assigned_to: ids[0] ?? null,
+    assigned_to_ids: ids,
     priority: input.priority ?? 'normal',
     created_by: user.id,
   })
@@ -138,15 +146,26 @@ export async function updateButlerTask(id: string, updates: Partial<{
   title: string
   notes: string | null
   assigned_to: string | null
+  assigned_to_ids: string[]
   priority: 'normal' | 'urgent'
   status: 'pending' | 'in_progress' | 'completed'
   completion_notes: string | null
   category: 'medication' | 'cleaning' | 'companion' | 'other' | null
 }>) {
   const supabase = await createClient()
+  const { assigned_to, assigned_to_ids, ...rest } = updates
+  const payload: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() }
+  if (assigned_to_ids !== undefined) {
+    payload.assigned_to_ids = assigned_to_ids
+    payload.assigned_to = assigned_to_ids[0] ?? null
+  } else if (assigned_to !== undefined) {
+    payload.assigned_to = assigned_to
+    payload.assigned_to_ids = assigned_to ? [assigned_to] : []
+  }
+
   const { error } = await supabase
     .from('butler_tasks')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', id)
   if (error) throw new Error(error.message)
   revalidatePath('/butler')
@@ -164,8 +183,9 @@ export async function completeButlerTask(id: string, notes: string, photoUrl?: s
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('未登入')
 
-  // 共用任務池（assigned_to 為 null）：誰按完成就算誰的，直接在完成時認領
-  const { data: existing } = await supabase.from('butler_tasks').select('assigned_to').eq('id', id).single()
+  // 共用任務池（沒有任何指派對象）：誰按完成就算誰的，直接在完成時認領
+  const { data: existing } = await supabase.from('butler_tasks').select('assigned_to, assigned_to_ids').eq('id', id).single()
+  const ids = existing?.assigned_to_ids?.length ? existing.assigned_to_ids : [user.id]
 
   const { error } = await supabase
     .from('butler_tasks')
@@ -174,6 +194,7 @@ export async function completeButlerTask(id: string, notes: string, photoUrl?: s
       completion_notes: notes || null,
       completion_photo_url: photoUrl ?? null,
       assigned_to: existing?.assigned_to ?? user.id,
+      assigned_to_ids: ids,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)

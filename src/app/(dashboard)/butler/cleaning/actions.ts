@@ -153,13 +153,26 @@ export async function generateCleaningTasksForRange(start: string, end: string) 
   }
 
   const supabase = createAdminClient()
-  const { data: roomRows, error: roomErr } = await supabase
-    .from('cleaning_room_schedule')
-    .select('weekday, period, room_names, room_times')
+  const [{ data: roomRows, error: roomErr }, { data: dutyRows }, { data: rosterRows }] = await Promise.all([
+    supabase.from('cleaning_room_schedule').select('weekday, period, room_names, room_times'),
+    // 已確認的清潔值班（哪幾位負責當天 AM/PM），產生任務時直接帶入指派，不用再手動派一次
+    supabase.from('cleaning_duty_assignments')
+      .select('schedule_date, period, staff_names')
+      .gte('schedule_date', start).lte('schedule_date', end),
+    supabase.from('butler_staff_roster').select('schedule_name, user_profile_id'),
+  ])
   if (roomErr) throw roomErr
 
   const roomByWeekday = new Map(
     (roomRows ?? []).map(r => [`${r.weekday}|${r.period}`, { names: r.room_names as string[], times: (r.room_times ?? []) as string[] }])
+  )
+  const dutyByKey = new Map(
+    (dutyRows ?? []).map(d => [`${d.schedule_date}|${d.period}`, d.staff_names as string[]])
+  )
+  const nameToUserId = new Map(
+    (rosterRows ?? [])
+      .filter(r => r.schedule_name && r.user_profile_id)
+      .map(r => [r.schedule_name as string, r.user_profile_id as string])
   )
 
   const rows: Record<string, unknown>[] = []
@@ -167,6 +180,9 @@ export async function generateCleaningTasksForRange(start: string, end: string) 
     const weekday = weekdayOfServer(date)
     for (const period of ['AM', 'PM'] as const) {
       const room = roomByWeekday.get(`${weekday}|${period}`) ?? { names: [], times: [] }
+      const dutyNames = dutyByKey.get(`${date}|${period}`) ?? []
+      // 值班名單是排班表的自由格式名字，只有連結過登入帳號的人才能自動指派，沒連結的留給主管手動補派
+      const assignedIds = dutyNames.map(n => nameToUserId.get(n)).filter((v): v is string => !!v)
       room.names.forEach((rawName, idx) => {
         const name = rawName.trim()
         if (!name) return
@@ -175,7 +191,8 @@ export async function generateCleaningTasksForRange(start: string, end: string) 
           start_time: parseLeadingTime(room.times[idx] ?? ''),
           space: name,
           title: `清潔：${name}`,
-          assigned_to: null,
+          assigned_to: assignedIds[0] ?? null,
+          assigned_to_ids: assignedIds,
           priority: 'normal',
           status: 'pending',
           created_by: user.id,
