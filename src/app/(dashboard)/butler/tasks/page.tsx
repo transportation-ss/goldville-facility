@@ -5,13 +5,15 @@ import { ButlerWeekView } from './ButlerWeekView'
 export const dynamic = 'force-dynamic'
 
 function getWeekRange(dateStr: string) {
-  const d = new Date(dateStr + 'T00:00:00+08:00')
-  const day = d.getDay() // 0=Sun
+  // dateStr 已經是台灣時區的日曆日期字串，這裡用 UTC 運算避免主機時區
+  // 不同導致 getDay()/getDate() 算出錯的星期幾（曾在 UTC 主機上把週一誤判成週日）
+  const d = new Date(dateStr + 'T00:00:00Z')
+  const day = d.getUTCDay() // 0=Sun
   const mon = new Date(d)
-  mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+  mon.setUTCDate(d.getUTCDate() - (day === 0 ? 6 : day - 1))
   const sun = new Date(mon)
-  sun.setDate(mon.getDate() + 6)
-  const fmt = (dt: Date) => dt.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+  sun.setUTCDate(mon.getUTCDate() + 6)
+  const fmt = (dt: Date) => dt.toISOString().slice(0, 10)
   return { start: fmt(mon), end: fmt(sun) }
 }
 

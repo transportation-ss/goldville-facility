@@ -168,16 +168,20 @@ function SlotModal({ staffId, startTime, today, staff, existingTask, onClose }: 
 }
 
 // ── 時間軸列 ─────────────────────────────────────────────
-function TimelineRow({ label, rowTasks, slots, onClickSlot, onClickTask }: {
+function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onClickSlot, onClickTask }: {
   label: string
   rowTasks: ButlerTask[]
   slots: number[]
+  isHighlighted: boolean
+  onHoverSlot: (slot: number | null) => void
   onClickSlot: (slot: number) => void
   onClickTask: (t: ButlerTask) => void
 }) {
   return (
-    <div className="flex items-center mb-1 h-10">
-      <div className="w-24 shrink-0 text-xs text-gray-600 font-medium pr-2 truncate">{label}</div>
+    <div className="flex items-center mb-1 h-10" onMouseLeave={() => onHoverSlot(null)}>
+      <div className={`w-24 shrink-0 text-xs font-medium pr-2 truncate rounded transition-colors ${
+        isHighlighted ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600'
+      }`}>{label}</div>
       <div className="flex-1 relative flex h-full">
         {slots.map(slot => {
           const slotTask = rowTasks.find(t => {
@@ -201,6 +205,7 @@ function TimelineRow({ label, rowTasks, slots, onClickSlot, onClickTask }: {
                   : 'hover:bg-emerald-50'
               }`}
               style={{ width: `${span * (100 / slots.length)}%` }}
+              onMouseEnter={() => onHoverSlot(slot)}
               onClick={() => slotTask ? onClickTask(slotTask) : onClickSlot(slot)}
             >
               {slotTask && isStart && (
@@ -228,6 +233,7 @@ export function ButlerPlanView({ today, tasks, staff }: Props) {
   const [modal, setModal]         = useState<{
     staffId: string; startTime: string; task?: ButlerTask | null
   } | null>(null)
+  const [hover, setHover] = useState<{ rowId: string; slot: number } | null>(null)
 
   const startSlot = showFull ? 0 : DEFAULT_START * 2
   const endSlot   = showFull ? 48 : DEFAULT_END * 2
@@ -298,6 +304,13 @@ export function ButlerPlanView({ today, tasks, staff }: Props) {
         </div>
       </div>
 
+      {/* 顏色圖例 */}
+      <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400 inline-block" />未完成</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400 inline-block" />緊急（未完成）</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-300 inline-block" />已完成</span>
+      </div>
+
       {rows.length === 0 && (
         <p className="text-sm text-gray-400 text-center py-10">
           {yAxis === 'staff' ? '尚無管家人員帳號' : '今日任務尚無服務對象資訊'}
@@ -310,11 +323,16 @@ export function ButlerPlanView({ today, tasks, staff }: Props) {
           {/* 時間列標頭 */}
           <div className="flex mb-1">
             <div className="w-24 shrink-0" />
-            {slots.filter((_, i) => i % 2 === 0).map(slot => (
-              <div key={slot} className="flex-1 text-[10px] text-gray-400 text-center">
-                {slotToLabel(slot)}
-              </div>
-            ))}
+            {slots.filter((_, i) => i % 2 === 0).map(slot => {
+              const isHourHighlighted = hover != null && Math.floor(hover.slot / 2) * 2 === slot
+              return (
+                <div key={slot} className={`flex-1 text-[10px] text-center rounded transition-colors ${
+                  isHourHighlighted ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-gray-400'
+                }`}>
+                  {slotToLabel(slot)}
+                </div>
+              )
+            })}
           </div>
           {/* rows */}
           {rows.map(row => (
@@ -323,6 +341,8 @@ export function ButlerPlanView({ today, tasks, staff }: Props) {
               label={row.label}
               rowTasks={row.rowTasks}
               slots={slots}
+              isHighlighted={hover?.rowId === row.id}
+              onHoverSlot={slot => setHover(slot == null ? null : { rowId: row.id, slot })}
               onClickSlot={slot => setModal({ staffId: yAxis === 'staff' ? row.id : (staff[0]?.id ?? ''), startTime: slotToLabel(slot) })}
               onClickTask={t => setModal({ staffId: t.assigned_to ?? '', startTime: t.start_time?.slice(0, 5) ?? '09:00', task: t })}
             />
