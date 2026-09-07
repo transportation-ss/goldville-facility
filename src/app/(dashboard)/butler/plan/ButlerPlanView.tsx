@@ -264,6 +264,11 @@ export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
     label: s.display_name,
     rowTasks: tasks.filter(t => t.assigned_to === s.id && t.start_time),
   }))
+  // 尚未指派管家的任務（例如清潔任務池）另外獨立一列，否則會在管家視圖中消失、無法指派
+  const unassignedStaffTasks = tasks.filter(t => !t.assigned_to && t.start_time)
+  if (unassignedStaffTasks.length > 0) {
+    staffRows.unshift({ id: '__unassigned__', label: '未指派', rowTasks: unassignedStaffTasks })
+  }
 
   // Y 軸：服務對象 rows（依 space 分組）
   const spaces = Array.from(
@@ -379,7 +384,7 @@ export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
               slots={slots}
               isHighlighted={hover?.rowId === row.id}
               onHoverSlot={slot => setHover(slot == null ? null : { rowId: row.id, slot })}
-              onClickSlot={slot => setModal({ staffId: yAxis === 'staff' ? row.id : (staff[0]?.id ?? ''), startTime: slotToLabel(slot) })}
+              onClickSlot={slot => setModal({ staffId: yAxis === 'staff' && row.id !== '__unassigned__' ? row.id : '', startTime: slotToLabel(slot) })}
               onClickTask={t => setModal({ staffId: t.assigned_to ?? '', startTime: t.start_time?.slice(0, 5) ?? '09:00', task: t })}
             />
           ))}
