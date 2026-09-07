@@ -9,7 +9,11 @@ function getTaiwanDate() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
 }
 
-export default async function ButlerPlanPage() {
+export default async function ButlerPlanPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase
@@ -21,10 +25,14 @@ export default async function ButlerPlanPage() {
   }
 
   const today = getTaiwanDate()
+  const { date } = await searchParams
+  // 允許主管往後（或往前）翻頁派工，不再只能派當天
+  const viewDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today
+
   const [tasks, staff] = await Promise.all([
-    getButlerTasksByDate(today),
+    getButlerTasksByDate(viewDate),
     getButlerStaff(),
   ])
 
-  return <ButlerPlanView today={today} tasks={tasks} staff={staff} />
+  return <ButlerPlanView today={today} viewDate={viewDate} tasks={tasks} staff={staff} />
 }

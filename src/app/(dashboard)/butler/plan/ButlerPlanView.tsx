@@ -1,12 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, ChevronDown, ChevronUp, Users, MapPin } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Users, MapPin } from 'lucide-react'
 import type { ButlerTask, ButlerStaff } from '../actions'
 import { createButlerTask, updateButlerTask, deleteButlerTask } from '../actions'
 
+// dateStr 是台灣時區的日曆日期字串，這裡固定用 UTC 運算避免主機時區換算出錯的一天
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
 interface Props {
   today: string
+  viewDate: string
   tasks: ButlerTask[]
   staff: ButlerStaff[]
 }
@@ -32,14 +41,14 @@ const CATEGORY_OPTIONS: { value: 'medication' | 'cleaning' | 'companion' | 'othe
 ]
 
 // ── 任務 Modal ────────────────────────────────────────────
-function SlotModal({ staffId, startTime, today, staff, existingTask, onClose }: {
-  staffId: string; startTime: string; today: string
+function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClose }: {
+  staffId: string; startTime: string; defaultDate: string
   staff: ButlerStaff[]; existingTask?: ButlerTask | null; onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     title:            existingTask?.title ?? '',
-    task_date:        existingTask?.task_date ?? today,
+    task_date:        existingTask?.task_date ?? defaultDate,
     start_time:       existingTask?.start_time?.slice(0, 5) ?? startTime,
     duration_minutes: existingTask?.duration_minutes?.toString() ?? '60',
     space:            existingTask?.space ?? '',
@@ -106,6 +115,11 @@ function SlotModal({ staffId, startTime, today, staff, existingTask, onClose }: 
               }}>
               {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">日期</label>
+            <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.task_date} onChange={e => set('task_date', e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -227,7 +241,8 @@ function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onCli
 }
 
 // ── 主元件 ───────────────────────────────────────────────
-export function ButlerPlanView({ today, tasks, staff }: Props) {
+export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
+  const router = useRouter()
   const [showFull, setShowFull]   = useState(false)
   const [yAxis, setYAxis]         = useState<'staff' | 'space'>('staff')
   const [modal, setModal]         = useState<{
@@ -239,8 +254,9 @@ export function ButlerPlanView({ today, tasks, staff }: Props) {
   const endSlot   = showFull ? 48 : DEFAULT_END * 2
   const slots     = Array.from({ length: endSlot - startSlot }, (_, i) => i + startSlot)
 
-  const twDate = new Date(today + 'T00:00:00+08:00')
-  const dateLabel = twDate.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', weekday: 'long' })
+  const twDate = new Date(viewDate + 'T00:00:00Z')
+  const dateLabel = twDate.toLocaleDateString('zh-TW', { timeZone: 'UTC', month: 'numeric', day: 'numeric', weekday: 'long' })
+  const goToDate = (d: string) => router.push(`/butler/plan?date=${d}`)
 
   // Y 軸：管家 rows
   const staffRows = staff.map(s => ({
@@ -268,7 +284,7 @@ export function ButlerPlanView({ today, tasks, staff }: Props) {
   return (
     <div className="px-4 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-gray-900">📋 派工安排</h1>
           <p className="text-sm text-gray-400">{dateLabel}</p>
@@ -287,6 +303,26 @@ export function ButlerPlanView({ today, tasks, staff }: Props) {
             {showFull ? '收合' : '全天'}
           </button>
         </div>
+      </div>
+
+      {/* 日期切換：主管可以先把未來幾天（例如整週）的任務都派好 */}
+      <div className="flex items-center gap-2 mb-4">
+        <button onClick={() => goToDate(addDays(viewDate, -1))}
+          className="border rounded-lg p-1.5 text-gray-500 hover:bg-gray-50">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <input type="date" value={viewDate} onChange={e => e.target.value && goToDate(e.target.value)}
+          className="border rounded-lg px-2 py-1.5 text-sm text-gray-700" />
+        <button onClick={() => goToDate(addDays(viewDate, 1))}
+          className="border rounded-lg p-1.5 text-gray-500 hover:bg-gray-50">
+          <ChevronRight className="w-4 h-4" />
+        </button>
+        {viewDate !== today && (
+          <button onClick={() => goToDate(today)}
+            className="text-xs text-emerald-600 border border-emerald-200 rounded-lg px-2 py-1.5 hover:bg-emerald-50">
+            回到今天
+          </button>
+        )}
       </div>
 
       {/* Y 軸切換 */}
@@ -373,7 +409,7 @@ export function ButlerPlanView({ today, tasks, staff }: Props) {
         <SlotModal
           staffId={modal.staffId}
           startTime={modal.startTime}
-          today={today}
+          defaultDate={viewDate}
           staff={staff}
           existingTask={modal.task}
           onClose={() => setModal(null)}
