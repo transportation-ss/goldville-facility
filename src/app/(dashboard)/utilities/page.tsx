@@ -191,20 +191,16 @@ export default async function UtilitiesPage() {
         <h2 className="text-sm font-semibold text-gray-900 mb-3">歷史抄表</h2>
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-50">
           {(sessions ?? []).map((s: any, i: number) => (
-            <Link
-              key={s.id}
-              href={`/utilities/${s.id}`}
-              className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <div>
+            <div key={s.id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
+              <Link href={`/utilities/${s.id}`} className="flex-1 min-w-0">
                 <p className="text-sm text-gray-900">
                   {new Date(s.reading_date).toLocaleDateString('zh-TW')}
                 </p>
                 {s.special_notes && (
-                  <p className="text-xs text-gray-400">{s.special_notes}</p>
+                  <p className="text-xs text-gray-400 truncate">{s.special_notes}</p>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
+              </Link>
+              <div className="flex items-center gap-2 shrink-0">
                 {i === 0 && (
                   <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">最新</span>
                 )}
@@ -215,9 +211,17 @@ export default async function UtilitiesPage() {
                 }`}>
                   {s.status === 'complete' ? '完整' : s.status === 'partial' ? '部分' : '草稿'}
                 </span>
-                <span className="text-gray-300 text-sm">›</span>
+                {s.status === 'draft' && (
+                  <Link
+                    href={`/utilities/${s.id}/edit`}
+                    className="text-xs text-emerald-600 font-medium hover:underline"
+                  >
+                    繼續填寫
+                  </Link>
+                )}
+                <Link href={`/utilities/${s.id}`} className="text-gray-300 text-sm">›</Link>
               </div>
-            </Link>
+            </div>
           ))}
           {(!sessions || sessions.length === 0) && (
             <p className="text-center text-sm text-gray-400 py-10">尚無抄表記錄</p>

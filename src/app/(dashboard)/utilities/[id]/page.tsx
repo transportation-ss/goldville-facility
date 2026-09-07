@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Droplets, Zap, AlertTriangle, ArrowLeft, CheckCircle } from 'lucide-react'
+import { Droplets, Zap, AlertTriangle, ArrowLeft, CheckCircle, Pencil } from 'lucide-react'
 import { AbnormalAlert } from '../AbnormalAlert'
 
 // 按實際抄表動線分區
@@ -69,6 +69,7 @@ export default async function UtilitySessionDetailPage({
               year: 'numeric', month: 'long', day: 'numeric'
             })} 抄表記錄
           </h1>
+
           <div className="flex items-center gap-2 mt-0.5">
             <span className={`text-xs px-2 py-0.5 rounded-full ${
               session.status === 'complete'
@@ -87,6 +88,13 @@ export default async function UtilitySessionDetailPage({
             )}
           </div>
         </div>
+        <Link
+          href={`/utilities/${id}/edit`}
+          className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
+          title="編輯"
+        >
+          <Pencil className="w-4 h-4" />
+        </Link>
       </div>
 
       {session.special_notes && (
