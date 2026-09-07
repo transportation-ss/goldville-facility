@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, User, Home, X, FolderOpen, Loader2, LayoutGrid } from 'lucide-react'
+import { Plus, User, Home, X, FolderOpen, Loader2, LayoutGrid, Printer } from 'lucide-react'
 import type { ButlerResident, ResidentStatus, ButlerOption } from './actions'
 import { createResident, updateResident, deleteResident } from './actions'
 
@@ -409,12 +409,20 @@ export function ResidentListView({ residents, butlers, userRole }: {
 
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs text-gray-400">點選卡片可查看服務紀錄</p>
-        <Link href="/butler/residents/roommap"
-          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-emerald-600 transition-colors"
-        >
-          <LayoutGrid className="w-3.5 h-3.5" />
-          房間配置圖
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/butler/residents/print" target="_blank"
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-emerald-600 transition-colors"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            輸出 PDF
+          </Link>
+          <Link href="/butler/residents/roommap"
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-emerald-600 transition-colors"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            房間配置圖
+          </Link>
+        </div>
       </div>
 
       {/* 列表 */}
