@@ -2,24 +2,17 @@
 
 import { Fragment, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, Pencil, Share2, Loader2, Users } from 'lucide-react'
-import { regenerateCleaningDuty, updateCleaningDuty, updateRoomSchedule } from './actions'
+import { RefreshCw, Pencil, Share2, Loader2, Users, X } from 'lucide-react'
+import { regenerateCleaningDuty, updateCleaningDuty, updateRoomSchedule, syncRoomScheduleFromSheet } from './actions'
 
 type DutyRow = { schedule_date: string; period: 'AM' | 'PM'; staff_names: string[] }
-type RoomRow = { weekday: number; period: 'AM' | 'PM'; room_names: string[] }
+type RoomRow = { weekday: number; period: 'AM' | 'PM'; room_names: string[]; room_times: string[] }
 type Editing =
   | { date: string; period: 'AM' | 'PM'; kind: 'staff' }
-  | { date: string; period: 'AM' | 'PM'; kind: 'room'; slotIndex: number }
+  // entryIndex 'new' = 正在新增一筆；每筆各自帶自己的時間，不再靠固定陣列位置對應時段
+  | { date: string; period: 'AM' | 'PM'; kind: 'room'; entryIndex: number | 'new' }
 
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日']
-
-// 房間欄位是依照參考表的時間順序存放（index 0 = 該節次第一個時段…），
-// 不另外存時間欄位，靠這份固定時間表對應每個 index 代表幾點
-const AM_SLOTS = ['09:30', '10:00', '10:30', '11:00', '11:30']
-const PM_SLOTS = ['15:30', '16:00']
-function slotsOf(period: 'AM' | 'PM') {
-  return period === 'AM' ? AM_SLOTS : PM_SLOTS
-}
 
 // 純日曆運算，全程用 UTC 當「無時區」的日期軸，避免 toISOString/getDay
 // 在伺服器時區不是 +08:00 時把日期滾動成前一天
@@ -53,12 +46,15 @@ export function CleaningDutyView({
   const [isPending, startTransition] = useTransition()
   const [editing, setEditing] = useState<Editing | null>(null)
   const [draft, setDraft] = useState('')
+  const [draftTime, setDraftTime] = useState('')
   const [sharing, setSharing] = useState(false)
   const [syncing, startSyncing] = useTransition()
 
   const dates = dateRange(start, end)
   const byKey = new Map(duty.map(d => [`${d.schedule_date}|${d.period}`, d.staff_names]))
-  const roomByWeekday = new Map(roomSchedule.map(r => [`${r.weekday}|${r.period}`, r.room_names]))
+  const roomByWeekday = new Map(
+    roomSchedule.map(r => [`${r.weekday}|${r.period}`, { names: r.room_names, times: r.room_times }])
+  )
 
   function regenerate() {
     startTransition(async () => {
@@ -67,10 +63,14 @@ export function CleaningDutyView({
     })
   }
 
-  // 住戶清單本來就是即時查資料庫（沒有快取），這裡只是重抓一次最新資料，
-  // 讓「開著頁面沒關」時也能看到剛新增/異動的住戶
+  // 手動點一次，從「掃房表」sheet 重新抓取並覆蓋房間/住戶資料（不動清潔人員排班）
   function syncResidents() {
-    startSyncing(() => {
+    startSyncing(async () => {
+      try {
+        await syncRoomScheduleFromSheet()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : '同步失敗')
+      }
       router.refresh()
     })
   }
@@ -80,10 +80,27 @@ export function CleaningDutyView({
     setDraft((byKey.get(`${date}|${period}`) ?? []).join('、'))
   }
 
-  function startEditRoom(date: string, period: 'AM' | 'PM', slotIndex: number) {
-    setEditing({ date, period, kind: 'room', slotIndex })
-    const rooms = roomByWeekday.get(`${weekdayOf(date)}|${period}`) ?? []
-    setDraft(rooms[slotIndex]?.trim() ?? '')
+  function startEditRoom(date: string, period: 'AM' | 'PM', entryIndex: number | 'new') {
+    setEditing({ date, period, kind: 'room', entryIndex })
+    if (entryIndex === 'new') {
+      setDraft('')
+      setDraftTime('')
+    } else {
+      const room = roomByWeekday.get(`${weekdayOf(date)}|${period}`)
+      setDraft(room?.names[entryIndex]?.trim() ?? '')
+      setDraftTime(room?.times[entryIndex]?.trim() ?? '')
+    }
+  }
+
+  function removeRoomEntry(date: string, period: 'AM' | 'PM', entryIndex: number) {
+    const weekday = weekdayOf(date)
+    const room = roomByWeekday.get(`${weekday}|${period}`) ?? { names: [], times: [] }
+    const names = room.names.filter((_, i) => i !== entryIndex)
+    const times = room.times.filter((_, i) => i !== entryIndex)
+    startTransition(async () => {
+      await updateRoomSchedule(weekday, period, names, times)
+      router.refresh()
+    })
   }
 
   function saveEdit() {
@@ -97,12 +114,22 @@ export function CleaningDutyView({
       })
     } else {
       const weekday = weekdayOf(editing.date)
-      const slots = slotsOf(editing.period)
-      const current = [...(roomByWeekday.get(`${weekday}|${editing.period}`) ?? [])]
-      while (current.length < slots.length) current.push('')
-      current[editing.slotIndex] = draft.trim()
+      const room = roomByWeekday.get(`${weekday}|${editing.period}`) ?? { names: [], times: [] }
+      const names = [...room.names]
+      const times = [...room.times]
+      const name = draft.trim()
+      const time = draftTime.trim()
+      if (editing.entryIndex === 'new') {
+        if (name) { names.push(name); times.push(time) }
+      } else if (name) {
+        names[editing.entryIndex] = name
+        times[editing.entryIndex] = time
+      } else {
+        names.splice(editing.entryIndex, 1)
+        times.splice(editing.entryIndex, 1)
+      }
       startTransition(async () => {
-        await updateRoomSchedule(weekday, editing.period, current)
+        await updateRoomSchedule(weekday, editing.period, names, times)
         setEditing(null)
         router.refresh()
       })
@@ -173,7 +200,7 @@ export function CleaningDutyView({
             className="flex items-center gap-1.5 text-sm bg-gray-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
           >
             <Users size={14} className={syncing ? 'animate-pulse' : ''} />
-            同步住戶清單
+            {syncing ? '同步中...' : '同步住戶清單'}
           </button>
           <button
             onClick={shareToLine}
@@ -216,25 +243,93 @@ export function CleaningDutyView({
           <tbody>
             {(['AM', 'PM'] as const).map(period => (
               <Fragment key={period}>
-                {slotsOf(period).map((slotTime, si) => (
-                  <tr key={slotTime} className={si === 0 ? 'border-t border-gray-100' : ''}>
-                    <td className="p-2 text-gray-400 text-xs font-medium align-top">{slotTime}</td>
-                    {dates.map(date => {
-                      const rooms = roomByWeekday.get(`${weekdayOf(date)}|${period}`) ?? []
-                      const value = rooms[si]?.trim() ?? ''
-                      const isEditing = editing?.date === date && editing.period === period
-                        && editing.kind === 'room' && editing.slotIndex === si
-                      return (
-                        <td key={date} className="p-1 text-center align-top border-b border-dashed border-gray-100">
-                          {isEditing ? (
-                            <div className="flex flex-col gap-1">
-                              <input
-                                autoFocus
-                                value={draft}
-                                onChange={e => setDraft(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && saveEdit()}
-                                className="w-full text-xs border border-blue-400 rounded px-1 py-1"
-                              />
+                <tr className="border-t border-gray-100">
+                  <td className="p-2 text-gray-400 text-xs font-medium align-top">{period === 'AM' ? '上午' : '下午'}</td>
+                  {dates.map(date => {
+                    const weekday = weekdayOf(date)
+                    const room = roomByWeekday.get(`${weekday}|${period}`) ?? { names: [], times: [] }
+                    const isAddingHere = editing?.date === date && editing.period === period
+                      && editing.kind === 'room' && editing.entryIndex === 'new'
+                    return (
+                      <td key={date} className="p-1 align-top border-b border-dashed border-gray-100">
+                        <div className="flex flex-col gap-1">
+                          {room.names.map((name, idx) => {
+                            const isEditing = editing?.date === date && editing.period === period
+                              && editing.kind === 'room' && editing.entryIndex === idx
+                            return isEditing ? (
+                              <div key={idx} className="flex flex-col gap-1 border border-blue-400 rounded p-1">
+                                <div className="flex gap-1">
+                                  <input
+                                    autoFocus
+                                    value={draftTime}
+                                    onChange={e => setDraftTime(e.target.value)}
+                                    placeholder="時間"
+                                    className="w-14 text-xs border rounded px-1 py-1"
+                                  />
+                                  <input
+                                    value={draft}
+                                    onChange={e => setDraft(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                                    placeholder="房號姓名"
+                                    className="flex-1 text-xs border rounded px-1 py-1"
+                                  />
+                                </div>
+                                <select
+                                  defaultValue=""
+                                  onChange={e => {
+                                    const name = e.target.value
+                                    if (name) setDraft(name)
+                                    e.target.value = ''
+                                  }}
+                                  className="w-full text-xs border rounded px-1 py-1 text-gray-500"
+                                >
+                                  <option value="">＋ 從住戶列表選擇</option>
+                                  {residentRoomOptions
+                                    .filter(r => !draft || r.includes(draft))
+                                    .map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                                <div className="flex gap-1 justify-center">
+                                  <button onClick={saveEdit} className="text-xs text-blue-600">儲存</button>
+                                  <button onClick={() => setEditing(null)} className="text-xs text-gray-400">取消</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div key={idx} className="w-full flex items-center gap-0.5 rounded hover:bg-gray-50 text-gray-700 group">
+                                <button
+                                  onClick={() => startEditRoom(date, period, idx)}
+                                  className="flex-1 min-h-[28px] flex items-center justify-center gap-1 text-xs"
+                                >
+                                  <span className="text-gray-400">{room.times[idx]}</span>
+                                  <span>{name}</span>
+                                  <Pencil size={9} className="opacity-0 group-hover:opacity-40" />
+                                </button>
+                                <button
+                                  onClick={() => removeRoomEntry(date, period, idx)}
+                                  className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 shrink-0"
+                                >
+                                  <X size={11} />
+                                </button>
+                              </div>
+                            )
+                          })}
+                          {isAddingHere ? (
+                            <div className="flex flex-col gap-1 border border-blue-400 rounded p-1">
+                              <div className="flex gap-1">
+                                <input
+                                  autoFocus
+                                  value={draftTime}
+                                  onChange={e => setDraftTime(e.target.value)}
+                                  placeholder="時間"
+                                  className="w-14 text-xs border rounded px-1 py-1"
+                                />
+                                <input
+                                  value={draft}
+                                  onChange={e => setDraft(e.target.value)}
+                                  onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                                  placeholder="房號姓名"
+                                  className="flex-1 text-xs border rounded px-1 py-1"
+                                />
+                              </div>
                               <select
                                 defaultValue=""
                                 onChange={e => {
@@ -256,18 +351,17 @@ export function CleaningDutyView({
                             </div>
                           ) : (
                             <button
-                              onClick={() => startEditRoom(date, period, si)}
-                              className="w-full min-h-[32px] flex items-center justify-center gap-1 rounded hover:bg-gray-50 text-gray-700 group"
+                              onClick={() => startEditRoom(date, period, 'new')}
+                              className="w-full text-xs text-blue-400 hover:bg-blue-50 rounded py-0.5"
                             >
-                              {value || <span className="text-gray-300">—</span>}
-                              <Pencil size={10} className="opacity-0 group-hover:opacity-40" />
+                              ＋ 新增
                             </button>
                           )}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
+                        </div>
+                      </td>
+                    )
+                  })}
+                </tr>
                 <tr className="border-b border-gray-200 bg-gray-50/60">
                   <td className="p-2 text-gray-500 font-medium align-top">
                     {period === 'AM' ? <>上午<br />人員</> : <>下午<br />人員</>}

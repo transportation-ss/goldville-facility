@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateCleaningDuty } from '@/lib/cleaning-duty'
+import { fetchSweepSheetEntries, groupSweepEntries } from '@/lib/sweep-sheet-sync'
 
 export async function getCleaningDuty(start: string, end: string) {
   const supabase = await createClient()
@@ -45,12 +46,12 @@ export async function getRoomSchedule() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('cleaning_room_schedule')
-    .select('weekday, period, room_names')
+    .select('weekday, period, room_names, room_times')
   if (error) throw error
   return data ?? []
 }
 
-export async function updateRoomSchedule(weekday: number, period: 'AM' | 'PM', roomNames: string[]) {
+export async function updateRoomSchedule(weekday: number, period: 'AM' | 'PM', roomNames: string[], roomTimes: string[]) {
   const authed = await createClient()
   const { data: { user } } = await authed.auth.getUser()
   const { data: profile } = await authed.from('user_profiles').select('role').eq('id', user?.id ?? '').single()
@@ -63,10 +64,42 @@ export async function updateRoomSchedule(weekday: number, period: 'AM' | 'PM', r
     weekday,
     period,
     room_names: roomNames,
+    room_times: roomTimes,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'weekday,period' })
   if (error) throw error
   revalidatePath('/butler/cleaning')
+}
+
+// 從「掃房表」sheet 手動抓取同步，只動這張表（純住戶/房間部分），不動清潔人員排班
+export async function syncRoomScheduleFromSheet() {
+  const authed = await createClient()
+  const { data: { user } } = await authed.auth.getUser()
+  const { data: profile } = await authed.from('user_profiles').select('role').eq('id', user?.id ?? '').single()
+  if (!profile || !['admin', 'manager', 'butler_manager'].includes(profile.role)) {
+    throw new Error('Unauthorized')
+  }
+
+  const entries = await fetchSweepSheetEntries()
+  const grouped = groupSweepEntries(entries)
+  const supabase = createAdminClient()
+
+  for (let weekday = 1; weekday <= 7; weekday++) {
+    for (const period of ['AM', 'PM'] as const) {
+      const g = grouped.get(`${weekday}|${period}`) ?? { names: [], times: [] }
+      const { error } = await supabase.from('cleaning_room_schedule').upsert({
+        weekday,
+        period,
+        room_names: g.names,
+        room_times: g.times,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'weekday,period' })
+      if (error) throw error
+    }
+  }
+
+  revalidatePath('/butler/cleaning')
+  return { synced: entries.length }
 }
 
 // 供編輯時參照住戶列表（房號＋姓名）
