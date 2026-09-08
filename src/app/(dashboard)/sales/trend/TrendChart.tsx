@@ -5,7 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { Download } from 'lucide-react'
-import { exportChartAsPng } from '@/lib/export-chart-png'
+import { exportChartAsImage } from '@/lib/export-chart-image'
 
 type Point = {
   date: string
@@ -23,11 +23,11 @@ export function TrendChart({ data, rangeLabel }: { data: Point[]; rangeLabel: st
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-gray-400">{rangeLabel}</p>
         <button
-          onClick={() => exportChartAsPng(containerRef.current, `業務趨勢曲線圖_${rangeLabel}`)}
+          onClick={() => exportChartAsImage(containerRef.current, `業務趨勢曲線圖_${rangeLabel}`)}
           className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-emerald-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
         >
           <Download className="w-3.5 h-3.5" />
-          輸出 PNG
+          輸出圖檔
         </button>
       </div>
 

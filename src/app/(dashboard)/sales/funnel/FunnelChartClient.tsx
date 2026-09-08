@@ -3,7 +3,7 @@
 import { useRef } from 'react'
 import { FunnelChart, Funnel, Tooltip, LabelList, ResponsiveContainer } from 'recharts'
 import { Download } from 'lucide-react'
-import { exportChartAsPng } from '@/lib/export-chart-png'
+import { exportChartAsImage } from '@/lib/export-chart-image'
 
 type FunnelStage = { name: string; value: number; fill: string }
 
@@ -16,11 +16,11 @@ export function FunnelChartClient({ data, rangeLabel }: { data: FunnelStage[]; r
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-gray-400">{rangeLabel}</p>
         <button
-          onClick={() => exportChartAsPng(containerRef.current, `業務轉化漏斗圖_${rangeLabel}`)}
+          onClick={() => exportChartAsImage(containerRef.current, `業務轉化漏斗圖_${rangeLabel}`)}
           className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-emerald-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
         >
           <Download className="w-3.5 h-3.5" />
-          輸出 PNG
+          輸出圖檔
         </button>
       </div>
 
@@ -30,7 +30,7 @@ export function FunnelChartClient({ data, rangeLabel }: { data: FunnelStage[]; r
         <>
           <div ref={containerRef} className="w-full h-72 sm:h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <FunnelChart>
+              <FunnelChart margin={{ top: 10, right: 80, bottom: 10, left: 80 }}>
                 <Tooltip />
                 <Funnel dataKey="value" data={data} isAnimationActive={false}>
                   <LabelList position="right" fill="#374151" stroke="none" dataKey="name" fontSize={12} />
