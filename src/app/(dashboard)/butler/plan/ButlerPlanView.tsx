@@ -235,12 +235,14 @@ function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onCli
           const span = slotTask ? Math.round((slotTask.duration_minutes ?? 30) / 30) : 1
           const isUrgent = slotTask?.priority === 'urgent'
           const isDone = slotTask?.status === 'completed'
+          const isAppointment = slotTask?.source === 'appointment'
 
           return (
             <div key={slot}
               className={`h-full border-l border-gray-100 cursor-pointer transition-colors flex-shrink-0 ${
                 slotTask
                   ? isDone ? 'bg-gray-300 hover:bg-gray-400'
+                  : isAppointment ? 'bg-purple-400 hover:bg-purple-500'
                   : isUrgent ? 'bg-red-400 hover:bg-red-500' : 'bg-emerald-400 hover:bg-emerald-500'
                   : 'hover:bg-emerald-50'
               }`}
@@ -375,6 +377,7 @@ export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
       <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400 inline-block" />未完成</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400 inline-block" />緊急（未完成）</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-purple-400 inline-block" />回診</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-300 inline-block" />已完成</span>
       </div>
 
