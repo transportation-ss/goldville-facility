@@ -17,7 +17,7 @@ const PROCUREMENT_ALLOWED  = ['/work-orders', '/consumables', '/manuals', '/hard
 const HOUSEKEEPING_ALLOWED   = ['/housekeeping', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
 const HOUSEKEEPING_FORBIDDEN = ['/housekeeping/plan']
 const GENERAL_ALLOWED      = ['/work-orders', '/housekeeping', '/manuals', '/hardware', '/rooms', '/api', '/settings']
-const SALES_ALLOWED        = ['/butler', '/manuals', '/hardware', '/api', '/settings']
+const SALES_ALLOWED        = ['/butler', '/sales', '/manuals', '/hardware', '/api', '/settings']
 
 // 禁止存取的子路徑（所有非 admin 均不可，採購例外）
 const ADMIN_ONLY_PATHS     = ['/admin', '/maintenance/admin', '/hardware/admin', '/assets']

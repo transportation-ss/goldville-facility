@@ -7,6 +7,7 @@ import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
   Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope, Brush, FileSpreadsheet,
+  TrendingUp, Filter, ClipboardCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -67,6 +68,14 @@ function getNavByRole(role: string): RoleNav {
               { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
               { label: '照片庫',       href: '/butler/photos',    icon: Images        },
               { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen      },
+            ],
+          },
+          {
+            label: '業務',
+            items: [
+              { label: '業務總表',   href: '/sales',        icon: ClipboardCheck },
+              { label: '趨勢曲線圖', href: '/sales/trend',  icon: TrendingUp     },
+              { label: '轉化漏斗圖', href: '/sales/funnel', icon: Filter         },
             ],
           },
           {
@@ -240,10 +249,10 @@ function getNavByRole(role: string): RoleNav {
     case 'sales':
       return {
         primary: [
+          { label: '業務總表', href: '/sales',        icon: ClipboardCheck },
+          { label: '趨勢曲線圖', href: '/sales/trend', icon: TrendingUp    },
+          { label: '轉化漏斗圖', href: '/sales/funnel', icon: Filter       },
           { label: '管家任務', href: '/butler',      icon: Sparkles      },
-          { label: '管家派工', href: '/butler/plan', icon: ClipboardList },
-          { label: '管家清單', href: '/butler/staff', icon: UserCog      },
-          { label: '服務紀錄', href: '/butler/logs', icon: BookOpen      },
         ],
         more: [
           {

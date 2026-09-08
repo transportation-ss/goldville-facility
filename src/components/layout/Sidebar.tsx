@@ -9,6 +9,7 @@ import {
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, BedDouble, History,
   Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope, FileSpreadsheet,
+  TrendingUp, Filter, ClipboardCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -20,7 +21,8 @@ const PROCUREMENT_ROLES       = ['procurement']
 const HOUSEKEEPING_ROLES      = ['housekeeping']
 const TECH_HOUSEKEEPING_ROLES = ['tech_housekeeping']
 const FRONTDESK_DAY_ROLES     = ['frontdesk_day']
-const BUTLER_MANAGER_ROLES    = ['butler_manager', 'sales']
+const BUTLER_MANAGER_ROLES    = ['butler_manager']
+const SALES_ROLES             = ['sales']
 const BUTLER_ROLES            = ['butler']
 
 const ROLE_LABELS: Record<string, string> = {
@@ -103,6 +105,14 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '歷史紀錄(管)', href: '/butler/history',   icon: History       },
       { label: '照片庫',       href: '/butler/photos',    icon: Images        },
       { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen      },
+    ],
+  },
+  {
+    type: 'group', label: '業務',
+    items: [
+      { label: '業務總表',   href: '/sales',        icon: ClipboardCheck, exact: true },
+      { label: '趨勢曲線圖', href: '/sales/trend',  icon: TrendingUp     },
+      { label: '轉化漏斗圖', href: '/sales/funnel', icon: Filter         },
     ],
   },
 ]
@@ -260,6 +270,19 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
   },
 ]
 
+/** 業務（準用管家頁面 + 業務板塊）*/
+const salesNav: (NavSingle | NavGroup)[] = [
+  {
+    type: 'group', label: '業務',
+    items: [
+      { label: '業務總表',   href: '/sales',        icon: ClipboardCheck, exact: true },
+      { label: '趨勢曲線圖', href: '/sales/trend',  icon: TrendingUp     },
+      { label: '轉化漏斗圖', href: '/sales/funnel', icon: Filter         },
+    ],
+  },
+  ...butlerManagerNav,
+]
+
 /** 管家 */
 const butlerNav: (NavSingle | NavGroup)[] = [
   {
@@ -384,6 +407,7 @@ export function Sidebar({ role, displayName }: { role: string; displayName: stri
   const isTechHousekeeping = TECH_HOUSEKEEPING_ROLES.includes(role)
   const isFrontdeskDay     = FRONTDESK_DAY_ROLES.includes(role)
   const isButlerManager    = BUTLER_MANAGER_ROLES.includes(role)
+  const isSales            = SALES_ROLES.includes(role)
   const isButler           = BUTLER_ROLES.includes(role)
 
   const nav = isAdmin            ? fullNav
@@ -394,6 +418,7 @@ export function Sidebar({ role, displayName }: { role: string; displayName: stri
             : isTechHousekeeping ? techHousekeepingNav
             : isFrontdeskDay     ? frontdeskDayNav
             : isButlerManager    ? butlerManagerNav
+            : isSales            ? salesNav
             : isButler           ? butlerNav
             : role               ? minimalNav
             : []
