@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Loader2, Share2 } from 'lucide-react'
+import { Loader2, Share2, FileText } from 'lucide-react'
 import type { ButlerResident, ResidentStatus } from '../actions'
 
 const STATUS_LABEL: Record<ResidentStatus, string> = {
@@ -25,9 +25,25 @@ function roomSortKey(room: string | null) {
   return Number.isNaN(n) ? Number.MAX_SAFE_INTEGER : n
 }
 
+async function shareOrDownload(blob: Blob, filename: string, mimeType: string, shareTitle: string) {
+  const file = new File([blob], filename, { type: mimeType })
+  // 判斷手機/平板才走系統分享面板；PC（含 Windows/macOS 有分享 API 但無觸控）直接下載
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  if (isMobile && navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ title: shareTitle, files: [file] })
+  } else {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+}
+
 export function ResidentPrintView({ residents }: { residents: ButlerResident[] }) {
   const printRef = useRef<HTMLDivElement>(null)
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null)
 
   const rows = [...residents].sort((a, b) => roomSortKey(a.room) - roomSortKey(b.room))
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
@@ -71,31 +87,101 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
     return pdf.output('blob')
   }
 
-  async function handleExport() {
-    setExporting(true)
+  async function generateDocxBlob(): Promise<Blob> {
+    const {
+      Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+      HeadingLevel, AlignmentType, WidthType, BorderStyle,
+    } = await import('docx')
+
+    const headers = ['房號', '姓名', '狀態', '入住日期', '合約迄日', '餐點', '方案', '小天使', '個資同意']
+    const colWidths = [900, 1600, 1200, 1200, 1200, 900, 1200, 1000, 1000]
+    const tableWidth = colWidths.reduce((a, b) => a + b, 0)
+    const border = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
+    const borders = { top: border, bottom: border, left: border, right: border }
+
+    function cell(text: string, width: number, bold = false) {
+      return new TableCell({
+        borders,
+        width: { size: width, type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        children: [new Paragraph({ children: [new TextRun({ text, bold })] })],
+      })
+    }
+
+    const table = new Table({
+      width: { size: tableWidth, type: WidthType.DXA },
+      columnWidths: colWidths,
+      rows: [
+        new TableRow({ children: headers.map((h, i) => cell(h, colWidths[i], true)) }),
+        ...rows.map(r => new TableRow({
+          children: [
+            cell(r.room ?? '', colWidths[0]),
+            cell(`${r.name}${r.nickname ? `（${r.nickname}）` : ''}`, colWidths[1]),
+            cell(STATUS_LABEL[r.status], colWidths[2]),
+            cell(r.move_in_date ?? '', colWidths[3]),
+            cell(r.contract_end ?? '', colWidths[4]),
+            cell(r.meal_plan ?? '', colWidths[5]),
+            cell(r.membership_plan ?? '', colWidths[6]),
+            cell(r.primary_butler?.display_name ?? '', colWidths[7]),
+            cell(r.privacy_consent ? '同意' : '未同意', colWidths[8]),
+          ],
+        })),
+      ],
+    })
+
+    const doc = new Document({
+      styles: { default: { document: { run: { font: 'Microsoft JhengHei', size: 20 } } } },
+      sections: [{
+        properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
+        children: [
+          new Paragraph({
+            heading: HeadingLevel.HEADING_1,
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun('好好園館 住戶列表')],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({
+              text: `輸出日期：${today}（共 ${rows.length} 筆，含入住／退租／純服務／空房）`,
+              size: 18, color: '666666',
+            })],
+          }),
+          new Paragraph({ children: [] }),
+          table,
+        ],
+      }],
+    })
+
+    return Packer.toBlob(doc)
+  }
+
+  async function handleExportPdf() {
+    setExporting('pdf')
     try {
       const blob = await generatePdfBlob()
       if (!blob) return
-      const filename = `住戶列表_${today}.pdf`
-      const file = new File([blob], filename, { type: 'application/pdf' })
-
-      // 判斷手機/平板才走系統分享面板；PC（含 Windows/macOS 有分享 API 但無觸控）直接下載
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-      if (isMobile && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: '住戶列表', files: [file] })
-      } else {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = filename
-        a.click()
-        URL.revokeObjectURL(url)
-      }
+      await shareOrDownload(blob, `住戶列表_${today}.pdf`, 'application/pdf', '住戶列表')
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
         alert(`匯出失敗：${err.message}`)
       }
-    } finally { setExporting(false) }
+    } finally { setExporting(null) }
+  }
+
+  async function handleExportWord() {
+    setExporting('word')
+    try {
+      const blob = await generateDocxBlob()
+      await shareOrDownload(
+        blob, `住戶列表_${today}.docx`,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '住戶列表',
+      )
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        alert(`匯出失敗：${err.message}`)
+      }
+    } finally { setExporting(null) }
   }
 
   return (
@@ -105,11 +191,18 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
           <h1 className="text-lg font-bold text-gray-900">住戶列表（現況輸出）</h1>
           <p className="text-xs text-gray-400">共 {rows.length} 筆，含入住／退租／純服務／空房</p>
         </div>
-        <button onClick={handleExport} disabled={exporting}
-          className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-          {exporting ? '產生中…' : '分享／下載 PDF'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExportWord} disabled={!!exporting}
+            className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+            {exporting === 'word' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            {exporting === 'word' ? '產生中…' : '分享／下載 Word'}
+          </button>
+          <button onClick={handleExportPdf} disabled={!!exporting}
+            className="flex items-center gap-1.5 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+            {exporting === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+            {exporting === 'pdf' ? '產生中…' : '分享／下載 PDF'}
+          </button>
+        </div>
       </div>
 
       {/* 畫面預覽（跟輸出內容一致的表格） */}
