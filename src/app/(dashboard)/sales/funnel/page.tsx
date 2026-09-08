@@ -32,8 +32,7 @@ export default async function SalesFunnelPage({
 
   const funnelData = [
     { name: '來電/walkin', value: totals.callIn, fill: '#3b82f6' },
-    { name: '回電/參觀追蹤', value: totals.callbackVisit, fill: '#10b981' },
-    { name: '參觀', value: totals.visit, fill: '#f59e0b' },
+    { name: '參觀', value: totals.callbackVisit + totals.visit, fill: '#f59e0b' },
     { name: '試住', value: totals.trialStay, fill: '#ef4444' },
   ]
 
