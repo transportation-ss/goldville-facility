@@ -11,12 +11,12 @@ const SALES_ROLES        = ['sales']
 const GENERAL_ROLES      = ['frontdesk_day', 'admin_staff']
 
 // ─── 各身分允許的路徑前綴 ────────────────────
-const NIGHTSHIFT_ALLOWED   = ['/nightshift', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
+const NIGHTSHIFT_ALLOWED   = ['/nightshift', '/work-orders', '/manuals', '/hardware', '/api', '/settings', '/butler/residents']
 const TECHNICIAN_ALLOWED   = ['/work-orders', '/maintenance', '/consumables', '/utilities', '/manuals', '/hardware', '/rooms', '/api', '/settings']
 const PROCUREMENT_ALLOWED  = ['/work-orders', '/consumables', '/manuals', '/hardware', '/rooms', '/assets', '/api', '/settings']
 const HOUSEKEEPING_ALLOWED   = ['/housekeeping', '/work-orders', '/manuals', '/hardware', '/api', '/settings']
 const HOUSEKEEPING_FORBIDDEN = ['/housekeeping/plan']
-const GENERAL_ALLOWED      = ['/work-orders', '/housekeeping', '/manuals', '/hardware', '/rooms', '/api', '/settings']
+const GENERAL_ALLOWED      = ['/work-orders', '/housekeeping', '/manuals', '/hardware', '/rooms', '/api', '/settings', '/butler/residents']
 const SALES_ALLOWED        = ['/butler', '/sales', '/manuals', '/hardware', '/api', '/settings']
 
 // 禁止存取的子路徑（所有非 admin 均不可，採購例外）
