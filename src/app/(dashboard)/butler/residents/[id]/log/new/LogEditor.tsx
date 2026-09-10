@@ -12,12 +12,14 @@ const PERIOD_LABEL: Record<PeriodType, string> = {
   day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間',
 }
 
-// 常用服務模組：點了直接帶入標題段落＋空白內容，並標記 category 供未來報告用 hashtag 兜起來
+// 常用服務模組：點了新增一個模組區塊（副標題＋備註），可在同一篇紀錄裡疊加多個模組
 const SERVICE_MODULES: { key: 'medication' | 'cleaning' | 'companion'; label: string; heading: string }[] = [
   { key: 'medication', label: '用藥管理', heading: '用藥紀錄' },
   { key: 'cleaning',   label: '清潔掃房', heading: '清掃摘要' },
   { key: 'companion',  label: '陪伴服務', heading: '陪伴紀錄' },
 ]
+const MODULE_LABEL: Record<'medication' | 'cleaning' | 'companion', string> =
+  Object.fromEntries(SERVICE_MODULES.map(m => [m.key, m.heading])) as Record<'medication' | 'cleaning' | 'companion', string>
 
 function formatDateCompact(d: string) {
   return d.replace(/-/g, '')
@@ -44,6 +46,41 @@ function HeadingBlock({ block, onChange, onDelete }: {
           value={block.text}
           onChange={e => onChange({ ...block, text: e.target.value })}
           placeholder="標題…"
+        />
+      </div>
+      <button onClick={onDelete} className="mt-2 text-gray-200 hover:text-red-400">
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
+function ModuleBlock({ block, onChange, onDelete }: {
+  block: Extract<LogBlock, { type: 'module' }>
+  onChange: (b: LogBlock) => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="group flex gap-2 items-start">
+      <div className="mt-2 text-gray-200 group-hover:text-gray-400 cursor-grab">
+        <GripVertical className="w-4 h-4" />
+      </div>
+      <div className="flex-1 space-y-1.5 bg-emerald-50/40 border border-emerald-100 rounded-lg p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-emerald-700">{MODULE_LABEL[block.key]}</span>
+        </div>
+        <input
+          className="w-full text-sm font-medium text-gray-900 border-b border-gray-200 focus:border-emerald-300 outline-none py-1 bg-transparent"
+          value={block.subtitle}
+          onChange={e => onChange({ ...block, subtitle: e.target.value })}
+          placeholder="副標題（例如：協助如廁、陪同散步）…"
+        />
+        <textarea
+          className="w-full text-sm text-gray-700 border border-gray-100 rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-gray-300 min-h-[70px] bg-white"
+          value={block.note}
+          onChange={e => onChange({ ...block, note: e.target.value })}
+          placeholder="備註（詳細說明）…"
+          rows={3}
         />
       </div>
       <button onClick={onDelete} className="mt-2 text-gray-200 hover:text-red-400">
@@ -485,14 +522,17 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
     setShowPhotoChoice(false)
   }
 
+  // 一開始是預設的空白標題＋文字（尚未輸入任何內容）時，點模組直接取代；
+  // 之後每次點模組都是「疊加」一個新模組區塊，讓同一篇紀錄可以同時涵蓋多個服務模組
   function applyModule(m: typeof SERVICE_MODULES[number]) {
-    const hasContent = blocks.some(b => (b.type === 'text' && b.text.trim()) || (b.type === 'image' && b.url))
-    if (hasContent && !confirm('目前內容會被取代，確定要套用模組嗎？')) return
-    setBlocks([
-      { type: 'heading', text: m.heading },
-      { type: 'text', text: '' },
-    ])
-    setCategory(m.key)
+    const isPristineDefault =
+      blocks.length === 2 &&
+      blocks[0].type === 'heading' && blocks[0].text === '服務摘要' &&
+      blocks[1].type === 'text' && !blocks[1].text.trim()
+
+    const newBlock: LogBlock = { type: 'module', key: m.key, subtitle: '', note: '' }
+    setBlocks(bs => isPristineDefault ? [newBlock] : [...bs, newBlock])
+    setCategory(prev => prev ?? m.key)
   }
 
   function addBlock(type: LogBlock['type']) {
@@ -617,18 +657,21 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
         )}
       </div>
 
-      {/* 服務模組快速套用 */}
+      {/* 服務模組快速套用（可疊加多個） */}
       <div className="mb-5">
-        <label className="text-xs text-gray-500 mb-1.5 block">選擇模組（選填，快速帶入內容）</label>
+        <label className="text-xs text-gray-500 mb-1.5 block">新增模組（可複選，會疊加到下方內容）</label>
         <div className="flex gap-2 flex-wrap">
-          {SERVICE_MODULES.map(m => (
-            <button key={m.key} onClick={() => applyModule(m)}
-              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
-                category === m.key ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-700'
-              }`}>
-              {m.label}
-            </button>
-          ))}
+          {SERVICE_MODULES.map(m => {
+            const added = blocks.some(b => b.type === 'module' && b.key === m.key)
+            return (
+              <button key={m.key} onClick={() => applyModule(m)}
+                className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                  added ? 'bg-emerald-600 text-white border-emerald-600' : 'border-gray-200 text-gray-600 hover:border-emerald-400 hover:text-emerald-700'
+                }`}>
+                {added ? '+ ' : ''}{m.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -638,6 +681,9 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
           <div key={i}>
             {b.type === 'heading' && (
               <HeadingBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} />
+            )}
+            {b.type === 'module' && (
+              <ModuleBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} />
             )}
             {b.type === 'text' && (
               <TextBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)}

@@ -41,6 +41,7 @@ export type LogBlock =
   | { type: 'heading'; text: string }
   | { type: 'text'; text: string }
   | { type: 'image'; url: string; caption: string }
+  | { type: 'module'; key: 'medication' | 'cleaning' | 'companion'; subtitle: string; note: string }
 
 export type ServiceLog = {
   id: string

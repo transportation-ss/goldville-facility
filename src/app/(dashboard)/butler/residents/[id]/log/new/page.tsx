@@ -26,14 +26,15 @@ export default async function NewLogPage({
     cleaning: '清掃摘要',
     companion: '陪伴紀錄',
   }
+  const moduleKey = (category ?? (template === 'cleaning' ? 'cleaning' : undefined)) as
+    'medication' | 'cleaning' | 'companion' | undefined
   const heading = (category && CATEGORY_HEADING[category]) ?? (template === 'cleaning' ? '清掃摘要' : undefined)
 
-  const cleaningPrefill = heading
+  const cleaningPrefill = heading && moduleKey
     ? {
         title: `${resident.name}_${heading}_${space ?? ''}`.trim(),
         blocks: [
-          { type: 'heading' as const, text: heading },
-          { type: 'text' as const, text: '' },
+          { type: 'module' as const, key: moduleKey, subtitle: space ?? '', note: '' },
         ],
         meta: [space, time, profile?.display_name].filter(Boolean).join(' · '),
       }

@@ -8,8 +8,18 @@ import { deleteServiceLog } from '../../../actions'
 import { LogEditor } from '../new/LogEditor'
 
 const PERIOD_LABEL = { day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間' }
+const MODULE_LABEL = { medication: '用藥紀錄', cleaning: '清掃摘要', companion: '陪伴紀錄' } as const
 
 function PrintBlockView({ block }: { block: LogBlock }) {
+  if (block.type === 'module') {
+    return (
+      <div style={{ margin: '20px 0', padding: '14px 16px', border: '1px solid #A7F3D0', borderRadius: '10px', background: '#ECFDF5' }}>
+        <p style={{ fontSize: '12px', fontWeight: 700, color: '#047857', margin: '0 0 6px' }}>{MODULE_LABEL[block.key]}</p>
+        {block.subtitle && <p style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: '0 0 6px' }}>{block.subtitle}</p>}
+        {block.note && <p style={{ fontSize: '14px', color: '#334155', lineHeight: 1.9, whiteSpace: 'pre-wrap', margin: 0 }}>{block.note}</p>}
+      </div>
+    )
+  }
   if (block.type === 'heading') {
     return (
       <h2 style={{ fontSize: '19px', fontWeight: 700, color: '#0f172a', margin: '28px 0 10px' }}>
@@ -42,6 +52,15 @@ function PrintBlockView({ block }: { block: LogBlock }) {
 }
 
 function BlockView({ block }: { block: LogBlock }) {
+  if (block.type === 'module') {
+    return (
+      <div className="my-3 p-3 rounded-lg border border-emerald-100 bg-emerald-50/40">
+        <p className="text-xs font-semibold text-emerald-700 mb-1">{MODULE_LABEL[block.key]}</p>
+        {block.subtitle && <p className="text-sm font-semibold text-gray-900 mb-1">{block.subtitle}</p>}
+        {block.note && <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{block.note}</p>}
+      </div>
+    )
+  }
   if (block.type === 'heading') {
     return <h2 className="text-base font-semibold text-gray-900 mt-4 mb-1">{block.text}</h2>
   }
