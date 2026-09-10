@@ -46,6 +46,9 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
   staff: ButlerStaff[]; existingTask?: ButlerTask | null; onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [copyOpen, setCopyOpen] = useState(false)
+  const [copyTarget, setCopyTarget] = useState({ task_date: existingTask?.task_date ?? defaultDate, start_time: existingTask?.start_time?.slice(0, 5) ?? startTime })
+  const [copyDone, setCopyDone] = useState(false)
   const [form, setForm] = useState({
     title:            existingTask?.title ?? '',
     task_date:        existingTask?.task_date ?? defaultDate,
@@ -55,9 +58,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
     notes:            existingTask?.notes ?? '',
     assigned_to_ids:  existingTask?.assigned_to_ids?.length
       ? existingTask.assigned_to_ids
-      : existingTask
-        ? (existingTask.assigned_to ? [existingTask.assigned_to] : [])
-        : (staffId ? [staffId] : []),
+      : (existingTask?.assigned_to ? [existingTask.assigned_to] : []),
     priority:         existingTask?.priority ?? 'normal',
     category:         existingTask?.category ?? 'other',
   })
@@ -88,6 +89,24 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
     setSaving(true)
     try { await deleteButlerTask(existingTask.id); onClose() }
     finally { setSaving(false) }
+  }
+
+  async function handleCopy() {
+    if (!form.title.trim()) return
+    setSaving(true)
+    try {
+      await createButlerTask({
+        title: form.title.trim(), task_date: copyTarget.task_date,
+        start_time: copyTarget.start_time || null,
+        duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
+        space: form.space.trim() || null, notes: form.notes.trim() || null,
+        assigned_to_ids: form.assigned_to_ids,
+        priority: form.priority as 'normal' | 'urgent',
+        category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
+      })
+      setCopyDone(true)
+      setTimeout(() => setCopyDone(false), 2000)
+    } finally { setSaving(false) }
   }
 
   return (
@@ -187,6 +206,36 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
               <option value="urgent">緊急</option>
             </select>
           </div>
+          {existingTask && (
+            <div className="border rounded-lg p-3 bg-gray-50">
+              <button type="button" onClick={() => setCopyOpen(o => !o)}
+                className="text-sm text-emerald-700 font-medium">
+                複製到其他時段 {copyOpen ? '▲' : '▼'}
+              </button>
+              {copyOpen && (
+                <div className="mt-2 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">日期</label>
+                      <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
+                        value={copyTarget.task_date}
+                        onChange={e => setCopyTarget(t => ({ ...t, task_date: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">時間</label>
+                      <input type="time" className="w-full border rounded-lg px-3 py-2 text-sm"
+                        value={copyTarget.start_time}
+                        onChange={e => setCopyTarget(t => ({ ...t, start_time: e.target.value }))} />
+                    </div>
+                  </div>
+                  <button type="button" onClick={handleCopy} disabled={saving}
+                    className="w-full border border-emerald-300 text-emerald-700 rounded-lg py-2 text-sm font-medium disabled:opacity-50">
+                    {copyDone ? '已複製 ✓' : '複製任務'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {existingTask && (
             <button type="button" onClick={handleDelete} disabled={saving}
               className="w-full border border-red-200 text-red-500 rounded-lg py-2 text-sm">
