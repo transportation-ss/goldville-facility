@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { MobileNav } from '@/components/layout/MobileNav'
 import { RouteLoadingBar } from '@/components/layout/RouteLoadingBar'
+import { ContractRenewalPopup } from '@/components/layout/ContractRenewalPopup'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -28,6 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </main>
       <MobileNav role={role} />
+      {role === 'sales' && <ContractRenewalPopup />}
     </div>
   )
 }

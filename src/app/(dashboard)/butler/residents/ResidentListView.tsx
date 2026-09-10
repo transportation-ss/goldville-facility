@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, User, Home, X, FolderOpen, Loader2, LayoutGrid, Printer } from 'lucide-react'
-import type { ButlerResident, ResidentStatus, ButlerOption } from './actions'
+import type { ButlerResident, ResidentStatus, ButlerOption, RentCycle } from './actions'
 import { createResident, updateResident, deleteResident } from './actions'
 
 const STATUS_LABEL: Record<ResidentStatus, string> = {
@@ -49,6 +49,7 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
     move_out_date:    resident?.move_out_date ?? '',
     contract_start:   resident?.contract_start ?? '',
     contract_end:     resident?.contract_end ?? '',
+    rent_cycle:       resident?.rent_cycle ?? '',
     meal_plan:        resident?.meal_plan ?? '',
     membership_plan:  resident?.membership_plan ?? '',
     drive_folder_id:  resident?.drive_folder_id ?? '',
@@ -100,6 +101,7 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
         move_out_date:    form.move_out_date || null,
         contract_start:   form.contract_start || null,
         contract_end:     form.contract_end || null,
+        rent_cycle:       (form.rent_cycle || null) as RentCycle | null,
         meal_plan:        form.meal_plan || null,
         membership_plan:  form.membership_plan.trim() || null,
         drive_folder_id:  form.drive_folder_id.trim() || null,
@@ -210,6 +212,16 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
               <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
                 value={form.contract_end} onChange={e => set('contract_end', e.target.value)} />
             </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">租期類型（供業務自動／手動續約判斷）</label>
+            <select className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.rent_cycle} onChange={e => set('rent_cycle', e.target.value)}>
+              <option value="">未設定</option>
+              <option value="monthly">月租（登入自動續約）</option>
+              <option value="yearly">年租（登入手動續約）</option>
+              <option value="other">其他（登入手動續約）</option>
+            </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
