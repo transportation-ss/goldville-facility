@@ -40,6 +40,7 @@ function TaskModal({ task, staff, today, onClose }: {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     title:            task?.title ?? '',
+    subtitle:         task?.subtitle ?? '',
     task_date:        task?.task_date ?? today,
     start_time:       task?.start_time?.slice(0, 5) ?? '',
     duration_minutes: task?.duration_minutes?.toString() ?? '',
@@ -57,6 +58,7 @@ function TaskModal({ task, staff, today, onClose }: {
     try {
       const payload = {
         title:            form.title.trim(),
+        subtitle:         form.subtitle.trim() || null,
         task_date:        form.task_date,
         start_time:       form.start_time || null,
         duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
@@ -84,6 +86,12 @@ function TaskModal({ task, staff, today, onClose }: {
             <input className="w-full border rounded-lg px-3 py-2 text-sm"
               value={form.title} onChange={e => set('title', e.target.value)}
               placeholder="例：協助住戶搬運行李" required />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">副標題（選填）</label>
+            <input className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.subtitle} onChange={e => set('subtitle', e.target.value)}
+              placeholder="例：協助如廁、陪同散步" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -313,6 +321,9 @@ function TaskRow({ task, canManage, onComplete, onEdit, onDelete, onUndo }: {
             {task.title}
           </span>
         </div>
+        {task.subtitle && (
+          <p className="text-xs text-gray-500 mt-0.5">{task.subtitle}</p>
+        )}
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
           {(task.start_time || task.duration_minutes) && (
             <span className="text-xs text-gray-400 flex items-center gap-1">
