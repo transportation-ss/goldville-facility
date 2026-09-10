@@ -70,6 +70,19 @@ export async function getButlerTasksByDate(date: string): Promise<ButlerTask[]> 
   return (data ?? []) as ButlerTask[]
 }
 
+export async function getButlerTaskById(id: string): Promise<ButlerTask | null> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('butler_tasks')
+    .select(`
+      *,
+      assignee:user_profiles!butler_tasks_assigned_to_fkey(id, display_name)
+    `)
+    .eq('id', id)
+    .maybeSingle()
+  return data as ButlerTask | null
+}
+
 export async function getButlerTasksByWeek(startDate: string, endDate: string): Promise<ButlerTask[]> {
   const supabase = createAdminClient()
   const { data } = await supabase

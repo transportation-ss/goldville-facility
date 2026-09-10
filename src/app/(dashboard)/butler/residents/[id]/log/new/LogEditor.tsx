@@ -55,11 +55,38 @@ function HeadingBlock({ block, onChange, onDelete }: {
   )
 }
 
-function ModuleBlock({ block, onChange, onDelete }: {
+function ModuleBlock({ block, onChange, onDelete, residentNotes }: {
   block: Extract<LogBlock, { type: 'module' }>
   onChange: (b: LogBlock) => void
   onDelete: () => void
+  residentNotes?: string | null
 }) {
+  const [polishing, setPolishing] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handlePolish() {
+    if (!block.note.trim() || polishing) return
+    setPolishing(true)
+    setError('')
+    try {
+      const tags = residentNotes?.trim()
+        ? residentNotes.split(/[、,，\n]/).map(s => s.trim()).filter(Boolean)
+        : undefined
+      const res = await fetch('/api/butler/ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'polish', text: block.note, tags }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '潤飾失敗')
+      onChange({ ...block, note: data.result })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPolishing(false)
+    }
+  }
+
   return (
     <div className="group flex gap-2 items-start">
       <div className="mt-2 text-gray-200 group-hover:text-gray-400 cursor-grab">
@@ -82,6 +109,17 @@ function ModuleBlock({ block, onChange, onDelete }: {
           placeholder="備註（詳細說明）…"
           rows={3}
         />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePolish}
+            disabled={polishing || !block.note.trim()}
+            className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+            {polishing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            {polishing ? 'AI 潤飾中…' : 'AI 潤飾'}
+          </button>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
       </div>
       <button onClick={onDelete} className="mt-2 text-gray-200 hover:text-red-400">
         <Trash2 className="w-3.5 h-3.5" />
@@ -683,7 +721,8 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
               <HeadingBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} />
             )}
             {b.type === 'module' && (
-              <ModuleBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)} />
+              <ModuleBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)}
+                residentNotes={resident.notes} />
             )}
             {b.type === 'text' && (
               <TextBlock block={b} onChange={nb => updateBlock(i, nb)} onDelete={() => deleteBlock(i)}

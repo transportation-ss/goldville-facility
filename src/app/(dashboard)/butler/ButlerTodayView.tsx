@@ -197,6 +197,7 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
   function goWriteLog() {
     if (!logResidentId || !task.space) return
     const params = new URLSearchParams({
+      taskId: task.id,
       space: task.space,
       time: task.start_time ?? '',
     })
