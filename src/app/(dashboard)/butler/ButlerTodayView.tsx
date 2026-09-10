@@ -169,23 +169,8 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
   const [saving, setSaving] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const isAlreadyDone = task.status === 'completed'
-
-  // 任務第一次完成時，問要不要順手填一筆服務紀錄（清潔任務會帶清掃摘要模板）
-  async function promptServiceLog() {
-    if (!task.space) return
-    const residentId = await findResidentIdBySpace(task.space)
-    if (!residentId) return
-    if (!confirm('是否填寫服務紀錄？')) return
-    const params = new URLSearchParams({
-      space: task.space,
-      time: task.start_time ?? '',
-    })
-    if (task.subtitle) params.set('subtitle', task.subtitle)
-    if (task.notes) params.set('taskNotes', task.notes)
-    if (task.source === 'cleaning') params.set('template', 'cleaning')
-    if (task.category && task.category !== 'other') params.set('category', task.category)
-    router.push(`/butler/residents/${residentId}/log/new?${params.toString()}`)
-  }
+  // 完成後如果能對到住戶，先問要不要順手寫服務紀錄，同一個 Modal 內完成，不跳原生 confirm() 也不用二次導頁
+  const [logResidentId, setLogResidentId] = useState<string | null | undefined>(undefined)
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -203,10 +188,41 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
         onClose()
       } else {
         await completeButlerTask(task.id, notes, photoPreview)
-        onClose()
-        await promptServiceLog()
+        const residentId = task.space ? await findResidentIdBySpace(task.space) : null
+        if (residentId) { setLogResidentId(residentId) } else { onClose() }
       }
     } finally { setSaving(false) }
+  }
+
+  function goWriteLog() {
+    if (!logResidentId || !task.space) return
+    const params = new URLSearchParams({
+      space: task.space,
+      time: task.start_time ?? '',
+    })
+    if (task.subtitle) params.set('subtitle', task.subtitle)
+    if (task.notes) params.set('taskNotes', task.notes)
+    if (task.source === 'cleaning') params.set('template', 'cleaning')
+    if (task.category && task.category !== 'other') params.set('category', task.category)
+    router.push(`/butler/residents/${logResidentId}/log/new?${params.toString()}`)
+    onClose()
+  }
+
+  if (logResidentId) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div className="bg-white rounded-2xl w-full max-w-sm p-5 text-center space-y-3">
+          <p className="text-emerald-600 text-2xl">✓</p>
+          <h2 className="font-semibold text-gray-900">任務已完成</h2>
+          <p className="text-sm text-gray-500">要順手寫一筆服務紀錄嗎？</p>
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose} className="flex-1 border rounded-lg py-2 text-sm text-gray-600">略過</button>
+            <button onClick={goWriteLog}
+              className="flex-1 bg-emerald-600 text-white rounded-lg py-2 text-sm font-medium">填寫服務紀錄</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
