@@ -36,6 +36,29 @@ function slotToLabel(slot: number): string {
 
 const WEEKDAY_LABEL = ['日', '一', '二', '三', '四', '五', '六']
 
+// 原生 <input type="time"> 的顯示格式（12/24小時制）由瀏覽器/系統 locale 決定，
+// lang 屬性在部分環境（如 Windows + 中文系統）不保證能覆蓋，改用兩個下拉選單自行控制格式，避免看錯上下午
+function TimeSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [h, m] = value ? value.split(':') : ['08', '00']
+  return (
+    <div className="flex gap-1 items-center">
+      <select className="flex-1 border rounded-lg px-2 py-2 text-sm"
+        value={h} onChange={e => onChange(`${e.target.value}:${m}`)}>
+        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(hh => (
+          <option key={hh} value={hh}>{hh}</option>
+        ))}
+      </select>
+      <span className="text-gray-400">:</span>
+      <select className="flex-1 border rounded-lg px-2 py-2 text-sm"
+        value={m} onChange={e => onChange(`${h}:${e.target.value}`)}>
+        {['00', '15', '30', '45'].map(mm => (
+          <option key={mm} value={mm}>{mm}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 // 極簡月曆多選：只負責「哪些日期被選取」，時間另外用一個共用欄位
 function MiniCalendar({ monthCursor, selected, onToggle, onChangeMonth }: {
   monthCursor: string // 'YYYY-MM-01'
@@ -215,9 +238,8 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">開始時間</label>
-              <input type="time" lang="en-GB" className="w-full border rounded-lg px-3 py-2 text-sm"
-                value={form.start_time} onChange={e => set('start_time', e.target.value)} />
+              <label className="text-xs text-gray-500 mb-1 block">開始時間（24小時制）</label>
+              <TimeSelect value={form.start_time} onChange={v => set('start_time', v)} />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">工作長度</label>
@@ -302,9 +324,8 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
                     onChangeMonth={setCopyMonthCursor}
                     onToggle={d => setCopyDates(ds => ds.includes(d) ? ds.filter(x => x !== d) : [...ds, d])} />
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">時間</label>
-                    <input type="time" lang="en-GB" className="w-full border rounded-lg px-3 py-2 text-sm"
-                      value={copyTime} onChange={e => setCopyTime(e.target.value)} />
+                    <label className="text-xs text-gray-500 mb-1 block">時間（24小時制）</label>
+                    <TimeSelect value={copyTime} onChange={setCopyTime} />
                   </div>
                   {copyDates.length > 0 && (
                     <p className="text-xs text-gray-500">已選 {copyDates.length} 天：{[...copyDates].sort().join('、')}</p>
