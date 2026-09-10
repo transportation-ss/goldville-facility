@@ -19,6 +19,13 @@ const FLOOR_ROOMS: { floor: string; rooms: string[] }[] = [
   { floor: '7F', rooms: ['703','705','706','707','708','709','710','711','712','713','715'] },
 ]
 
+function emergencyContactText(r: ButlerResident) {
+  if (!r.emergency_contact_name && !r.emergency_contact_phone) return ''
+  const relation = r.emergency_contact_relation ? `（${r.emergency_contact_relation}）` : ''
+  const phone = r.emergency_contact_phone ? ` ${r.emergency_contact_phone}` : ''
+  return `${r.emergency_contact_name ?? ''}${relation}${phone}`
+}
+
 function roomSortKey(room: string | null) {
   if (!room) return Number.MAX_SAFE_INTEGER
   const n = parseInt(room, 10)
@@ -93,8 +100,8 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
       HeadingLevel, AlignmentType, WidthType, BorderStyle,
     } = await import('docx')
 
-    const headers = ['房號', '姓名', '狀態', '入住日期', '合約迄日', '餐點', '方案', '小天使', '個資同意']
-    const colWidths = [900, 1600, 1200, 1200, 1200, 900, 1200, 1000, 1000]
+    const headers = ['房號', '姓名', '狀態', '入住日期', '合約迄日', '餐點', '方案', '小天使', '緊急聯絡人', '個資同意']
+    const colWidths = [900, 1600, 1200, 1200, 1200, 900, 1200, 1000, 1800, 1000]
     const tableWidth = colWidths.reduce((a, b) => a + b, 0)
     const border = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' }
     const borders = { top: border, bottom: border, left: border, right: border }
@@ -123,7 +130,8 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
             cell(r.meal_plan ?? '', colWidths[5]),
             cell(r.membership_plan ?? '', colWidths[6]),
             cell(r.primary_butler?.display_name ?? '', colWidths[7]),
-            cell(r.privacy_consent ? '同意' : '未同意', colWidths[8]),
+            cell(emergencyContactText(r), colWidths[8]),
+            cell(r.privacy_consent ? '同意' : '未同意', colWidths[9]),
           ],
         })),
       ],
@@ -217,6 +225,7 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
             <th className="text-left py-1.5 pr-2">餐點</th>
             <th className="text-left py-1.5 pr-2">方案</th>
             <th className="text-left py-1.5 pr-2">小天使</th>
+            <th className="text-left py-1.5 pr-2">緊急聯絡人</th>
             <th className="text-left py-1.5">個資同意</th>
           </tr>
         </thead>
@@ -231,6 +240,7 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
               <td className="py-1 pr-2">{r.meal_plan ?? ''}</td>
               <td className="py-1 pr-2">{r.membership_plan ?? ''}</td>
               <td className="py-1 pr-2">{r.primary_butler?.display_name ?? ''}</td>
+              <td className="py-1 pr-2">{emergencyContactText(r)}</td>
               <td className="py-1">{r.privacy_consent ? '✓' : '✗'}</td>
             </tr>
           ))}
@@ -247,7 +257,7 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #111' }}>
-                {['房號','姓名','狀態','入住日期','合約迄日','餐點','方案','小天使','個資同意'].map(h => (
+                {['房號','姓名','狀態','入住日期','合約迄日','餐點','方案','小天使','緊急聯絡人','個資同意'].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '4px 6px' }}>{h}</th>
                 ))}
               </tr>
@@ -263,6 +273,7 @@ export function ResidentPrintView({ residents }: { residents: ButlerResident[] }
                   <td style={{ padding: '3px 6px' }}>{r.meal_plan ?? ''}</td>
                   <td style={{ padding: '3px 6px' }}>{r.membership_plan ?? ''}</td>
                   <td style={{ padding: '3px 6px' }}>{r.primary_butler?.display_name ?? ''}</td>
+                  <td style={{ padding: '3px 6px' }}>{emergencyContactText(r)}</td>
                   <td style={{ padding: '3px 6px' }}>{r.privacy_consent ? '同意' : '未同意'}</td>
                 </tr>
               ))}
