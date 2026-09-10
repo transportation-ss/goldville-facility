@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, ExternalLink, ArrowLeft, BookOpen, Trash2, Users } from 'lucide-react'
 import { getResident, getServiceLogs, deleteServiceLog } from '../actions'
@@ -15,6 +15,11 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase
     .from('user_profiles').select('role, display_name').eq('id', user!.id).single()
+
+  // 櫃台身分（日班/大夜）只能在住戶列表看到基本資料卡，服務紀錄內容不對他們開放
+  if (['frontdesk_day', 'frontdesk_night'].includes(profile?.role ?? '')) {
+    redirect('/butler/residents')
+  }
 
   const [resident, logs, groupActivities] = await Promise.all([
     getResident(id),

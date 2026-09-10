@@ -187,6 +187,7 @@ function getNavByRole(role: string): RoleNav {
           { label: '大夜工作表', href: '/nightshift',       icon: Moon          },
           { label: '使用指引(夜)', href: '/nightshift/guide', icon: BookOpen    },
           { label: '工務任務',   href: '/work-orders',      icon: ClipboardList },
+          { label: '住戶列表',   href: '/butler/residents', icon: Users         },
         ],
         more: [
           {
@@ -206,6 +207,7 @@ function getNavByRole(role: string): RoleNav {
           { label: '房務派工', href: '/housekeeping/plan', icon: ClipboardList },
           { label: '工務任務', href: '/work-orders',       icon: ClipboardList },
           { label: '房間登錄', href: '/rooms',             icon: DoorOpen      },
+          { label: '住戶列表', href: '/butler/residents',  icon: Users         },
         ],
         more: [
           {

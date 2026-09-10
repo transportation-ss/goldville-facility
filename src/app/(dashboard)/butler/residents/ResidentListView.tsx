@@ -31,6 +31,11 @@ function isManager(role: string) {
   return ['admin', 'manager', 'butler_manager', 'sales'].includes(role)
 }
 
+// 櫃台身分只看得到住戶基本資料卡，不能點進去看服務紀錄
+function canOpenServiceLogs(role: string) {
+  return !['frontdesk_day', 'frontdesk_night'].includes(role)
+}
+
 // ── 住戶表單 Modal ────────────────────────────────────────
 function ResidentModal({ resident, butlers, residents, onClose }: {
   resident?: ButlerResident | null
@@ -332,9 +337,10 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
 }
 
 // ── 住戶卡片 ─────────────────────────────────────────────
-function ResidentCard({ resident, canManage, onEdit }: {
+function ResidentCard({ resident, canManage, canOpen, onEdit }: {
   resident: ButlerResident
   canManage: boolean
+  canOpen: boolean
   onEdit: (r: ButlerResident) => void
 }) {
   const router = useRouter()
@@ -342,6 +348,7 @@ function ResidentCard({ resident, canManage, onEdit }: {
   const [navLoading, setNavLoading] = useState(false)
 
   function handleOpenResident() {
+    if (!canOpen) return
     setNavLoading(true)
     router.push(`/butler/residents/${resident.id}`)
   }
@@ -351,13 +358,15 @@ function ResidentCard({ resident, canManage, onEdit }: {
     router.push(`/butler/residents/${resident.id}/photos`)
   }
 
+  const InfoWrapper = canOpen ? 'button' : 'div'
+
   return (
     <div className="bg-white border rounded-xl p-4 flex gap-3">
-      <button onClick={handleOpenResident} disabled={navLoading}
-        className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 hover:bg-gray-200 transition-colors">
+      <InfoWrapper onClick={canOpen ? handleOpenResident : undefined} disabled={canOpen ? navLoading : undefined}
+        className={`w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 ${canOpen ? 'hover:bg-gray-200 transition-colors' : ''}`}>
         {navLoading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" /> : <User className="w-5 h-5 text-gray-400" />}
-      </button>
-      <button onClick={handleOpenResident} disabled={navLoading}
+      </InfoWrapper>
+      <InfoWrapper onClick={canOpen ? handleOpenResident : undefined} disabled={canOpen ? navLoading : undefined}
         className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-gray-900">{resident.name}</span>
@@ -418,7 +427,7 @@ function ResidentCard({ resident, canManage, onEdit }: {
         {resident.notes && (
           <p className="text-xs text-gray-500 mt-1 truncate">{resident.notes}</p>
         )}
-      </button>
+      </InfoWrapper>
       <div className="flex flex-col items-end gap-2 shrink-0">
         <button onClick={openPhotoWall} disabled={folderLoading}
           title="照片資料夾"
@@ -446,6 +455,7 @@ export function ResidentListView({ residents, butlers, userRole }: {
   userRole: string
 }) {
   const canManage = isManager(userRole)
+  const canOpen = canOpenServiceLogs(userRole)
   const [tab, setTab]   = useState<ResidentStatus | 'all'>('all')
   const [modal, setModal] = useState<ButlerResident | null | 'new'>('new' as never)
   const [editing, setEditing] = useState<ButlerResident | null>(null)
@@ -509,7 +519,7 @@ export function ResidentListView({ residents, butlers, userRole }: {
           <p className="text-sm text-gray-400 text-center py-12">尚無住戶資料</p>
         )}
         {filtered.map(r => (
-          <ResidentCard key={r.id} resident={r} canManage={canManage} onEdit={openEdit} />
+          <ResidentCard key={r.id} resident={r} canManage={canManage} canOpen={canOpen} onEdit={openEdit} />
         ))}
       </div>
 

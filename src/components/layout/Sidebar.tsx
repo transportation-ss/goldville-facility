@@ -205,6 +205,7 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
 /** 日班櫃台 */
 const frontdeskDayNav: (NavSingle | NavGroup)[] = [
   { type: 'single', label: '工務任務', href: '/work-orders', icon: ClipboardList },
+  { type: 'single', label: '住戶列表', href: '/butler/residents', icon: Users },
   {
     type: 'group', label: '房務',
     items: [
@@ -227,6 +228,7 @@ const frontdeskDayNav: (NavSingle | NavGroup)[] = [
 /** 大夜班 */
 const nightshiftNav: (NavSingle | NavGroup)[] = [
   { type: 'single', label: '工務任務', href: '/work-orders', icon: ClipboardList },
+  { type: 'single', label: '住戶列表', href: '/butler/residents', icon: Users },
   {
     type: 'group', label: '說明書',
     items: [
