@@ -20,10 +20,18 @@ const FLOOR_ROOMS: { floor: string; rooms: string[] }[] = [
 ]
 
 function emergencyContactText(r: ButlerResident) {
-  if (!r.emergency_contact_name && !r.emergency_contact_phone) return ''
-  const relation = r.emergency_contact_relation ? `（${r.emergency_contact_relation}）` : ''
-  const phone = r.emergency_contact_phone ? ` ${r.emergency_contact_phone}` : ''
-  return `${r.emergency_contact_name ?? ''}${relation}${phone}`
+  const parts: string[] = []
+  if (r.emergency_contact_name || r.emergency_contact_phone) {
+    const relation = r.emergency_contact_relation ? `（${r.emergency_contact_relation}）` : ''
+    const phone = r.emergency_contact_phone ? ` ${r.emergency_contact_phone}` : ''
+    parts.push(`${r.emergency_contact_name ?? ''}${relation}${phone}`)
+  }
+  if (r.emergency_contact2_name || r.emergency_contact2_phone) {
+    const relation = r.emergency_contact2_relation ? `（${r.emergency_contact2_relation}）` : ''
+    const phone = r.emergency_contact2_phone ? ` ${r.emergency_contact2_phone}` : ''
+    parts.push(`${r.emergency_contact2_name ?? ''}${relation}${phone}`)
+  }
+  return parts.join('、')
 }
 
 function roomSortKey(room: string | null) {

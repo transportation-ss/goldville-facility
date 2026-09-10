@@ -27,6 +27,9 @@ export type ButlerResident = {
   emergency_contact_name: string | null
   emergency_contact_relation: string | null
   emergency_contact_phone: string | null
+  emergency_contact2_name: string | null
+  emergency_contact2_relation: string | null
+  emergency_contact2_phone: string | null
   primary_butler?: { display_name: string } | null
 }
 
@@ -106,6 +109,9 @@ export async function createResident(input: {
   emergency_contact_name?: string | null
   emergency_contact_relation?: string | null
   emergency_contact_phone?: string | null
+  emergency_contact2_name?: string | null
+  emergency_contact2_relation?: string | null
+  emergency_contact2_phone?: string | null
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -136,6 +142,9 @@ export async function updateResident(id: string, input: Partial<{
   emergency_contact_name: string | null
   emergency_contact_relation: string | null
   emergency_contact_phone: string | null
+  emergency_contact2_name: string | null
+  emergency_contact2_relation: string | null
+  emergency_contact2_phone: string | null
 }>) {
   const supabase = await createClient()
   const { error } = await supabase

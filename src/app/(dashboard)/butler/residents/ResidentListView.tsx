@@ -59,6 +59,9 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
     emergency_contact_name:     resident?.emergency_contact_name ?? '',
     emergency_contact_relation: resident?.emergency_contact_relation ?? '',
     emergency_contact_phone:    resident?.emergency_contact_phone ?? '',
+    emergency_contact2_name:     resident?.emergency_contact2_name ?? '',
+    emergency_contact2_relation: resident?.emergency_contact2_relation ?? '',
+    emergency_contact2_phone:    resident?.emergency_contact2_phone ?? '',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -107,6 +110,9 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
         emergency_contact_name:     form.emergency_contact_name.trim() || null,
         emergency_contact_relation: form.emergency_contact_relation.trim() || null,
         emergency_contact_phone:    form.emergency_contact_phone.trim() || null,
+        emergency_contact2_name:     form.emergency_contact2_name.trim() || null,
+        emergency_contact2_relation: form.emergency_contact2_relation.trim() || null,
+        emergency_contact2_phone:    form.emergency_contact2_phone.trim() || null,
       }
       if (resident) { await updateResident(resident.id, payload) }
       else          { await createResident(payload) }
@@ -253,6 +259,26 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
                 placeholder="0912-345678" />
             </div>
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">緊急聯絡人2</label>
+              <input className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.emergency_contact2_name} onChange={e => set('emergency_contact2_name', e.target.value)}
+                placeholder="姓名" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">關係</label>
+              <input className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.emergency_contact2_relation} onChange={e => set('emergency_contact2_relation', e.target.value)}
+                placeholder="例：兒子" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">電話</label>
+              <input className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.emergency_contact2_phone} onChange={e => set('emergency_contact2_phone', e.target.value)}
+                placeholder="0912-345678" />
+            </div>
+          </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">備注</label>
             <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={2}
@@ -368,6 +394,13 @@ function ResidentCard({ resident, canManage, onEdit }: {
             緊急聯絡人 {resident.emergency_contact_name}
             {resident.emergency_contact_relation && `（${resident.emergency_contact_relation}）`}
             {resident.emergency_contact_phone && ` ${resident.emergency_contact_phone}`}
+          </p>
+        )}
+        {(resident.emergency_contact2_name || resident.emergency_contact2_phone) && (
+          <p className="text-xs text-gray-500 mt-1">
+            緊急聯絡人2 {resident.emergency_contact2_name}
+            {resident.emergency_contact2_relation && `（${resident.emergency_contact2_relation}）`}
+            {resident.emergency_contact2_phone && ` ${resident.emergency_contact2_phone}`}
           </p>
         )}
         {resident.notes && (
