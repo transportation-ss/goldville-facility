@@ -11,6 +11,7 @@ export type ButlerTask = {
   duration_minutes: number | null
   space: string | null
   title: string
+  subtitle: string | null
   notes: string | null
   assigned_to: string | null
   assigned_to_ids: string[]
@@ -113,6 +114,7 @@ export async function createButlerTask(input: {
   duration_minutes?: number | null
   space?: string | null
   title: string
+  subtitle?: string | null
   notes?: string | null
   assigned_to?: string | null
   assigned_to_ids?: string[]
@@ -144,6 +146,7 @@ export async function updateButlerTask(id: string, updates: Partial<{
   duration_minutes: number | null
   space: string | null
   title: string
+  subtitle: string | null
   notes: string | null
   assigned_to: string | null
   assigned_to_ids: string[]

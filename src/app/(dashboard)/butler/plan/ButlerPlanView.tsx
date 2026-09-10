@@ -98,6 +98,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
   const [copyDoneCount, setCopyDoneCount] = useState<number | null>(null)
   const [form, setForm] = useState({
     title:            existingTask?.title ?? '',
+    subtitle:         existingTask?.subtitle ?? '',
     task_date:        existingTask?.task_date ?? defaultDate,
     start_time:       existingTask?.start_time?.slice(0, 5) ?? startTime,
     duration_minutes: existingTask?.duration_minutes?.toString() ?? '60',
@@ -123,6 +124,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
         title: form.title.trim(), task_date: form.task_date,
         start_time: form.start_time || null,
         duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
+        subtitle: form.subtitle.trim() || null,
         space: form.space.trim() || null, notes: form.notes.trim() || null,
         assigned_to_ids: form.assigned_to_ids,
         priority: form.priority as 'normal' | 'urgent',
@@ -151,7 +153,8 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
           title: form.title.trim(), task_date: date,
           start_time: copyTime || null,
           duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
-          space: form.space.trim() || null, notes: form.notes.trim() || null,
+          subtitle: form.subtitle.trim() || null,
+        space: form.space.trim() || null, notes: form.notes.trim() || null,
           assigned_to_ids: form.assigned_to_ids,
           priority: form.priority as 'normal' | 'urgent',
           category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
@@ -191,6 +194,17 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
               }}>
               {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">副標題（選填，讓派工內容更清楚）</label>
+            <input className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.subtitle} onChange={e => set('subtitle', e.target.value)}
+              placeholder="例：協助如廁、陪同散步" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">備註（選填，較細節的說明）</label>
+            <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none"
+              value={form.notes} onChange={e => set('notes', e.target.value)} rows={3} />
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">日期</label>
@@ -355,7 +369,7 @@ function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onCli
             >
               {slotTask && isStart && (
                 <span className="text-[10px] text-white font-medium px-1 truncate block leading-10">
-                  {slotTask.title}
+                  {slotTask.title}{slotTask.subtitle ? `：${slotTask.subtitle}` : ''}
                 </span>
               )}
               {!slotTask && (
@@ -532,6 +546,7 @@ export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
               <div key={t.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{t.title}</p>
+                  {t.subtitle && <p className="text-xs text-gray-500 truncate">{t.subtitle}</p>}
                   {t.assignee && <p className="text-xs text-gray-400">{t.assignee.display_name}</p>}
                 </div>
                 <button onClick={() => setModal({ staffId: t.assigned_to ?? '', startTime: '09:00', task: t })}
