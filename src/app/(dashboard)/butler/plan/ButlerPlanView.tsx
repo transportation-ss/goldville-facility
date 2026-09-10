@@ -271,6 +271,15 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
                 <option key={`${r.room ?? ''}-${r.name}`} value={`${r.room ?? ''}${r.name}`.trim()} />
               ))}
             </datalist>
+            {/* 即時比對是否能對到住戶：完成任務時要靠這個字串找 resident_id 才會提示填服務紀錄，
+                對不到的話當下就提醒，避免事後變成「任務完成了卻沒人提醒填紀錄」的漏網之魚 */}
+            {form.space.trim() && (() => {
+              const matched = residents.find(r =>
+                form.space.includes(r.name) || form.space.trim() === `${r.room ?? ''}${r.name}`.trim())
+              return matched
+                ? <p className="text-xs text-emerald-600 mt-1">✓ 對應住戶：{matched.room ?? ''} {matched.name}</p>
+                : <p className="text-xs text-amber-600 mt-1">⚠ 找不到對應住戶，任務完成後將不會提示填寫服務紀錄</p>
+            })()}
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">優先度</label>
