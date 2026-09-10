@@ -18,6 +18,7 @@ interface Props {
   viewDate: string
   tasks: ButlerTask[]
   staff: ButlerStaff[]
+  residents: { name: string; room: string | null }[]
 }
 
 const DEFAULT_START = 8
@@ -85,9 +86,10 @@ const CATEGORY_OPTIONS: { value: 'medication' | 'cleaning' | 'companion' | 'othe
 ]
 
 // ── 任務 Modal ────────────────────────────────────────────
-function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClose }: {
+function SlotModal({ staffId, startTime, defaultDate, staff, residents, existingTask, onClose }: {
   staffId: string; startTime: string; defaultDate: string
-  staff: ButlerStaff[]; existingTask?: ButlerTask | null; onClose: () => void
+  staff: ButlerStaff[]; residents: { name: string; room: string | null }[]
+  existingTask?: ButlerTask | null; onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
   const [copyOpen, setCopyOpen] = useState(false)
@@ -262,8 +264,13 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">空間/住戶（選填）</label>
-            <input className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={form.space} onChange={e => set('space', e.target.value)} placeholder="例：1001 王先生" />
+            <input className="w-full border rounded-lg px-3 py-2 text-sm" list="resident-space-options"
+              value={form.space} onChange={e => set('space', e.target.value)} placeholder="例：201 張智貞" />
+            <datalist id="resident-space-options">
+              {residents.map(r => (
+                <option key={`${r.room ?? ''}-${r.name}`} value={`${r.room ?? ''}${r.name}`.trim()} />
+              ))}
+            </datalist>
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">優先度</label>
@@ -386,7 +393,7 @@ function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onCli
 }
 
 // ── 主元件 ───────────────────────────────────────────────
-export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
+export function ButlerPlanView({ today, viewDate, tasks, staff, residents }: Props) {
   const router = useRouter()
   const [showFull, setShowFull]   = useState(false)
   const [yAxis, setYAxis]         = useState<'staff' | 'space'>('staff')
@@ -563,6 +570,7 @@ export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
           startTime={modal.startTime}
           defaultDate={viewDate}
           staff={staff}
+          residents={residents}
           existingTask={modal.task}
           onClose={() => setModal(null)}
         />

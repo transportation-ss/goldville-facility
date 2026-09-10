@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getButlerTasksByDate, getButlerStaff, getButlerSchedulesByWeek } from '../actions'
+import { getResidents } from '../residents/actions'
 import { ButlerPlanView } from './ButlerPlanView'
 
 export const dynamic = 'force-dynamic'
@@ -29,10 +30,14 @@ export default async function ButlerPlanPage({
   // 允許主管往後（或往前）翻頁派工，不再只能派當天
   const viewDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today
 
-  const [tasks, staff] = await Promise.all([
+  const [tasks, staff, residents] = await Promise.all([
     getButlerTasksByDate(viewDate),
     getButlerStaff(),
+    getResidents(),
   ])
+  const activeResidents = residents
+    .filter(r => r.status === 'active_resident')
+    .map(r => ({ name: r.name, room: r.room }))
 
-  return <ButlerPlanView today={today} viewDate={viewDate} tasks={tasks} staff={staff} />
+  return <ButlerPlanView today={today} viewDate={viewDate} tasks={tasks} staff={staff} residents={activeResidents} />
 }
