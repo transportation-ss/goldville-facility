@@ -216,7 +216,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">開始時間</label>
-              <input type="time" className="w-full border rounded-lg px-3 py-2 text-sm"
+              <input type="time" lang="en-GB" className="w-full border rounded-lg px-3 py-2 text-sm"
                 value={form.start_time} onChange={e => set('start_time', e.target.value)} />
             </div>
             <div>
@@ -303,7 +303,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
                     onToggle={d => setCopyDates(ds => ds.includes(d) ? ds.filter(x => x !== d) : [...ds, d])} />
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">時間</label>
-                    <input type="time" className="w-full border rounded-lg px-3 py-2 text-sm"
+                    <input type="time" lang="en-GB" className="w-full border rounded-lg px-3 py-2 text-sm"
                       value={copyTime} onChange={e => setCopyTime(e.target.value)} />
                   </div>
                   {copyDates.length > 0 && (
