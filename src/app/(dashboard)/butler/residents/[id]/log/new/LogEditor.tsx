@@ -691,7 +691,7 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
           <span>紀錄日期：{today}</span>
         </div>
         {cleaningPrefill?.meta && (
-          <p className="text-xs text-gray-400">來自清潔任務：{cleaningPrefill.meta}</p>
+          <p className="text-xs text-gray-400">來自任務：{cleaningPrefill.meta}</p>
         )}
       </div>
 
