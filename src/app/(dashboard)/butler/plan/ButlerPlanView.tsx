@@ -33,6 +33,50 @@ function slotToLabel(slot: number): string {
   return `${String(h).padStart(2, '0')}:${m}`
 }
 
+const WEEKDAY_LABEL = ['日', '一', '二', '三', '四', '五', '六']
+
+// 極簡月曆多選：只負責「哪些日期被選取」，時間另外用一個共用欄位
+function MiniCalendar({ monthCursor, selected, onToggle, onChangeMonth }: {
+  monthCursor: string // 'YYYY-MM-01'
+  selected: string[]
+  onToggle: (dateStr: string) => void
+  onChangeMonth: (dateStr: string) => void
+}) {
+  const [y, m] = monthCursor.split('-').map(Number)
+  const firstWeekday = new Date(Date.UTC(y, m - 1, 1)).getUTCDay()
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate()
+  const cells: (string | null)[] = [
+    ...Array(firstWeekday).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => `${y}-${String(m).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`),
+  ]
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <button type="button" onClick={() => onChangeMonth(addDays(monthCursor, -1))}
+          className="text-gray-400 hover:text-gray-600 p-1"><ChevronLeft className="w-4 h-4" /></button>
+        <span className="text-sm font-medium text-gray-700">{y} 年 {m} 月</span>
+        <button type="button" onClick={() => onChangeMonth(addDays(`${y}-${String(m).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`, 1))}
+          className="text-gray-400 hover:text-gray-600 p-1"><ChevronRight className="w-4 h-4" /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {WEEKDAY_LABEL.map(w => <div key={w} className="text-[10px] text-gray-400">{w}</div>)}
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} />
+          const isSelected = selected.includes(d)
+          return (
+            <button key={d} type="button" onClick={() => onToggle(d)}
+              className={`text-xs rounded-full aspect-square flex items-center justify-center transition-colors ${
+                isSelected ? 'bg-emerald-600 text-white font-medium' : 'text-gray-600 hover:bg-gray-100'
+              }`}>
+              {Number(d.slice(-2))}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 const CATEGORY_OPTIONS: { value: 'medication' | 'cleaning' | 'companion' | 'other'; label: string }[] = [
   { value: 'medication', label: '用藥管理' },
   { value: 'cleaning',   label: '清潔掃房' },
@@ -47,8 +91,11 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
 }) {
   const [saving, setSaving] = useState(false)
   const [copyOpen, setCopyOpen] = useState(false)
-  const [copyTarget, setCopyTarget] = useState({ task_date: existingTask?.task_date ?? defaultDate, start_time: existingTask?.start_time?.slice(0, 5) ?? startTime })
-  const [copyDone, setCopyDone] = useState(false)
+  const baseDate = existingTask?.task_date ?? defaultDate
+  const [copyMonthCursor, setCopyMonthCursor] = useState(baseDate.slice(0, 8) + '01')
+  const [copyDates, setCopyDates] = useState<string[]>([])
+  const [copyTime, setCopyTime] = useState(existingTask?.start_time?.slice(0, 5) ?? startTime)
+  const [copyDoneCount, setCopyDoneCount] = useState<number | null>(null)
   const [form, setForm] = useState({
     title:            existingTask?.title ?? '',
     task_date:        existingTask?.task_date ?? defaultDate,
@@ -92,20 +139,23 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
   }
 
   async function handleCopy() {
-    if (!form.title.trim()) return
+    if (!form.title.trim() || copyDates.length === 0) return
     setSaving(true)
+    setCopyDoneCount(null)
     try {
-      await createButlerTask({
-        title: form.title.trim(), task_date: copyTarget.task_date,
-        start_time: copyTarget.start_time || null,
-        duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
-        space: form.space.trim() || null, notes: form.notes.trim() || null,
-        assigned_to_ids: form.assigned_to_ids,
-        priority: form.priority as 'normal' | 'urgent',
-        category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
-      })
-      setCopyDone(true)
-      setTimeout(() => setCopyDone(false), 2000)
+      for (const date of copyDates) {
+        await createButlerTask({
+          title: form.title.trim(), task_date: date,
+          start_time: copyTime || null,
+          duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
+          space: form.space.trim() || null, notes: form.notes.trim() || null,
+          assigned_to_ids: form.assigned_to_ids,
+          priority: form.priority as 'normal' | 'urgent',
+          category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
+        })
+      }
+      setCopyDoneCount(copyDates.length)
+      setCopyDates([])
     } finally { setSaving(false) }
   }
 
@@ -214,24 +264,25 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
               </button>
               {copyOpen && (
                 <div className="mt-2 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">日期</label>
-                      <input type="date" className="w-full border rounded-lg px-3 py-2 text-sm"
-                        value={copyTarget.task_date}
-                        onChange={e => setCopyTarget(t => ({ ...t, task_date: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">時間</label>
-                      <input type="time" className="w-full border rounded-lg px-3 py-2 text-sm"
-                        value={copyTarget.start_time}
-                        onChange={e => setCopyTarget(t => ({ ...t, start_time: e.target.value }))} />
-                    </div>
+                  <p className="text-[11px] text-gray-400">點選月曆挑選多個日期（可跨月），同一時間套用到全部</p>
+                  <MiniCalendar monthCursor={copyMonthCursor} selected={copyDates}
+                    onChangeMonth={setCopyMonthCursor}
+                    onToggle={d => setCopyDates(ds => ds.includes(d) ? ds.filter(x => x !== d) : [...ds, d])} />
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">時間</label>
+                    <input type="time" className="w-full border rounded-lg px-3 py-2 text-sm"
+                      value={copyTime} onChange={e => setCopyTime(e.target.value)} />
                   </div>
-                  <button type="button" onClick={handleCopy} disabled={saving}
+                  {copyDates.length > 0 && (
+                    <p className="text-xs text-gray-500">已選 {copyDates.length} 天：{[...copyDates].sort().join('、')}</p>
+                  )}
+                  <button type="button" onClick={handleCopy} disabled={saving || copyDates.length === 0}
                     className="w-full border border-emerald-300 text-emerald-700 rounded-lg py-2 text-sm font-medium disabled:opacity-50">
-                    {copyDone ? '已複製 ✓' : '複製任務'}
+                    {saving ? '複製中…' : `複製到 ${copyDates.length || ''} 個日期`}
                   </button>
+                  {copyDoneCount !== null && (
+                    <p className="text-xs text-emerald-600 text-center">已複製 {copyDoneCount} 筆 ✓</p>
+                  )}
                 </div>
               )}
             </div>
