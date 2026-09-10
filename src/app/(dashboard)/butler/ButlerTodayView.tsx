@@ -180,6 +180,8 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
       space: task.space,
       time: task.start_time ?? '',
     })
+    if (task.subtitle) params.set('subtitle', task.subtitle)
+    if (task.notes) params.set('taskNotes', task.notes)
     if (task.source === 'cleaning') params.set('template', 'cleaning')
     if (task.category && task.category !== 'other') params.set('category', task.category)
     router.push(`/butler/residents/${residentId}/log/new?${params.toString()}`)

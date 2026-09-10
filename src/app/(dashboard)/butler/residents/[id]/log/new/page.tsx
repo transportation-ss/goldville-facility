@@ -9,10 +9,10 @@ export default async function NewLogPage({
   params, searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ template?: string; space?: string; time?: string; category?: string }>
+  searchParams: Promise<{ template?: string; space?: string; time?: string; category?: string; subtitle?: string; taskNotes?: string }>
 }) {
   const { id } = await params
-  const { template, space, time, category } = await searchParams
+  const { template, space, time, category, subtitle, taskNotes } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const { data: profile } = await supabase
@@ -32,9 +32,9 @@ export default async function NewLogPage({
 
   const cleaningPrefill = heading && moduleKey
     ? {
-        title: `${resident.name}_${heading}_${space ?? ''}`.trim(),
+        title: `${resident.name}_${heading}_${subtitle ?? space ?? ''}`.trim(),
         blocks: [
-          { type: 'module' as const, key: moduleKey, subtitle: space ?? '', note: '' },
+          { type: 'module' as const, key: moduleKey, subtitle: subtitle ?? space ?? '', note: taskNotes ?? '' },
         ],
         meta: [space, time, profile?.display_name].filter(Boolean).join(' · '),
       }
