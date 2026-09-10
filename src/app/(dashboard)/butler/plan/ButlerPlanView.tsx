@@ -105,7 +105,10 @@ function SlotModal({ staffId, startTime, defaultDate, staff, existingTask, onClo
     notes:            existingTask?.notes ?? '',
     assigned_to_ids:  existingTask?.assigned_to_ids?.length
       ? existingTask.assigned_to_ids
-      : (existingTask?.assigned_to ? [existingTask.assigned_to] : []),
+      : existingTask
+        ? (existingTask.assigned_to ? [existingTask.assigned_to] : [])
+        // 新任務：從某人員的空白時段點進來才預帶該人員，從右上角「+新增」進來則未指派
+        : (staffId ? [staffId] : []),
     priority:         existingTask?.priority ?? 'normal',
     category:         existingTask?.category ?? 'other',
   })
@@ -425,7 +428,7 @@ export function ButlerPlanView({ today, viewDate, tasks, staff }: Props) {
         <div className="flex items-center gap-2">
           {/* 新增按鈕 */}
           <button
-            onClick={() => setModal({ staffId: staff[0]?.id ?? '', startTime: slotToLabel(DEFAULT_START * 2) })}
+            onClick={() => setModal({ staffId: '', startTime: slotToLabel(DEFAULT_START * 2) })}
             className="flex items-center gap-1 bg-emerald-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium">
             <Plus className="w-3.5 h-3.5" /> 新增
           </button>
