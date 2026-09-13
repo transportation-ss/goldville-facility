@@ -254,6 +254,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '管家派工', href: '/butler/plan',       icon: ClipboardList },
       { label: '住戶列表', href: '/butler/residents',  icon: Users         },
       { label: '加值服務', href: '/admin/services',    icon: Package       },
+      { label: '費用統計', href: '/admin/services/fees', icon: BarChart3   },
       { label: '管家清單', href: '/butler/staff',      icon: UserCog       },
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
       { label: '回診表單', href: '/butler/appointments', icon: Stethoscope },
