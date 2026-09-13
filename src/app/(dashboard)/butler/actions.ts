@@ -24,6 +24,8 @@ export type ButlerTask = {
   source: string | null
   source_ref: string | null
   category: 'medication' | 'cleaning' | 'companion' | 'other' | null
+  resident_service_id: string | null
+  fee: number | null
   assignee?: { id: string; display_name: string } | null
 }
 
@@ -133,6 +135,8 @@ export async function createButlerTask(input: {
   assigned_to_ids?: string[]
   priority?: 'normal' | 'urgent'
   category?: 'medication' | 'cleaning' | 'companion' | 'other' | null
+  resident_service_id?: string | null
+  fee?: number | null
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -167,6 +171,8 @@ export async function updateButlerTask(id: string, updates: Partial<{
   status: 'pending' | 'in_progress' | 'completed'
   completion_notes: string | null
   category: 'medication' | 'cleaning' | 'companion' | 'other' | null
+  resident_service_id: string | null
+  fee: number | null
 }>) {
   const supabase = await createClient()
   const { assigned_to, assigned_to_ids, ...rest } = updates

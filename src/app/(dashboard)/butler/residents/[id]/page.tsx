@@ -1,9 +1,11 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, ExternalLink, ArrowLeft, BookOpen, Trash2, Users } from 'lucide-react'
-import { getResident, getServiceLogs, deleteServiceLog } from '../actions'
+import { getResident, getServiceLogs, deleteServiceLog, getResidentServices } from '../actions'
 import { getGroupActivitiesForResident } from '../../logs/actions'
+import { getServiceCatalog } from '../../../admin/services/actions'
 import { createClient } from '@/lib/supabase/server'
+import { ResidentServicesSection } from './ResidentServicesSection'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,10 +23,12 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
     redirect('/butler/residents')
   }
 
-  const [resident, logs, groupActivities] = await Promise.all([
+  const [resident, logs, groupActivities, residentServices, serviceCatalog] = await Promise.all([
     getResident(id),
     getServiceLogs(id),
     getGroupActivitiesForResident(id),
+    getResidentServices(id),
+    getServiceCatalog(),
   ])
   if (!resident) notFound()
 
@@ -125,6 +129,13 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
           )}
         </div>
       </div>
+
+      <ResidentServicesSection
+        residentId={resident.id}
+        services={residentServices}
+        catalog={serviceCatalog}
+        canManage={canManage}
+      />
 
       {/* 日誌 header */}
       <div className="flex items-center justify-between mb-3">

@@ -254,6 +254,63 @@ export async function renewContractManually(id: string): Promise<string> {
   return newEnd
 }
 
+// ── 加值服務掛勾 ───────────────────────────────────────────
+
+export type ResidentService = {
+  id: string
+  resident_id: string
+  service_catalog_id: string
+  status: 'active' | 'inactive'
+  start_date: string | null
+  end_date: string | null
+  notes: string | null
+  created_at: string
+  service_catalog?: { name: string; type: 'package' | 'addon'; price: number; unit: string | null } | null
+}
+
+export async function getResidentServices(residentId: string): Promise<ResidentService[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('resident_services')
+    .select('*, service_catalog(name, type, price, unit)')
+    .eq('resident_id', residentId)
+    .order('created_at', { ascending: false })
+  return (data ?? []) as ResidentService[]
+}
+
+export async function addResidentService(input: {
+  resident_id: string
+  service_catalog_id: string
+  start_date?: string | null
+  notes?: string | null
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('未登入')
+  const { error } = await supabase.from('resident_services').insert({
+    ...input, created_by: user.id,
+  })
+  if (error) throw new Error(error.message)
+  revalidatePath(`/butler/residents/${input.resident_id}`)
+}
+
+export async function updateResidentServiceStatus(id: string, residentId: string, status: 'active' | 'inactive') {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('resident_services')
+    .update({ status, updated_at: new Date().toISOString(), ...(status === 'inactive' ? { end_date: fmtDate(new Date()) } : {}) })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/butler/residents/${residentId}`)
+}
+
+export async function removeResidentService(id: string, residentId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('resident_services').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/butler/residents/${residentId}`)
+}
+
 // ── 服務日誌 ─────────────────────────────────────────────
 
 export async function getServiceLogs(residentId: string): Promise<ServiceLog[]> {

@@ -137,6 +137,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
         : (staffId ? [staffId] : []),
     priority:         existingTask?.priority ?? 'normal',
     category:         existingTask?.category ?? 'other',
+    fee:              existingTask?.fee?.toString() ?? '',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -154,6 +155,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
         assigned_to_ids: form.assigned_to_ids,
         priority: form.priority as 'normal' | 'urgent',
         category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
+        fee: form.fee ? Number(form.fee) : null,
       }
       if (existingTask) { await updateButlerTask(existingTask.id, payload) }
       else              { await createButlerTask(payload) }
@@ -183,6 +185,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
           assigned_to_ids: form.assigned_to_ids,
           priority: form.priority as 'normal' | 'urgent',
           category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
+          fee: form.fee ? Number(form.fee) : null,
         })
       }
       setCopyDoneCount(copyDates.length)
@@ -310,6 +313,11 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
               <option value="normal">一般</option>
               <option value="urgent">緊急</option>
             </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">費用（選填，NT$）</label>
+            <input type="number" className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.fee} onChange={e => set('fee', e.target.value)} placeholder="0" />
           </div>
           {existingTask && (
             <div className="border rounded-lg p-3 bg-gray-50">
