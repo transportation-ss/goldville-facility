@@ -268,6 +268,16 @@ export type ResidentService = {
   service_catalog?: { name: string; type: 'package' | 'addon'; price: number; unit: string | null } | null
 }
 
+// 派工表單挑選「掛勾服務」用：一次撈全部住戶目前生效中的加值服務，前端依住戶比對後篩選選項
+export async function getAllActiveResidentServices(): Promise<ResidentService[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('resident_services')
+    .select('*, service_catalog(name, type, price, unit)')
+    .eq('status', 'active')
+  return (data ?? []) as ResidentService[]
+}
+
 export async function getResidentServices(residentId: string): Promise<ResidentService[]> {
   const supabase = createAdminClient()
   const { data } = await supabase

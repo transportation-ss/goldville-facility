@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, ExternalLink, ArrowLeft, BookOpen, Trash2, Users } from 'lucide-react'
+import { Plus, ExternalLink, ArrowLeft, BookOpen, Trash2, Users, Calendar } from 'lucide-react'
 import { getResident, getServiceLogs, deleteServiceLog, getResidentServices } from '../actions'
 import { getGroupActivitiesForResident } from '../../logs/actions'
 import { getServiceCatalog } from '../../../admin/services/actions'
@@ -136,6 +136,11 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
         catalog={serviceCatalog}
         canManage={canManage}
       />
+
+      <Link href={`/butler/residents/${resident.id}/schedule`}
+        className="flex items-center justify-center gap-1.5 text-sm text-emerald-600 border border-emerald-100 bg-emerald-50 rounded-lg py-2.5 mb-6">
+        <Calendar className="w-4 h-4" /> 查看被服務安排
+      </Link>
 
       {/* 日誌 header */}
       <div className="flex items-center justify-between mb-3">

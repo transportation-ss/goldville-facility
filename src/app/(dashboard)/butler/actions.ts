@@ -100,6 +100,26 @@ export async function getButlerTasksByWeek(startDate: string, endDate: string): 
   return (data ?? []) as ButlerTask[]
 }
 
+// 住戶「被服務安排」月曆用：撈某住戶掛勾的加值服務在區間內的所有派工（含未指派管家的）
+export async function getTasksByResidentServices(
+  residentServiceIds: string[], startDate: string, endDate: string
+): Promise<ButlerTask[]> {
+  if (residentServiceIds.length === 0) return []
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('butler_tasks')
+    .select(`
+      *,
+      assignee:user_profiles!butler_tasks_assigned_to_fkey(id, display_name)
+    `)
+    .in('resident_service_id', residentServiceIds)
+    .gte('task_date', startDate)
+    .lte('task_date', endDate)
+    .order('task_date')
+    .order('start_time', { nullsFirst: false })
+  return (data ?? []) as ButlerTask[]
+}
+
 export async function getButlerSchedulesByWeek(startDate: string, endDate: string): Promise<ButlerSchedule[]> {
   const supabase = createAdminClient()
   const { data } = await supabase

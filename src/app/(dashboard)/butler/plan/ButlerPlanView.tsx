@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Users, MapPin } from 'lucide-react'
 import type { ButlerTask, ButlerStaff } from '../actions'
 import { createButlerTask, updateButlerTask, deleteButlerTask } from '../actions'
+import type { ResidentService } from '../residents/actions'
 
 // dateStr 是台灣時區的日曆日期字串，這裡固定用 UTC 運算避免主機時區換算出錯的一天
 function addDays(dateStr: string, n: number): string {
@@ -18,7 +19,8 @@ interface Props {
   viewDate: string
   tasks: ButlerTask[]
   staff: ButlerStaff[]
-  residents: { name: string; room: string | null }[]
+  residents: { id: string; name: string; room: string | null }[]
+  residentServices: ResidentService[]
 }
 
 const DEFAULT_START = 8
@@ -109,9 +111,10 @@ const CATEGORY_OPTIONS: { value: 'medication' | 'cleaning' | 'companion' | 'othe
 ]
 
 // ── 任務 Modal ────────────────────────────────────────────
-function SlotModal({ staffId, startTime, defaultDate, staff, residents, existingTask, onClose }: {
+function SlotModal({ staffId, startTime, defaultDate, staff, residents, residentServices, existingTask, onClose }: {
   staffId: string; startTime: string; defaultDate: string
-  staff: ButlerStaff[]; residents: { name: string; room: string | null }[]
+  staff: ButlerStaff[]; residents: { id: string; name: string; room: string | null }[]
+  residentServices: ResidentService[]
   existingTask?: ButlerTask | null; onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
@@ -138,6 +141,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
     priority:         existingTask?.priority ?? 'normal',
     category:         existingTask?.category ?? 'other',
     fee:              existingTask?.fee?.toString() ?? '',
+    resident_service_id: existingTask?.resident_service_id ?? '',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -156,6 +160,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
         priority: form.priority as 'normal' | 'urgent',
         category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
         fee: form.fee ? Number(form.fee) : null,
+        resident_service_id: form.resident_service_id || null,
       }
       if (existingTask) { await updateButlerTask(existingTask.id, payload) }
       else              { await createButlerTask(payload) }
@@ -186,12 +191,20 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
           priority: form.priority as 'normal' | 'urgent',
           category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
           fee: form.fee ? Number(form.fee) : null,
+          resident_service_id: form.resident_service_id || null,
         })
       }
       setCopyDoneCount(copyDates.length)
       setCopyDates([])
     } finally { setSaving(false) }
   }
+
+  const matchedResident = form.space.trim()
+    ? residents.find(r => form.space.includes(r.name) || form.space.trim() === `${r.room ?? ''}${r.name}`.trim())
+    : undefined
+  const matchedResidentServices = matchedResident
+    ? residentServices.filter(rs => rs.resident_id === matchedResident.id)
+    : []
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -290,7 +303,9 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
           <div>
             <label className="text-xs text-gray-500 mb-1 block">空間/住戶（選填）</label>
             <input className="w-full border rounded-lg px-3 py-2 text-sm" list="resident-space-options"
-              value={form.space} onChange={e => set('space', e.target.value)} placeholder="例：201 張智貞" />
+              value={form.space}
+              onChange={e => setForm(f => ({ ...f, space: e.target.value, resident_service_id: '' }))}
+              placeholder="例：201 張智貞" />
             <datalist id="resident-space-options">
               {residents.map(r => (
                 <option key={`${r.room ?? ''}-${r.name}`} value={`${r.room ?? ''}${r.name}`.trim()} />
@@ -298,14 +313,27 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, existing
             </datalist>
             {/* 即時比對是否能對到住戶：完成任務時要靠這個字串找 resident_id 才會提示填服務紀錄，
                 對不到的話當下就提醒，避免事後變成「任務完成了卻沒人提醒填紀錄」的漏網之魚 */}
-            {form.space.trim() && (() => {
-              const matched = residents.find(r =>
-                form.space.includes(r.name) || form.space.trim() === `${r.room ?? ''}${r.name}`.trim())
-              return matched
-                ? <p className="text-xs text-emerald-600 mt-1">✓ 對應住戶：{matched.room ?? ''} {matched.name}</p>
+            {form.space.trim() && (
+              matchedResident
+                ? <p className="text-xs text-emerald-600 mt-1">✓ 對應住戶：{matchedResident.room ?? ''} {matchedResident.name}</p>
                 : <p className="text-xs text-amber-600 mt-1">⚠ 找不到對應住戶，任務完成後將不會提示填寫服務紀錄</p>
-            })()}
+            )}
           </div>
+          {matchedResident && matchedResidentServices.length > 0 && (
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">掛勾加值服務（選填，會出現在該住戶的服務紀錄）</label>
+              <select className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.resident_service_id} onChange={e => set('resident_service_id', e.target.value)}>
+                <option value="">不掛勾</option>
+                {matchedResidentServices.map(rs => (
+                  <option key={rs.id} value={rs.id}>
+                    {rs.service_catalog?.name}
+                    {rs.service_catalog?.type === 'package' ? '（照顧包）' : '（單項）'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-xs text-gray-500 mb-1 block">優先度</label>
             <select className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -431,7 +459,7 @@ function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onCli
 }
 
 // ── 主元件 ───────────────────────────────────────────────
-export function ButlerPlanView({ today, viewDate, tasks, staff, residents }: Props) {
+export function ButlerPlanView({ today, viewDate, tasks, staff, residents, residentServices }: Props) {
   const router = useRouter()
   const [showFull, setShowFull]   = useState(false)
   const [yAxis, setYAxis]         = useState<'staff' | 'space'>('staff')
@@ -609,6 +637,7 @@ export function ButlerPlanView({ today, viewDate, tasks, staff, residents }: Pro
           defaultDate={viewDate}
           staff={staff}
           residents={residents}
+          residentServices={residentServices}
           existingTask={modal.task}
           onClose={() => setModal(null)}
         />
