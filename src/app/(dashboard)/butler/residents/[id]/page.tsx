@@ -98,6 +98,24 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
               )}
             </div>
             {resident.notes && <p className="text-xs text-gray-500 mt-2">{resident.notes}</p>}
+            {(resident.emergency_contact_name || resident.emergency_contact2_name) && (
+              <div className="mt-2.5 pt-2.5 border-t border-gray-100 space-y-0.5">
+                {resident.emergency_contact_name && (
+                  <p className="text-xs text-gray-500">
+                    緊急聯絡人 {resident.emergency_contact_name}
+                    {resident.emergency_contact_relation && `（${resident.emergency_contact_relation}）`}
+                    {resident.emergency_contact_phone && ` · ${resident.emergency_contact_phone}`}
+                  </p>
+                )}
+                {resident.emergency_contact2_name && (
+                  <p className="text-xs text-gray-500">
+                    緊急聯絡人2 {resident.emergency_contact2_name}
+                    {resident.emergency_contact2_relation && `（${resident.emergency_contact2_relation}）`}
+                    {resident.emergency_contact2_phone && ` · ${resident.emergency_contact2_phone}`}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           {resident.drive_folder_url && (
             <a href={resident.drive_folder_url} target="_blank" rel="noopener noreferrer"
