@@ -15,7 +15,7 @@ export default async function AdminServicesPage() {
     .eq('id', user.id)
     .single()
 
-  if (!self || !['admin', 'manager', 'butler_manager'].includes(self.role)) {
+  if (!self || !['admin', 'manager', 'butler_manager', 'sales'].includes(self.role)) {
     redirect('/dashboard')
   }
 

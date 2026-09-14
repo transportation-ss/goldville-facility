@@ -1,6 +1,11 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts'
+import { Download } from 'lucide-react'
+import { exportChartAsImage } from '@/lib/export-chart-image'
 import { getFeeReport, type FeeGroupBy, type FeeReportRow } from './actions'
 
 function taipeiToday() {
@@ -25,6 +30,24 @@ function formatPeriod(periodKey: string, groupBy: FeeGroupBy) {
   return periodKey
 }
 
+function exportRowsAsCsv(rows: FeeReportRow[], groupBy: FeeGroupBy) {
+  const header = ['期間', '房號', '住戶', '固定包月費', '單項費用', '小計']
+  const lines = rows.map(r => [
+    formatPeriod(r.periodKey, groupBy), r.room ?? '', r.residentName,
+    r.packageFee, r.addonFee, r.packageFee + r.addonFee,
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+  const csv = '﻿' + [header.join(','), ...lines].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `加值服務費用統計.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export function FeeReportView({ residents }: { residents: { id: string; name: string; room: string | null }[] }) {
   const today = taipeiToday()
   const [startDate, setStartDate] = useState(monthStart(today))
@@ -34,6 +57,7 @@ export function FeeReportView({ residents }: { residents: { id: string; name: st
   const [rows, setRows] = useState<FeeReportRow[]>([])
   const [isPending, startTransition] = useTransition()
   const [loaded, setLoaded] = useState(false)
+  const chartRef = useRef<HTMLDivElement>(null)
 
   function runQuery() {
     startTransition(async () => {
@@ -51,6 +75,20 @@ export function FeeReportView({ residents }: { residents: { id: string; name: st
 
   const grandPackage = rows.reduce((s, r) => s + r.packageFee, 0)
   const grandAddon = rows.reduce((s, r) => s + r.addonFee, 0)
+
+  // 跨期趨勢：把明細列依期間加總（不分住戶），用來看每期總費用的走勢／跨月比較
+  const chartData = useMemo(() => {
+    const byPeriod = new Map<string, { periodKey: string; 固定包月費: number; 單項費用: number }>()
+    for (const r of rows) {
+      let p = byPeriod.get(r.periodKey)
+      if (!p) { p = { periodKey: r.periodKey, 固定包月費: 0, 單項費用: 0 }; byPeriod.set(r.periodKey, p) }
+      p.固定包月費 += r.packageFee
+      p.單項費用 += r.addonFee
+    }
+    return Array.from(byPeriod.values())
+      .sort((a, b) => a.periodKey.localeCompare(b.periodKey))
+      .map(p => ({ ...p, 期間: formatPeriod(p.periodKey, groupBy) }))
+  }, [rows, groupBy])
 
   return (
     <div>
@@ -96,6 +134,42 @@ export function FeeReportView({ residents }: { residents: { id: string; name: st
             ))}
           </div>
         </div>
+      </div>
+
+      {chartData.length > 1 && (
+        <div className="bg-white border rounded-xl p-4 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-400">跨期趨勢（全部已篩選住戶加總）</p>
+            <button
+              onClick={() => exportChartAsImage(chartRef.current, `加值服務費用趨勢`)}
+              className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-emerald-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              輸出圖檔
+            </button>
+          </div>
+          <div ref={chartRef} className="w-full h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="期間" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(v) => `NT$ ${Number(v).toLocaleString()}`} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="固定包月費" stackId="fee" fill="#059669" />
+                <Bar dataKey="單項費用" stackId="fee" fill="#3b82f6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end mb-2">
+        <button onClick={() => exportRowsAsCsv(rows, groupBy)} disabled={rows.length === 0}
+          className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-emerald-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-40">
+          <Download className="w-3.5 h-3.5" />
+          匯出 CSV
+        </button>
       </div>
 
       <div className="bg-white border rounded-xl overflow-hidden">

@@ -59,6 +59,8 @@ function getNavByRole(role: string): RoleNav {
             items: [
               { label: '管家派工',     href: '/butler/plan',      icon: ClipboardList },
               { label: '住戶列表',     href: '/butler/residents', icon: Users         },
+              { label: '加值服務',     href: '/admin/services',    icon: Package       },
+              { label: '費用統計',     href: '/admin/services/fees', icon: BarChart3   },
               { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '清潔值班',     href: '/butler/cleaning',  icon: Brush         },
@@ -235,6 +237,8 @@ function getNavByRole(role: string): RoleNav {
           {
             items: [
               { label: '住戶列表',     href: '/butler/residents', icon: Users     },
+              { label: '加值服務',     href: '/admin/services',    icon: Package   },
+              { label: '費用統計',     href: '/admin/services/fees', icon: BarChart3 },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '班表',         href: '/butler/schedule',  icon: History   },
               { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
@@ -261,6 +265,8 @@ function getNavByRole(role: string): RoleNav {
             items: [
               { label: '清潔值班',     href: '/butler/cleaning',  icon: Brush     },
               { label: '住戶列表',     href: '/butler/residents', icon: Users     },
+              { label: '加值服務',     href: '/admin/services',    icon: Package   },
+              { label: '費用統計',     href: '/admin/services/fees', icon: BarChart3 },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '班表',         href: '/butler/schedule',  icon: History   },
               { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
