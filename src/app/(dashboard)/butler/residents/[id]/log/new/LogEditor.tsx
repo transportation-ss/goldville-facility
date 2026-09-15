@@ -423,8 +423,9 @@ function PhotoPicker({ residentName, cloudName, onConfirm, onClose }: {
 }
 
 // ── 主元件 ───────────────────────────────────────────────
-export function LogEditor({ resident, authorName, existingLog, cloudName = '', cleaningPrefill, initialCategory }: {
+export function LogEditor({ resident, otherResidents = [], authorName, existingLog, cloudName = '', cleaningPrefill, initialCategory }: {
   resident: ButlerResident
+  otherResidents?: ButlerResident[]
   authorName: string
   existingLog?: ServiceLog
   cloudName?: string
@@ -450,6 +451,7 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
   const [category, setCategory] = useState<'medication' | 'cleaning' | 'companion' | 'other' | null>(
     existingLog?.category ?? initialCategory ?? null
   )
+  const [extraResidentIds, setExtraResidentIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null)
   const batchFileRef = useRef<HTMLInputElement>(null)
@@ -548,6 +550,10 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
     setBatchProgress(null)
   }
 
+  function toggleExtraResident(id: string) {
+    setExtraResidentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
   function updatePeriod(type: PeriodType, start: string, end: string) {
     setPeriodType(type); setPeriodStart(start); setPeriodEnd(end)
     if (!titleCustom) setTitle(genTitle(resident.name, start, end))
@@ -599,6 +605,7 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
         })
         router.back()
       } else {
+        // 同一份內容可疊寫給多位住戶（例：夫妻分住兩間房），逐一各存一筆，主要住戶的那筆決定儲存後導向哪裡
         const id = await createServiceLog({
           resident_id: resident.id,
           log_date: today,
@@ -609,6 +616,18 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
           content: blocks,
           category,
         })
+        for (const extraId of extraResidentIds) {
+          await createServiceLog({
+            resident_id: extraId,
+            log_date: today,
+            period_start: periodStart,
+            period_end: periodEnd,
+            period_type: periodType,
+            title,
+            content: blocks,
+            category,
+          })
+        }
         router.push(`/butler/residents/${resident.id}/log/${id}`)
       }
     } finally { setSaving(false) }
@@ -694,6 +713,23 @@ export function LogEditor({ resident, authorName, existingLog, cloudName = '', c
           <p className="text-xs text-gray-400">來自任務：{cleaningPrefill.meta}</p>
         )}
       </div>
+
+      {/* 同時記錄給其他住戶（新增時可選，內容原封不動各存一筆） */}
+      {!existingLog && otherResidents.length > 0 && (
+        <div className="mb-5">
+          <label className="text-xs text-gray-500 mb-1.5 block">同時記錄給其他住戶（選填，內容會完全相同）</label>
+          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+            {otherResidents.map(r => (
+              <button key={r.id} onClick={() => toggleExtraResident(r.id)}
+                className={`text-xs px-2.5 py-1 rounded-full border ${
+                  extraResidentIds.includes(r.id) ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'border-gray-200 text-gray-500'
+                }`}>
+                {r.room ?? ''} {r.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 服務模組快速套用（可疊加多個） */}
       <div className="mb-5">

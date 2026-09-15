@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { v2 as cloudinary } from 'cloudinary'
-import { getResident } from '../../../actions'
+import { getResident, getResidents } from '../../../actions'
 import { getButlerTaskById } from '../../../../actions'
 import { LogEditor } from './LogEditor'
 import { createClient } from '@/lib/supabase/server'
@@ -46,6 +46,9 @@ export default async function NewLogPage({
   const resident = await getResident(id)
   if (!resident) notFound()
 
+  // 同一張紀錄可疊寫給多位住戶（例：夫妻分住兩間房，一起顧），排除自己給選單挑選
+  const otherResidents = (await getResidents()).filter(r => r.id !== id)
+
   const CATEGORY_HEADING: Record<string, string> = {
     medication: '用藥紀錄',
     cleaning: '清掃摘要',
@@ -81,6 +84,7 @@ export default async function NewLogPage({
   return (
     <LogEditor
       resident={resident}
+      otherResidents={otherResidents}
       authorName={profile?.display_name ?? ''}
       cloudName={process.env.CLOUDINARY_CLOUD_NAME ?? ''}
       cleaningPrefill={cleaningPrefill}
