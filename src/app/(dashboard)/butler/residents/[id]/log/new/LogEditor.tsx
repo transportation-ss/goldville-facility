@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Type, Camera, Heading, Trash2, GripVertical, Loader2, Images, Check, X, Sparkles, Wand2 } from 'lucide-react'
+import { ArrowLeft, Type, Camera, Heading, Trash2, GripVertical, Loader2, Images, Check, X, Sparkles, Wand2, Plus } from 'lucide-react'
 import type { ButlerResident, LogBlock, ServiceLog } from '../../../actions'
 import { createServiceLog, updateServiceLog, getServiceLogsInRange } from '../../../actions'
 
@@ -422,6 +422,69 @@ function PhotoPicker({ residentName, cloudName, onConfirm, onClose }: {
   )
 }
 
+// ── 其他住戶搜尋選擇器（複用 GroupEditor 的 ParticipantPicker 樣式）──
+function ExtraResidentPicker({ options, selectedIds, onToggle }: {
+  options: { id: string; label: string; sub?: string }[]
+  selectedIds: string[]
+  onToggle: (id: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const filtered = options.filter(o => !q || o.label.includes(q) || (o.sub ?? '').includes(q))
+  const selected = new Set(selectedIds)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs text-gray-500">同時記錄給其他住戶（選填，內容會完全相同）</label>
+        <button type="button" onClick={() => setOpen(o => !o)}
+          className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-0.5 shrink-0">
+          <Plus className="w-3 h-3" /> 新增
+        </button>
+      </div>
+
+      {selectedIds.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {options.filter(o => selected.has(o.id)).map(o => (
+            <span key={o.id} onClick={() => onToggle(o.id)}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-full cursor-pointer bg-emerald-100 text-emerald-700 hover:bg-emerald-200">
+              {o.label}{o.sub ? ` · ${o.sub}` : ''}
+              <X className="w-3 h-3" />
+            </span>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div className="border rounded-xl overflow-hidden shadow-sm">
+          <div className="p-2 border-b bg-gray-50">
+            <input className="w-full text-sm px-2 py-1 rounded-lg border focus:outline-none"
+              placeholder="輸入房號或姓名搜尋…" value={q} onChange={e => setQ(e.target.value)} autoFocus />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 && (
+              <p className="text-center text-xs text-gray-400 py-4">查無符合的住戶</p>
+            )}
+            {filtered.map(o => (
+              <button key={o.id} type="button" onClick={() => onToggle(o.id)}
+                className={`w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 text-left ${
+                  selected.has(o.id) ? 'bg-emerald-50' : ''
+                }`}>
+                <span>{o.sub ? <span className="text-gray-400 mr-1 text-xs">{o.sub}</span> : null}{o.label}</span>
+                {selected.has(o.id) && <span className="text-emerald-500">✓</span>}
+              </button>
+            ))}
+          </div>
+          <div className="p-2 border-t bg-gray-50">
+            <button type="button" onClick={() => { setOpen(false); setQ('') }}
+              className="w-full text-xs text-gray-500 hover:text-gray-700">完成</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── 主元件 ───────────────────────────────────────────────
 export function LogEditor({ resident, otherResidents = [], authorName, existingLog, cloudName = '', cleaningPrefill, initialCategory }: {
   resident: ButlerResident
@@ -717,17 +780,11 @@ export function LogEditor({ resident, otherResidents = [], authorName, existingL
       {/* 同時記錄給其他住戶（新增時可選，內容原封不動各存一筆） */}
       {!existingLog && otherResidents.length > 0 && (
         <div className="mb-5">
-          <label className="text-xs text-gray-500 mb-1.5 block">同時記錄給其他住戶（選填，內容會完全相同）</label>
-          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-            {otherResidents.map(r => (
-              <button key={r.id} onClick={() => toggleExtraResident(r.id)}
-                className={`text-xs px-2.5 py-1 rounded-full border ${
-                  extraResidentIds.includes(r.id) ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'border-gray-200 text-gray-500'
-                }`}>
-                {r.room ?? ''} {r.name}
-              </button>
-            ))}
-          </div>
+          <ExtraResidentPicker
+            options={otherResidents.map(r => ({ id: r.id, label: r.name, sub: r.room ?? undefined }))}
+            selectedIds={extraResidentIds}
+            onToggle={toggleExtraResident}
+          />
         </div>
       )}
 
