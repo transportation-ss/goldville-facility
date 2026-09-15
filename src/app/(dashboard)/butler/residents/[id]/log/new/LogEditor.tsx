@@ -658,6 +658,15 @@ export function LogEditor({ resident, otherResidents = [], authorName, existingL
     setBlocks(bs => bs.filter((_, idx) => idx !== i))
   }
 
+  // 標題通常帶著主要住戶姓名（如「李連明_服務紀錄_...」），追加給其他住戶時詢問是否要把姓名換成對方的，
+  // 預設帶入換好名字的版本，取消才維持原標題
+  function titleForExtraResident(residentName: string): string {
+    if (!title.includes(resident.name) || residentName === resident.name) return title
+    const replaced = title.split(resident.name).join(residentName)
+    const ok = confirm(`這筆紀錄也會存給「${residentName}」，要把標題中的姓名一併換成對方嗎？\n\n新標題：${replaced}`)
+    return ok ? replaced : title
+  }
+
   async function handleSave() {
     if (!title.trim()) return
     setSaving(true)
@@ -680,13 +689,14 @@ export function LogEditor({ resident, otherResidents = [], authorName, existingL
           category,
         })
         for (const extraId of extraResidentIds) {
+          const extraName = otherResidents.find(r => r.id === extraId)?.name ?? ''
           await createServiceLog({
             resident_id: extraId,
             log_date: today,
             period_start: periodStart,
             period_end: periodEnd,
             period_type: periodType,
-            title,
+            title: titleForExtraResident(extraName),
             content: blocks,
             category,
           })
