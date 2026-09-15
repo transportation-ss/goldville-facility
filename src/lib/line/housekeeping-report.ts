@@ -394,12 +394,16 @@ export async function generateHousekeepingReport() {
   const supabase = createAdminClient()
   const today = todayTW()
 
-  const { data: plan } = await supabase
+  const { data: plan, error: planError } = await supabase
     .from('housekeeping_daily_plans')
     .select('*')
     .eq('plan_date', today)
     .maybeSingle()
 
+  if (planError) {
+    console.error('[generateHousekeepingReport] 查詢派工單失敗', today, planError)
+    return textMsg('系統查詢失敗，請稍後再試或聯絡管理員。')
+  }
   if (!plan) return textMsg('今日工單尚未安排。')
   if (plan.status === 'draft') return textMsg('今日工單尚未安排。')
 
@@ -453,12 +457,16 @@ export async function generateEODReport() {
   const supabase = createAdminClient()
   const today = todayTW()
 
-  const { data: plan } = await supabase
+  const { data: plan, error: planError } = await supabase
     .from('housekeeping_daily_plans')
     .select('*')
     .eq('plan_date', today)
     .maybeSingle()
 
+  if (planError) {
+    console.error('[generateEODReport] 查詢派工單失敗', today, planError)
+    return textMsg('系統查詢失敗，請稍後再試或聯絡管理員。')
+  }
   if (!plan || plan.status === 'draft') return textMsg('今日工單尚未安排。')
 
   const { data: tasks } = await supabase

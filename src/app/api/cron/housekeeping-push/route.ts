@@ -4,6 +4,9 @@ import { generateEODReport, pushReportToManager } from '@/lib/line/housekeeping-
 export async function GET(_req: NextRequest) {
   try {
     const report = await generateEODReport()
+    if (report?.type === 'text') {
+      console.log('[cron] housekeeping-push text report', (report as { text: string }).text)
+    }
     await pushReportToManager(report)
     return NextResponse.json({ ok: true })
   } catch (e) {
