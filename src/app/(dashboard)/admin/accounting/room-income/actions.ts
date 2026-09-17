@@ -219,18 +219,32 @@ export async function getRateSuggestion(roomName: string, floor: string | null, 
     .eq('room_name', roomName)
     .maybeSingle()
 
-  const overrideField = OVERRIDE_CYCLE_FIELD[billingCycle]
-  const overridePrice = overrideField ? override?.[overrideField] : null
-
-  if (overridePrice != null) {
-    return { billing_cycle: billingCycle, first_person_fee: overridePrice, second_person_fee: 0, second_person_category: null, isOverride: true, discountApplied: 0, vacant: false }
-  }
-
   const { data: config } = await supabase
     .from('room_rate_config')
     .select('*')
     .eq('id', 1)
     .single()
+
+  // 01房為家庭房，房價內含2人，第3人起才額外收費
+  const isFamilyRoom = roomName.endsWith('01')
+  const residentCount = residents?.length ?? 0
+  const extraPersonFee = residentCount > 2 ? config?.second_family ?? 0 : 0
+
+  const overrideField = OVERRIDE_CYCLE_FIELD[billingCycle]
+  const overridePrice = overrideField ? override?.[overrideField] : null
+
+  if (overridePrice != null) {
+    const secondPersonFee = isFamilyRoom ? extraPersonFee : 0
+    return {
+      billing_cycle: billingCycle,
+      first_person_fee: overridePrice,
+      second_person_fee: secondPersonFee,
+      second_person_category: secondPersonFee > 0 ? '家屬' : null,
+      isOverride: true,
+      discountApplied: 0,
+      vacant: false,
+    }
+  }
 
   const isHighFloor = floor === '3F' || floor === '5F'
   const baseByC = {
@@ -244,7 +258,9 @@ export async function getRateSuggestion(roomName: string, floor: string | null, 
   const discount = override?.discount_amount ?? 0
   const firstPersonFee = Math.max(0, (baseByC[billingCycle] ?? 0) - discount)
 
-  const secondPersonFee = (residents?.length ?? 0) > 1 ? config?.second_family ?? 0 : 0
+  const secondPersonFee = isFamilyRoom
+    ? extraPersonFee
+    : (residentCount > 1 ? config?.second_family ?? 0 : 0)
 
   return {
     billing_cycle: billingCycle,
