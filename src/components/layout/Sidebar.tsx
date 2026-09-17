@@ -121,11 +121,11 @@ const fullNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '會計',
     items: [
-      { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3  },
       { label: '房間收支統計', href: '/admin/accounting/fee-stats',    icon: PieChart   },
       { label: '房間收入',     href: '/admin/accounting/room-income',  icon: Wallet     },
       { label: '房間成本',     href: '/admin/accounting/room-cost',    icon: Coins      },
       { label: '房間費率表',   href: '/admin/accounting/rate-catalog', icon: Calculator },
+      { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3  },
     ],
   },
 ]
@@ -305,11 +305,11 @@ const accountingNav: (NavSingle | NavGroup)[] = [
   {
     type: 'group', label: '會計',
     items: [
-      { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3, exact: true },
       { label: '房間收支統計', href: '/admin/accounting/fee-stats',    icon: PieChart   },
       { label: '房間收入',     href: '/admin/accounting/room-income',  icon: Wallet     },
       { label: '房間成本',     href: '/admin/accounting/room-cost',    icon: Coins      },
       { label: '房間費率表',   href: '/admin/accounting/rate-catalog', icon: Calculator },
+      { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3, exact: true },
     ],
   },
   {

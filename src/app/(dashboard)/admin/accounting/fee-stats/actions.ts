@@ -37,7 +37,7 @@ export type FeeStatsResult = {
   miscIncome: number
 }
 
-export async function getFeeStats(fromMonth: string, toMonth: string): Promise<FeeStatsResult> {
+async function fetchFeeStatsRaw(fromMonth: string, toMonth: string) {
   const supabase = await createClient()
 
   const { data: rooms, error: roomsError } = await supabase
@@ -50,7 +50,7 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
 
   const { data: entries, error: entriesError } = await supabase
     .from('room_income_entries')
-    .select('room_id, first_person_fee, second_person_fee, utility_fee, fixed_services, addon_services')
+    .select('room_id, period_month, first_person_fee, second_person_fee, utility_fee, fixed_services, addon_services')
     .gte('period_month', `${fromMonth}-01`)
     .lte('period_month', `${toMonth}-01`)
   if (entriesError) throw new Error(entriesError.message)
@@ -69,15 +69,21 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
 
   const { data: misc, error: miscError } = await supabase
     .from('misc_income_entries')
-    .select('amount')
+    .select('amount, period_month')
     .gte('period_month', `${fromMonth}-01`)
     .lte('period_month', `${toMonth}-01`)
   if (miscError) throw new Error(miscError.message)
 
   const occupiedRooms = new Set((residents ?? []).map(r => r.room).filter(Boolean))
 
+  return { rooms: rooms ?? [], entries: entries ?? [], costs: costs ?? [], misc: misc ?? [], occupiedRooms }
+}
+
+export async function getFeeStats(fromMonth: string, toMonth: string): Promise<FeeStatsResult> {
+  const { rooms, entries, costs, misc, occupiedRooms } = await fetchFeeStatsRaw(fromMonth, toMonth)
+
   const incomeByRoom = new Map<string, { rent: number; added: number }>()
-  for (const e of entries ?? []) {
+  for (const e of entries) {
     const cur = incomeByRoom.get(e.room_id) ?? { rent: 0, added: 0 }
     cur.rent += e.first_person_fee + e.second_person_fee
     cur.added += e.utility_fee + sumItems(e.fixed_services) + sumItems(e.addon_services)
@@ -87,13 +93,13 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
   // 成本尚未逐房逐月登錄時，用預設成本（房間成本頁同一套規則）估算
   const months = monthsBetween(fromMonth, toMonth)
   const costEntryByRoomMonth = new Map<string, number>()
-  for (const c of costs ?? []) {
+  for (const c of costs) {
     const key = `${c.room_id}|${c.period_month.slice(0, 7)}`
     costEntryByRoomMonth.set(key, (costEntryByRoomMonth.get(key) ?? 0) + c.amount)
   }
 
   const costByRoom = new Map<string, number>()
-  for (const r of rooms ?? []) {
+  for (const r of rooms) {
     let total = 0
     for (const m of months) {
       const key = `${r.id}|${m}`
@@ -102,7 +108,7 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
     costByRoom.set(r.id, total)
   }
 
-  const result: FeeStatsRoom[] = (rooms ?? []).map(r => ({
+  const result: FeeStatsRoom[] = rooms.map(r => ({
     id: r.id,
     name: r.name,
     floor: r.floor,
@@ -114,6 +120,57 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
 
   return {
     rooms: result,
-    miscIncome: (misc ?? []).reduce((sum, m) => sum + m.amount, 0),
+    miscIncome: misc.reduce((sum, m) => sum + m.amount, 0),
   }
+}
+
+export type FeeStatsTrendPoint = {
+  month: string
+  rooms: FeeStatsRoom[]
+  miscIncome: number
+}
+
+export async function getFeeStatsTrend(fromMonth: string, toMonth: string): Promise<FeeStatsTrendPoint[]> {
+  const { rooms, entries, costs, misc, occupiedRooms } = await fetchFeeStatsRaw(fromMonth, toMonth)
+
+  const incomeByRoomMonth = new Map<string, { rent: number; added: number }>()
+  for (const e of entries) {
+    const key = `${e.room_id}|${e.period_month.slice(0, 7)}`
+    const cur = incomeByRoomMonth.get(key) ?? { rent: 0, added: 0 }
+    cur.rent += e.first_person_fee + e.second_person_fee
+    cur.added += e.utility_fee + sumItems(e.fixed_services) + sumItems(e.addon_services)
+    incomeByRoomMonth.set(key, cur)
+  }
+
+  const costByRoomMonth = new Map<string, number>()
+  for (const c of costs) {
+    const key = `${c.room_id}|${c.period_month.slice(0, 7)}`
+    costByRoomMonth.set(key, (costByRoomMonth.get(key) ?? 0) + c.amount)
+  }
+
+  const miscByMonth = new Map<string, number>()
+  for (const m of misc) {
+    const key = m.period_month.slice(0, 7)
+    miscByMonth.set(key, (miscByMonth.get(key) ?? 0) + m.amount)
+  }
+
+  const months = monthsBetween(fromMonth, toMonth)
+
+  return months.map(month => ({
+    month,
+    miscIncome: miscByMonth.get(month) ?? 0,
+    rooms: rooms.map(r => {
+      const key = `${r.id}|${month}`
+      const income = incomeByRoomMonth.get(key)
+      return {
+        id: r.id,
+        name: r.name,
+        floor: r.floor,
+        occupied: occupiedRooms.has(r.name),
+        roomRent: income?.rent ?? 0,
+        addedValue: income?.added ?? 0,
+        cost: costByRoomMonth.get(key) ?? defaultCostForRoom(r.name),
+      }
+    }),
+  }))
 }

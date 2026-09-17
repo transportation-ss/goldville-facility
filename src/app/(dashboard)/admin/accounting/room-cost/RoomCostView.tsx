@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { Loader2, Save } from 'lucide-react'
 import { getRoomCostSummary, upsertRoomCostEntry, type RoomCostSummary } from './actions'
 
@@ -54,6 +54,17 @@ export function RoomCostView({ initialRooms, initialMonth }: { initialRooms: Roo
     })
   }
 
+  const roomsByFloor = useMemo(() => {
+    const groups = new Map<string, RoomCostSummary[]>()
+    for (const room of rooms) {
+      const key = room.floor ?? '—'
+      const list = groups.get(key) ?? []
+      list.push(room)
+      groups.set(key, list)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b))
+  }, [rooms])
+
   const total = rooms.reduce((sum, r) => sum + (drafts[r.id]?.amount ?? r.amount), 0)
 
   return (
@@ -67,40 +78,47 @@ export function RoomCostView({ initialRooms, initialMonth }: { initialRooms: Roo
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {rooms.map(room => {
-          const draft = draftFor(room)
-          const dirty = draft.amount !== room.amount || draft.notes !== (room.notes ?? '')
-          return (
-            <div key={room.id} className="bg-white border rounded-xl p-3.5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-900">{room.name}</span>
-                <span className="text-xs text-gray-400">{room.floor ?? '—'}{!room.occupied && ' · 空房'}</span>
-              </div>
-              <input
-                type="number"
-                value={draft.amount}
-                onChange={e => setDraft(room.id, { amount: Number(e.target.value) || 0 })}
-                className="w-full border rounded-lg px-2 py-1.5 text-sm mb-1.5"
-              />
-              <input
-                type="text"
-                placeholder="備註（可留空）"
-                value={draft.notes}
-                onChange={e => setDraft(room.id, { notes: e.target.value })}
-                className="w-full border rounded-lg px-2 py-1.5 text-xs mb-2 text-gray-600"
-              />
-              <button
-                onClick={() => save(room)}
-                disabled={!dirty || savingRoom === room.id}
-                className="w-full flex items-center justify-center gap-1 text-xs px-2 py-1.5 rounded-lg bg-emerald-600 text-white font-medium disabled:opacity-40 disabled:bg-gray-300"
-              >
-                {savingRoom === room.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                {room.hasEntry ? '已登錄・更新' : '使用預設・儲存'}
-              </button>
+      <div className="space-y-5">
+        {roomsByFloor.map(([floor, floorRooms]) => (
+          <div key={floor}>
+            <h3 className="text-xs font-medium text-gray-500 mb-2">{floor}</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {floorRooms.map(room => {
+                const draft = draftFor(room)
+                const dirty = draft.amount !== room.amount || draft.notes !== (room.notes ?? '')
+                return (
+                  <div key={room.id} className="bg-white border rounded-xl p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-900">{room.name}</span>
+                      <span className="text-xs text-gray-400">{!room.occupied && '空房'}</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={draft.amount}
+                      onChange={e => setDraft(room.id, { amount: Number(e.target.value) || 0 })}
+                      className="w-full border rounded-lg px-2 py-1.5 text-sm mb-1.5"
+                    />
+                    <input
+                      type="text"
+                      placeholder="備註（可留空）"
+                      value={draft.notes}
+                      onChange={e => setDraft(room.id, { notes: e.target.value })}
+                      className="w-full border rounded-lg px-2 py-1.5 text-xs mb-2 text-gray-600"
+                    />
+                    <button
+                      onClick={() => save(room)}
+                      disabled={!dirty || savingRoom === room.id}
+                      className="w-full flex items-center justify-center gap-1 text-xs px-2 py-1.5 rounded-lg bg-emerald-600 text-white font-medium disabled:opacity-40 disabled:bg-gray-300"
+                    >
+                      {savingRoom === room.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      {room.hasEntry ? '已登錄・更新' : '使用預設・儲存'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </div>
   )

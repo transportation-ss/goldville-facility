@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Loader2, Wallet, Plus, Trash2, X } from 'lucide-react'
 import {
@@ -78,6 +78,17 @@ export function RoomIncomeView({ initialRooms, initialMonth, initialMisc }: { in
     refetch(range.from, range.to)
   }
 
+  const roomsByFloor = useMemo(() => {
+    const groups = new Map<string, RoomIncomeSummary[]>()
+    for (const room of rooms) {
+      const key = room.floor ?? '—'
+      const list = groups.get(key) ?? []
+      list.push(room)
+      groups.set(key, list)
+    }
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b))
+  }, [rooms])
+
   const roomTotal = rooms.reduce((sum, r) => sum + r.total, 0)
   const miscTotal = misc.reduce((sum, m) => sum + m.amount, 0)
   const total = roomTotal + miscTotal
@@ -101,25 +112,32 @@ export function RoomIncomeView({ initialRooms, initialMonth, initialMisc }: { in
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {rooms.map(room => (
-          <Link
-            key={room.id}
-            href={`/admin/accounting/room-income/${room.id}`}
-            className="bg-white border rounded-xl p-3.5 hover:border-emerald-400 hover:shadow-sm transition-colors"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-900">{room.name}</span>
-              <Wallet className="w-4 h-4 text-gray-300" />
+      <div className="space-y-5">
+        {roomsByFloor.map(([floor, floorRooms]) => (
+          <div key={floor}>
+            <h3 className="text-xs font-medium text-gray-500 mb-2">{floor}</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {floorRooms.map(room => (
+                <Link
+                  key={room.id}
+                  href={`/admin/accounting/room-income/${room.id}`}
+                  className="bg-white border rounded-xl p-3.5 hover:border-emerald-400 hover:shadow-sm transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-900">{room.name}</span>
+                    <Wallet className="w-4 h-4 text-gray-300" />
+                  </div>
+                  <div className="text-xs text-gray-400 mb-1.5">
+                    {room.occupants.length > 0 ? room.occupants.join('、') : '空房'}
+                  </div>
+                  <div className="text-lg font-bold text-gray-900">{fmt(room.total)}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {room.entryCount > 0 ? `已登錄 ${room.entryCount} 個月` : '尚未登錄'}
+                  </div>
+                </Link>
+              ))}
             </div>
-            <div className="text-xs text-gray-400 mb-1.5">
-              {room.floor ?? '—'} · {room.occupants.length > 0 ? room.occupants.join('、') : '空房'}
-            </div>
-            <div className="text-lg font-bold text-gray-900">{fmt(room.total)}</div>
-            <div className="text-xs text-gray-400 mt-0.5">
-              {room.entryCount > 0 ? `已登錄 ${room.entryCount} 個月` : '尚未登錄'}
-            </div>
-          </Link>
+          </div>
         ))}
       </div>
 
