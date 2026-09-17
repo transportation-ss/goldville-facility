@@ -51,7 +51,7 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
   const { data: residents } = await supabase
     .from('butler_residents')
     .select('room')
-    .neq('status', 'inactive')
+    .eq('status', 'active_resident')
 
   const { data: misc, error: miscError } = await supabase
     .from('misc_income_entries')

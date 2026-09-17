@@ -37,7 +37,7 @@ export async function getRoomCostSummary(month: string): Promise<RoomCostSummary
   const { data: residents } = await supabase
     .from('butler_residents')
     .select('room')
-    .neq('status', 'inactive')
+    .eq('status', 'active_resident')
 
   const occupiedRooms = new Set((residents ?? []).map(r => r.room).filter(Boolean))
   const entryByRoom = new Map((entries ?? []).map(e => [e.room_id, e]))

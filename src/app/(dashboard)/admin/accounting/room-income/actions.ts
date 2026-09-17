@@ -49,7 +49,7 @@ export async function getRoomIncomeSummary(fromMonth: string, toMonth: string): 
   const { data: residents } = await supabase
     .from('butler_residents')
     .select('name, room, status')
-    .neq('status', 'inactive')
+    .eq('status', 'active_resident')
 
   const occupantsByRoom = new Map<string, string[]>()
   for (const r of residents ?? []) {
@@ -206,7 +206,7 @@ export async function getRateSuggestion(roomName: string, floor: string | null, 
     .from('butler_residents')
     .select('name')
     .eq('room', roomName)
-    .neq('status', 'inactive')
+    .eq('status', 'active_resident')
 
   // 無人入住不計房費收入（成本仍可另計，不在此函式範圍）
   if ((residents?.length ?? 0) === 0) {
