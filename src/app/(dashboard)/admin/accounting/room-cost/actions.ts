@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { defaultCostForRoom } from '@/lib/accounting/default-room-cost'
 
 export type RoomCostSummary = {
   id: string
@@ -11,10 +12,6 @@ export type RoomCostSummary = {
   hasEntry: boolean
   occupied: boolean
   notes: string | null
-}
-
-function defaultCostForRoom(roomName: string) {
-  return roomName.endsWith('01') ? 28000 : 15000
 }
 
 export async function getRoomCostSummary(month: string): Promise<RoomCostSummary[]> {

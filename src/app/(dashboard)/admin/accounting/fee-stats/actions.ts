@@ -1,11 +1,25 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { defaultCostForRoom } from '@/lib/accounting/default-room-cost'
 
 type ServiceItem = { item: string; amount: number }
 
 function sumItems(items: ServiceItem[] | null | undefined) {
   return (items ?? []).reduce((sum, i) => sum + (i.amount || 0), 0)
+}
+
+function monthsBetween(fromMonth: string, toMonth: string): string[] {
+  const [fy, fm] = fromMonth.split('-').map(Number)
+  const [ty, tm] = toMonth.split('-').map(Number)
+  const months: string[] = []
+  let y = fy, m = fm
+  while (y < ty || (y === ty && m <= tm)) {
+    months.push(`${y}-${String(m).padStart(2, '0')}`)
+    m++
+    if (m > 12) { m = 1; y++ }
+  }
+  return months
 }
 
 export type FeeStatsRoom = {
@@ -43,7 +57,7 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
 
   const { data: costs, error: costsError } = await supabase
     .from('room_cost_entries')
-    .select('room_id, amount')
+    .select('room_id, amount, period_month')
     .gte('period_month', `${fromMonth}-01`)
     .lte('period_month', `${toMonth}-01`)
   if (costsError) throw new Error(costsError.message)
@@ -70,9 +84,22 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
     incomeByRoom.set(e.room_id, cur)
   }
 
-  const costByRoom = new Map<string, number>()
+  // 成本尚未逐房逐月登錄時，用預設成本（房間成本頁同一套規則）估算
+  const months = monthsBetween(fromMonth, toMonth)
+  const costEntryByRoomMonth = new Map<string, number>()
   for (const c of costs ?? []) {
-    costByRoom.set(c.room_id, (costByRoom.get(c.room_id) ?? 0) + c.amount)
+    const key = `${c.room_id}|${c.period_month.slice(0, 7)}`
+    costEntryByRoomMonth.set(key, (costEntryByRoomMonth.get(key) ?? 0) + c.amount)
+  }
+
+  const costByRoom = new Map<string, number>()
+  for (const r of rooms ?? []) {
+    let total = 0
+    for (const m of months) {
+      const key = `${r.id}|${m}`
+      total += costEntryByRoomMonth.get(key) ?? defaultCostForRoom(r.name)
+    }
+    costByRoom.set(r.id, total)
   }
 
   const result: FeeStatsRoom[] = (rooms ?? []).map(r => ({
