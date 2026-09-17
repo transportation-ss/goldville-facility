@@ -1,14 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { RoomIncomeView } from './RoomIncomeView'
-import { getRoomIncomeSummary, getMiscIncomeEntries } from './actions'
+import { RoomCostView } from './RoomCostView'
+import { getRoomCostSummary } from './actions'
 
 function currentMonth() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-export default async function RoomIncomePage() {
+export default async function RoomCostPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -25,16 +25,15 @@ export default async function RoomIncomePage() {
   }
 
   const month = currentMonth()
-  const initialRooms = await getRoomIncomeSummary(month, month)
-  const initialMisc = await getMiscIncomeEntries(month, month)
+  const initialRooms = await getRoomCostSummary(month)
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">房間收入</h1>
-        <p className="text-sm text-gray-500 mt-1">以房間為主軸的租金＋加值服務收入分析</p>
+        <h1 className="text-xl font-bold text-gray-900">房間成本</h1>
+        <p className="text-sm text-gray-500 mt-1">每房每月總成本登錄（預設01房28,000／其他15,000，可覆寫）</p>
       </div>
-      <RoomIncomeView initialRooms={initialRooms} initialMonth={month} initialMisc={initialMisc} />
+      <RoomCostView initialRooms={initialRooms} initialMonth={month} />
     </div>
   )
 }

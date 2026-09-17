@@ -7,7 +7,7 @@ import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
   Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope, Brush, FileSpreadsheet,
-  TrendingUp, Filter, ClipboardCheck, Calculator, Wallet,
+  TrendingUp, Filter, ClipboardCheck, Calculator, Wallet, Coins, PieChart,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -82,9 +82,11 @@ function getNavByRole(role: string): RoleNav {
           {
             label: '會計',
             items: [
-              { label: '費用統計',   href: '/admin/services/fees',           icon: BarChart3  },
-              { label: '房間收入',   href: '/admin/accounting/room-income',  icon: Wallet     },
-              { label: '房間費率表', href: '/admin/accounting/rate-catalog', icon: Calculator },
+              { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3  },
+              { label: '房間收支統計', href: '/admin/accounting/fee-stats',    icon: PieChart   },
+              { label: '房間收入',     href: '/admin/accounting/room-income',  icon: Wallet     },
+              { label: '房間成本',     href: '/admin/accounting/room-cost',    icon: Coins      },
+              { label: '房間費率表',   href: '/admin/accounting/rate-catalog', icon: Calculator },
             ],
           },
           {
@@ -245,7 +247,7 @@ function getNavByRole(role: string): RoleNav {
             items: [
               { label: '住戶列表',     href: '/butler/residents', icon: Users     },
               { label: '加值服務',     href: '/admin/services',    icon: Package   },
-              { label: '費用統計',     href: '/admin/services/fees', icon: BarChart3 },
+              { label: '加值服務報表', href: '/admin/services/fees', icon: BarChart3 },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '班表',         href: '/butler/schedule',  icon: History   },
               { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
@@ -273,7 +275,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '清潔值班',     href: '/butler/cleaning',  icon: Brush     },
               { label: '住戶列表',     href: '/butler/residents', icon: Users     },
               { label: '加值服務',     href: '/admin/services',    icon: Package   },
-              { label: '費用統計',     href: '/admin/services/fees', icon: BarChart3 },
+              { label: '加值服務報表', href: '/admin/services/fees', icon: BarChart3 },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '班表',         href: '/butler/schedule',  icon: History   },
               { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
@@ -290,13 +292,15 @@ function getNavByRole(role: string): RoleNav {
     case 'accounting':
       return {
         primary: [
-          { label: '費用統計',   href: '/admin/services/fees',           icon: BarChart3  },
-          { label: '房間收入',   href: '/admin/accounting/room-income',  icon: Wallet     },
-          { label: '房間費率表', href: '/admin/accounting/rate-catalog', icon: Calculator },
+          { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3  },
+          { label: '房間收支統計', href: '/admin/accounting/fee-stats',    icon: PieChart   },
+          { label: '房間收入',     href: '/admin/accounting/room-income',  icon: Wallet     },
         ],
         more: [
           {
             items: [
+              { label: '房間成本',   href: '/admin/accounting/room-cost',    icon: Coins      },
+              { label: '房間費率表', href: '/admin/accounting/rate-catalog', icon: Calculator },
               { label: '設備說明書', href: '/manuals',  icon: BookOpen },
               { label: '緊急維修',   href: '/hardware', icon: Wrench   },
             ],
