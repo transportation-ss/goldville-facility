@@ -189,6 +189,7 @@ export async function generateCleaningTasksForRange(start: string, end: string) 
         rows.push({
           task_date: date,
           start_time: parseLeadingTime(room.times[idx] ?? ''),
+          duration_minutes: 30,
           space: name,
           title: `清潔：${name}`,
           assigned_to: assignedIds[0] ?? null,

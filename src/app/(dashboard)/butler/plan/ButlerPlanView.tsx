@@ -231,6 +231,8 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
                   category: value,
                   // 選固定模組直接帶入標題省得打字；選「其他」則保留原本內容自己打
                   title: picked && picked.value !== 'other' ? picked.label : f.title,
+                  // 清潔掃房一律抓30分鐘，編輯既有任務時尊重原本填的時長
+                  duration_minutes: value === 'cleaning' && !existingTask ? '30' : f.duration_minutes,
                 }))
               }}>
               {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
