@@ -60,9 +60,6 @@ function getNavByRole(role: string): RoleNav {
               { label: '管家派工',     href: '/butler/plan',      icon: ClipboardList },
               { label: '住戶列表',     href: '/butler/residents', icon: Users         },
               { label: '加值服務',     href: '/admin/services',    icon: Package       },
-              { label: '費用統計',     href: '/admin/services/fees', icon: BarChart3   },
-              { label: '房間收入',     href: '/admin/accounting/room-income', icon: Wallet     },
-              { label: '房間費率表',   href: '/admin/accounting/rate-catalog', icon: Calculator },
               { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '清潔值班',     href: '/butler/cleaning',  icon: Brush         },
@@ -80,6 +77,14 @@ function getNavByRole(role: string): RoleNav {
               { label: '業務總表',   href: '/sales',        icon: ClipboardCheck },
               { label: '趨勢曲線圖', href: '/sales/trend',  icon: TrendingUp     },
               { label: '轉化漏斗圖', href: '/sales/funnel', icon: Filter         },
+            ],
+          },
+          {
+            label: '會計',
+            items: [
+              { label: '費用統計',   href: '/admin/services/fees',           icon: BarChart3  },
+              { label: '房間收入',   href: '/admin/accounting/room-income',  icon: Wallet     },
+              { label: '房間費率表', href: '/admin/accounting/rate-catalog', icon: Calculator },
             ],
           },
           {
