@@ -31,6 +31,7 @@ const ROLE_LABELS: Record<string, string> = {
   reporter:          '通報',
   manager:           '管理者',
   admin:             '系統管理員',
+  accounting:        '會計',
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -64,6 +65,7 @@ const ALL_ROLES = [
   { value: 'reporter',          label: '通報'       },
   { value: 'manager',           label: '管理者'     },
   { value: 'admin',             label: '系統管理員' },
+  { value: 'accounting',        label: '會計'       },
 ]
 
 // ─── 重設密碼 Modal ──────────────────────────────────────

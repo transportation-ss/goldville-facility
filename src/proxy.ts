@@ -8,6 +8,7 @@ const TECHNICIAN_ROLES   = ['technician']
 const PROCUREMENT_ROLES  = ['procurement']
 const HOUSEKEEPING_ROLES = ['housekeeping']
 const SALES_ROLES        = ['sales']
+const ACCOUNTING_ROLES   = ['accounting']
 const GENERAL_ROLES      = ['frontdesk_day', 'admin_staff']
 
 // ─── 各身分允許的路徑前綴 ────────────────────
@@ -18,6 +19,7 @@ const HOUSEKEEPING_ALLOWED   = ['/housekeeping', '/work-orders', '/manuals', '/h
 const HOUSEKEEPING_FORBIDDEN = ['/housekeeping/plan']
 const GENERAL_ALLOWED      = ['/work-orders', '/housekeeping', '/manuals', '/hardware', '/rooms', '/api', '/settings', '/butler/residents']
 const SALES_ALLOWED        = ['/butler', '/sales', '/manuals', '/hardware', '/api', '/settings']
+const ACCOUNTING_ALLOWED   = ['/admin/services', '/admin/accounting', '/manuals', '/hardware', '/api', '/settings']
 
 // 禁止存取的子路徑（所有非 admin 均不可，採購例外）
 const ADMIN_ONLY_PATHS     = ['/admin', '/maintenance/admin', '/hardware/admin', '/assets']
@@ -78,7 +80,14 @@ export async function proxy(request: NextRequest) {
       return supabaseResponse
     }
 
-    // 非管理員、非採購都不能進 admin-only 路徑
+    // 會計（先判斷，避免被 ADMIN_ONLY_PATHS 攔截）
+    if (ACCOUNTING_ROLES.includes(role)) {
+      const allowed = ACCOUNTING_ALLOWED.some(p => pathname.startsWith(p))
+      if (!allowed) return NextResponse.redirect(new URL('/admin/services/fees', request.url))
+      return supabaseResponse
+    }
+
+    // 非管理員、非採購、非會計都不能進 admin-only 路徑
     if (ADMIN_ONLY_PATHS.some(p => pathname.startsWith(p))) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }

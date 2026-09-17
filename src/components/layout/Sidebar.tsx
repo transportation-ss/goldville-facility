@@ -9,7 +9,7 @@ import {
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, BedDouble, History,
   Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope, FileSpreadsheet,
-  TrendingUp, Filter, ClipboardCheck,
+  TrendingUp, Filter, ClipboardCheck, Calculator, Wallet,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -23,6 +23,7 @@ const TECH_HOUSEKEEPING_ROLES = ['tech_housekeeping']
 const FRONTDESK_DAY_ROLES     = ['frontdesk_day']
 const BUTLER_MANAGER_ROLES    = ['butler_manager']
 const SALES_ROLES             = ['sales']
+const ACCOUNTING_ROLES        = ['accounting']
 const BUTLER_ROLES            = ['butler']
 
 const ROLE_LABELS: Record<string, string> = {
@@ -38,6 +39,7 @@ const ROLE_LABELS: Record<string, string> = {
   frontdesk_night:   '大夜班',
   nightshift:        '大夜班',
   sales:             '業務',
+  accounting:        '會計',
 }
 
 type NavItem   = { label: string; href: string; icon: React.ElementType; exact?: boolean }
@@ -289,6 +291,25 @@ const salesNav: (NavSingle | NavGroup)[] = [
   ...butlerManagerNav,
 ]
 
+/** 會計 */
+const accountingNav: (NavSingle | NavGroup)[] = [
+  {
+    type: 'group', label: '會計',
+    items: [
+      { label: '費用統計',   href: '/admin/services/fees',       icon: BarChart3, exact: true },
+      { label: '房間收入',   href: '/admin/accounting/room-income', icon: Wallet     },
+      { label: '房間費率表', href: '/admin/accounting/rate-catalog', icon: Calculator },
+    ],
+  },
+  {
+    type: 'group', label: '說明書',
+    items: [
+      { label: '設備說明書', href: '/manuals',  icon: BookOpen },
+      { label: '緊急維修',   href: '/hardware', icon: Wrench   },
+    ],
+  },
+]
+
 /** 管家 */
 const butlerNav: (NavSingle | NavGroup)[] = [
   {
@@ -414,6 +435,7 @@ export function Sidebar({ role, displayName }: { role: string; displayName: stri
   const isFrontdeskDay     = FRONTDESK_DAY_ROLES.includes(role)
   const isButlerManager    = BUTLER_MANAGER_ROLES.includes(role)
   const isSales            = SALES_ROLES.includes(role)
+  const isAccounting       = ACCOUNTING_ROLES.includes(role)
   const isButler           = BUTLER_ROLES.includes(role)
 
   const nav = isAdmin            ? fullNav
@@ -425,6 +447,7 @@ export function Sidebar({ role, displayName }: { role: string; displayName: stri
             : isFrontdeskDay     ? frontdeskDayNav
             : isButlerManager    ? butlerManagerNav
             : isSales            ? salesNav
+            : isAccounting       ? accountingNav
             : isButler           ? butlerNav
             : role               ? minimalNav
             : []

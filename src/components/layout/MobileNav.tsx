@@ -7,7 +7,7 @@ import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
   Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope, Brush, FileSpreadsheet,
-  TrendingUp, Filter, ClipboardCheck,
+  TrendingUp, Filter, ClipboardCheck, Calculator, Wallet,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -274,6 +274,24 @@ function getNavByRole(role: string): RoleNav {
               { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },
               { label: '設備說明書',   href: '/manuals',          icon: BookOpen  },
               { label: '緊急維修',     href: '/hardware',         icon: Wrench    },
+            ],
+          },
+        ],
+      }
+
+    // ── 會計 ────────────────────────────────────
+    case 'accounting':
+      return {
+        primary: [
+          { label: '費用統計',   href: '/admin/services/fees',           icon: BarChart3  },
+          { label: '房間收入',   href: '/admin/accounting/room-income',  icon: Wallet     },
+          { label: '房間費率表', href: '/admin/accounting/rate-catalog', icon: Calculator },
+        ],
+        more: [
+          {
+            items: [
+              { label: '設備說明書', href: '/manuals',  icon: BookOpen },
+              { label: '緊急維修',   href: '/hardware', icon: Wrench   },
             ],
           },
         ],
