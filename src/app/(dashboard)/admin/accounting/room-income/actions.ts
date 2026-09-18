@@ -272,3 +272,40 @@ export async function getRateSuggestion(roomName: string, floor: string | null, 
     vacant: false,
   }
 }
+
+// 帶入住戶目前掛載中的加值服務（依住戶掛載服務即時彙總，非自動寫入，僅供表單參考後手動調整）
+export type ResidentServiceSuggestion = {
+  fixed: ServiceItem[]
+  addon: ServiceItem[]
+}
+
+export async function getResidentServiceSuggestion(roomName: string): Promise<ResidentServiceSuggestion> {
+  const supabase = await createClient()
+
+  const { data: residents } = await supabase
+    .from('butler_residents')
+    .select('id, name')
+    .eq('room', roomName)
+    .eq('status', 'active_resident')
+
+  const residentIds = (residents ?? []).map(r => r.id)
+  if (residentIds.length === 0) return { fixed: [], addon: [] }
+
+  const { data: services } = await supabase
+    .from('resident_services')
+    .select('resident_id, service_catalog(name, type, price)')
+    .in('resident_id', residentIds)
+    .eq('status', 'active')
+
+  const fixed: ServiceItem[] = []
+  const addon: ServiceItem[] = []
+  for (const s of services ?? []) {
+    const resident = residents!.find(r => r.id === s.resident_id)
+    const catalog = s.service_catalog as unknown as { name: string; type: 'package' | 'addon'; price: number } | null
+    if (!catalog || !resident) continue
+    const item: ServiceItem = { item: `${resident.name}－${catalog.name}`, amount: catalog.price }
+    if (catalog.type === 'package') fixed.push(item)
+    else addon.push(item)
+  }
+  return { fixed, addon }
+}

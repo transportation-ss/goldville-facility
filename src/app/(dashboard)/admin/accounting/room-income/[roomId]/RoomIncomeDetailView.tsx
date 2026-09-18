@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Loader2, Plus, Pencil, Trash2, Wand2, X } from 'lucide-react'
 import {
-  upsertIncomeEntry, deleteIncomeEntry, getRateSuggestion,
+  upsertIncomeEntry, deleteIncomeEntry, getRateSuggestion, getResidentServiceSuggestion,
   type IncomeEntryInput, type ServiceItem,
 } from '../actions'
 
@@ -119,6 +119,7 @@ export function RoomIncomeDetailView({
   const [form, setForm] = useState<IncomeEntryInput>(emptyForm(roomId))
   const [isPending, startTransition] = useTransition()
   const [isSuggesting, startSuggest] = useTransition()
+  const [isSuggestingServices, startSuggestServices] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
   const total = entries.reduce((sum, e) => sum + entryTotal(e), 0)
@@ -160,6 +161,20 @@ export function RoomIncomeDetailView({
         setError(s.vacant ? '此房間目前無人入住，建議房費為 0，請確認是否仍要收費' : null)
       } catch (err) {
         setError(err instanceof Error ? err.message : '帶入建議值失敗')
+      }
+    })
+  }
+
+  function applyServiceSuggestion() {
+    startSuggestServices(async () => {
+      try {
+        const s = await getResidentServiceSuggestion(roomName)
+        setForm(f => ({ ...f, fixed_services: s.fixed, addon_services: s.addon }))
+        if (s.fixed.length === 0 && s.addon.length === 0) {
+          setError('此房間住戶目前沒有掛載中的加值服務')
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '帶入加值服務失敗')
       }
     })
   }
@@ -288,15 +303,25 @@ export function RoomIncomeDetailView({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 border-t">
-            <div className="pt-3">
+          <div className="pt-1 border-t">
+            <div className="flex items-center justify-between pt-3">
+              <h3 className="text-sm font-medium text-gray-900">加值服務</h3>
+              <button
+                type="button"
+                onClick={applyServiceSuggestion}
+                disabled={isSuggestingServices}
+                className="flex items-center gap-1 text-xs text-emerald-600 disabled:opacity-50"
+              >
+                {isSuggestingServices ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                帶入住戶掛載中的加值服務（覆蓋現有列表）
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <ServiceItemsEditor
                 title="固定加值服務"
                 items={form.fixed_services}
                 onChange={items => setForm(f => ({ ...f, fixed_services: items }))}
               />
-            </div>
-            <div className="pt-3">
               <ServiceItemsEditor
                 title="附加加值服務"
                 items={form.addon_services}
