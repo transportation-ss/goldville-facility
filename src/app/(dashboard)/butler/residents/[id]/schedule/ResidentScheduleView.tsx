@@ -56,14 +56,15 @@ export function ResidentScheduleView({
     const assignees = t.assigned_to_ids?.length
       ? t.assignee?.display_name ?? '已指派'
       : '未指派'
+    const done = t.status === 'completed'
     return (
-      <div key={t.id} className="bg-white border rounded-lg px-2.5 py-1.5 text-xs">
+      <div key={t.id} className={`border rounded-lg px-2.5 py-1.5 text-xs ${done ? 'bg-gray-50 border-gray-200' : 'bg-white'}`}>
         <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-800">{t.title}</span>
+          <span className={`font-medium ${done ? 'text-gray-400' : 'text-gray-800'}`}>{t.title}</span>
           {t.fee != null && <span className="text-gray-400">NT$ {t.fee.toLocaleString()}</span>}
         </div>
         <div className="text-gray-400 mt-0.5">
-          {t.start_time?.slice(0, 5) ?? '--:--'} · {assignees}
+          {t.start_time?.slice(0, 5) ?? '--:--'} · {assignees}{done ? ' · 已完成' : ''}
         </div>
       </div>
     )
@@ -71,12 +72,12 @@ export function ResidentScheduleView({
 
   function renderAppointment(a: AppointmentCase) {
     return (
-      <div key={a.id} className="bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 text-xs">
+      <div key={a.id} className="bg-purple-50 border border-purple-100 rounded-lg px-2.5 py-1.5 text-xs">
         <div className="flex items-center gap-1">
-          <Stethoscope className="w-3 h-3 text-blue-500" />
-          <span className="font-medium text-blue-700">回診{a.appointment_location ? `：${a.appointment_location}` : ''}</span>
+          <Stethoscope className="w-3 h-3 text-purple-500" />
+          <span className="font-medium text-purple-700">回診{a.appointment_location ? `：${a.appointment_location}` : ''}</span>
         </div>
-        <div className="text-blue-400 mt-0.5">
+        <div className="text-purple-400 mt-0.5">
           {a.appointment_time?.slice(0, 5) ?? '--:--'} · {a.matched_staff ?? '未媒合'}
         </div>
       </div>
@@ -109,6 +110,13 @@ export function ResidentScheduleView({
             ))}
           </select>
         </div>
+      </div>
+
+      {/* 顏色說明 */}
+      <div className="flex items-center gap-3 mb-2.5 text-[11px] text-gray-400">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500" />回診</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />服務安排</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-400" />已執行完成</span>
       </div>
 
       {view === 'month' && <MonthGrid year={year} month={month} date={date}
@@ -183,6 +191,8 @@ function MonthGrid({ year, month, date, tasksOn, appointmentsOn, onPickDate }: {
         {cells.map((d, i) => {
           if (!d) return <div key={i} />
           const dayTasks = tasksOn(d)
+          const hasActiveTask = dayTasks.some(t => t.status !== 'completed')
+          const hasDoneTask = dayTasks.some(t => t.status === 'completed')
           const dayAppointments = appointmentsOn(d)
           const isToday = d === date
           return (
@@ -192,8 +202,9 @@ function MonthGrid({ year, month, date, tasksOn, appointmentsOn, onPickDate }: {
               <span className="text-gray-700">{d.slice(-2)}</span>
               {(dayTasks.length > 0 || dayAppointments.length > 0) && (
                 <span className="flex gap-0.5">
-                  {dayTasks.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                  {dayAppointments.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                  {dayAppointments.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />}
+                  {hasActiveTask && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  {hasDoneTask && <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />}
                 </span>
               )}
             </button>
