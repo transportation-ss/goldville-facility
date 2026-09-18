@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Stethoscope } from 'lucide-react'
 import type { ButlerTask } from '../../../actions'
+import type { AppointmentCase } from '../../../appointments/actions'
 
 type View = 'day' | 'week' | 'month'
 
@@ -23,7 +24,7 @@ function weekStartOf(dateStr: string): string {
 const WEEKDAY_LABEL = ['一', '二', '三', '四', '五', '六', '日']
 
 export function ResidentScheduleView({
-  residentId, view, year, month, date, tasks,
+  residentId, view, year, month, date, tasks, appointments,
 }: {
   residentId: string
   view: View
@@ -31,6 +32,7 @@ export function ResidentScheduleView({
   month: number
   date: string
   tasks: ButlerTask[]
+  appointments: AppointmentCase[]
 }) {
   const router = useRouter()
 
@@ -46,6 +48,10 @@ export function ResidentScheduleView({
     return tasks.filter(t => t.task_date === d)
   }
 
+  function appointmentsOn(d: string) {
+    return appointments.filter(a => a.appointment_date === d)
+  }
+
   function renderTask(t: ButlerTask) {
     const assignees = t.assigned_to_ids?.length
       ? t.assignee?.display_name ?? '已指派'
@@ -58,6 +64,20 @@ export function ResidentScheduleView({
         </div>
         <div className="text-gray-400 mt-0.5">
           {t.start_time?.slice(0, 5) ?? '--:--'} · {assignees}
+        </div>
+      </div>
+    )
+  }
+
+  function renderAppointment(a: AppointmentCase) {
+    return (
+      <div key={a.id} className="bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 text-xs">
+        <div className="flex items-center gap-1">
+          <Stethoscope className="w-3 h-3 text-blue-500" />
+          <span className="font-medium text-blue-700">回診{a.appointment_location ? `：${a.appointment_location}` : ''}</span>
+        </div>
+        <div className="text-blue-400 mt-0.5">
+          {a.appointment_time?.slice(0, 5) ?? '--:--'} · {a.matched_staff ?? '未媒合'}
         </div>
       </div>
     )
@@ -92,7 +112,7 @@ export function ResidentScheduleView({
       </div>
 
       {view === 'month' && <MonthGrid year={year} month={month} date={date}
-        tasksOn={tasksOn} onPickDate={d => go({ date: d, view: 'day' })} />}
+        tasksOn={tasksOn} appointmentsOn={appointmentsOn} onPickDate={d => go({ date: d, view: 'day' })} />}
 
       {view === 'week' && (
         <div>
@@ -108,9 +128,9 @@ export function ResidentScheduleView({
               <div key={d}>
                 <p className="text-[11px] text-gray-400 mb-1">{d}（{WEEKDAY_LABEL[i]}）</p>
                 <div className="space-y-1">
-                  {tasksOn(d).length === 0
+                  {tasksOn(d).length === 0 && appointmentsOn(d).length === 0
                     ? <p className="text-xs text-gray-300 pl-1">—</p>
-                    : tasksOn(d).map(renderTask)}
+                    : <>{appointmentsOn(d).map(renderAppointment)}{tasksOn(d).map(renderTask)}</>}
                 </div>
               </div>
             ))}
@@ -126,9 +146,9 @@ export function ResidentScheduleView({
             <button onClick={() => go({ date: addDays(date, 1) })} className="text-gray-400"><ChevronRight className="w-4 h-4" /></button>
           </div>
           <div className="space-y-1.5">
-            {tasksOn(date).length === 0
+            {tasksOn(date).length === 0 && appointmentsOn(date).length === 0
               ? <p className="text-sm text-gray-400 text-center py-8">當天無服務安排</p>
-              : tasksOn(date).map(renderTask)}
+              : <>{appointmentsOn(date).map(renderAppointment)}{tasksOn(date).map(renderTask)}</>}
           </div>
         </div>
       )}
@@ -136,9 +156,10 @@ export function ResidentScheduleView({
   )
 }
 
-function MonthGrid({ year, month, date, tasksOn, onPickDate }: {
+function MonthGrid({ year, month, date, tasksOn, appointmentsOn, onPickDate }: {
   year: number; month: number; date: string
   tasksOn: (d: string) => ButlerTask[]
+  appointmentsOn: (d: string) => AppointmentCase[]
   onPickDate: (d: string) => void
 }) {
   const first = `${year}-${String(month).padStart(2, '0')}-01`
@@ -162,14 +183,18 @@ function MonthGrid({ year, month, date, tasksOn, onPickDate }: {
         {cells.map((d, i) => {
           if (!d) return <div key={i} />
           const dayTasks = tasksOn(d)
+          const dayAppointments = appointmentsOn(d)
           const isToday = d === date
           return (
             <button key={d} onClick={() => onPickDate(d)}
               className={`aspect-square rounded-lg border text-xs flex flex-col items-center justify-center gap-0.5
                 ${isToday ? 'border-emerald-400 bg-emerald-50' : 'border-gray-100'}`}>
               <span className="text-gray-700">{d.slice(-2)}</span>
-              {dayTasks.length > 0 && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              {(dayTasks.length > 0 || dayAppointments.length > 0) && (
+                <span className="flex gap-0.5">
+                  {dayTasks.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  {dayAppointments.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                </span>
               )}
             </button>
           )

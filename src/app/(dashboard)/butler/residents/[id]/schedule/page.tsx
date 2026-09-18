@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { getResident, getResidentServices } from '../../actions'
 import { getTasksByResidentServices } from '../../../actions'
+import { getAppointmentsForResident } from '../../../appointments/actions'
 import { createClient } from '@/lib/supabase/server'
 import { ResidentScheduleView } from './ResidentScheduleView'
 
@@ -45,7 +46,10 @@ export default async function ResidentSchedulePage({
 
   const services = await getResidentServices(id)
   const activeServiceIds = services.filter(s => s.status === 'active').map(s => s.id)
-  const tasks = await getTasksByResidentServices(activeServiceIds, monthStart, monthEnd)
+  const [tasks, appointments] = await Promise.all([
+    getTasksByResidentServices(activeServiceIds, monthStart, monthEnd),
+    getAppointmentsForResident(id, monthStart, monthEnd),
+  ])
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
@@ -55,10 +59,10 @@ export default async function ResidentSchedulePage({
       <h1 className="text-lg font-bold text-gray-900 mb-4">
         {resident.name} 的被服務安排
       </h1>
-      {activeServiceIds.length === 0 && (
-        <p className="text-sm text-gray-400 text-center py-12">此住戶尚未掛勾任何加值服務，沒有可顯示的派工安排</p>
+      {activeServiceIds.length === 0 && appointments.length === 0 && (
+        <p className="text-sm text-gray-400 text-center py-12">此住戶尚未掛勾任何加值服務，也沒有排定的回診，沒有可顯示的安排</p>
       )}
-      {activeServiceIds.length > 0 && (
+      {(activeServiceIds.length > 0 || appointments.length > 0) && (
         <ResidentScheduleView
           residentId={id}
           view={view}
@@ -66,6 +70,7 @@ export default async function ResidentSchedulePage({
           month={month}
           date={date}
           tasks={tasks}
+          appointments={appointments}
         />
       )}
     </div>

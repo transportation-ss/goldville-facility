@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createButlerTask } from '../actions'
 
 export type ResidentStatus = 'active_resident' | 'service_only' | 'inactive' | 'vacant'
 export type RentCycle = 'monthly' | 'yearly' | 'other'
@@ -319,6 +320,120 @@ export async function removeResidentService(id: string, residentId: string) {
   const { error } = await supabase.from('resident_services').delete().eq('id', id)
   if (error) throw new Error(error.message)
   revalidatePath(`/butler/residents/${residentId}`)
+}
+
+// 單筆 resident_services 的細節頁（照顧包細項管理）用：住戶名稱/房號 + 掛勾的服務目錄名稱一次撈齊
+export async function getResidentService(id: string): Promise<
+  (ResidentService & { resident: { name: string; room: string | null } | null }) | null
+> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('resident_services')
+    .select('*, service_catalog(name, type, price, unit), resident:butler_residents(name, room)')
+    .eq('id', id)
+    .single()
+  return data as (ResidentService & { resident: { name: string; room: string | null } | null }) | null
+}
+
+// ── 照顧包細項（個人化規劃，掛在單一 resident_services 底下） ──────
+
+export type ResidentServiceItem = {
+  id: string
+  resident_service_id: string
+  title: string
+  subtitle: string | null
+  notes: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+}
+
+export async function getServiceItems(residentServiceId: string): Promise<ResidentServiceItem[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('resident_service_items')
+    .select('*')
+    .eq('resident_service_id', residentServiceId)
+    .eq('is_active', true)
+    .order('sort_order')
+    .order('created_at')
+  return (data ?? []) as ResidentServiceItem[]
+}
+
+// 新增細項時給輸入框帶建議：撈過去曾經填過的工作內容標題（跨所有住戶），純前端 <datalist> 用，不做成獨立管理頁
+export async function getServiceItemTitleSuggestions(): Promise<string[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('resident_service_items')
+    .select('title')
+    .eq('is_active', true)
+  const titles = new Set((data ?? []).map(r => r.title as string))
+  return [...titles].sort()
+}
+
+export async function addServiceItem(residentId: string, input: {
+  resident_service_id: string
+  title: string
+  subtitle?: string | null
+  notes?: string | null
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('未登入')
+  const { error } = await supabase.from('resident_service_items').insert({
+    ...input, created_by: user.id,
+  })
+  if (error) throw new Error(error.message)
+  revalidatePath(`/butler/residents/${residentId}/services/${input.resident_service_id}`)
+}
+
+export async function updateServiceItem(id: string, residentId: string, residentServiceId: string, input: {
+  title: string
+  subtitle?: string | null
+  notes?: string | null
+}) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('resident_service_items')
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/butler/residents/${residentId}/services/${residentServiceId}`)
+}
+
+export async function deleteServiceItem(id: string, residentId: string, residentServiceId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('resident_service_items').update({ is_active: false }).eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/butler/residents/${residentId}/services/${residentServiceId}`)
+}
+
+// 從照顧包細項直接派工：標題掛載「照顧包名稱－工作內容」，費用固定 0（已包在固定月費內，不重複計費）
+export async function dispatchServiceItem(residentId: string, input: {
+  resident_service_id: string
+  item_title: string
+  item_subtitle: string | null
+  item_notes: string | null
+  catalog_name: string
+  task_date: string
+  start_time?: string | null
+  duration_minutes?: number | null
+  assigned_to_ids?: string[]
+}) {
+  await createButlerTask({
+    task_date: input.task_date,
+    start_time: input.start_time,
+    duration_minutes: input.duration_minutes,
+    title: `${input.catalog_name}－${input.item_title}`,
+    subtitle: input.item_subtitle,
+    notes: input.item_notes,
+    assigned_to_ids: input.assigned_to_ids,
+    category: 'companion',
+    resident_service_id: input.resident_service_id,
+    fee: 0,
+  })
+  revalidatePath(`/butler/residents/${residentId}/services/${input.resident_service_id}`)
+  revalidatePath(`/butler/residents/${residentId}/schedule`)
 }
 
 // ── 服務日誌 ─────────────────────────────────────────────

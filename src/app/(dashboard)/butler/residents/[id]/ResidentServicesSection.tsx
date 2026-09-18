@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Plus, X, Loader2, Tag } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, X, Loader2, Tag, ChevronRight } from 'lucide-react'
 import { addResidentService, updateResidentServiceStatus, removeResidentService, type ResidentService } from '../actions'
 import type { ServiceCatalogItem } from '../../../admin/services/actions'
 
@@ -58,16 +59,19 @@ export function ResidentServicesSection({
       <div className="space-y-1.5">
         {active.map(s => (
           <div key={s.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-            <div>
-              <p className="text-sm text-gray-800">{s.service_catalog?.name}</p>
-              <p className="text-[11px] text-gray-400">
-                {s.service_catalog?.type === 'package' ? '固定照顧包' : '單項加值服務'}
-                {' · NT$ '}{s.service_catalog?.price.toLocaleString()}
-                {s.service_catalog?.unit ? ` / ${s.service_catalog.unit}` : ''}
-              </p>
-            </div>
+            <Link href={`/butler/residents/${residentId}/services/${s.id}`} className="flex-1 min-w-0 flex items-center gap-1.5">
+              <div className="min-w-0">
+                <p className="text-sm text-gray-800">{s.service_catalog?.name}</p>
+                <p className="text-[11px] text-gray-400">
+                  {s.service_catalog?.type === 'package' ? '固定照顧包' : '單項加值服務'}
+                  {' · NT$ '}{s.service_catalog?.price.toLocaleString()}
+                  {s.service_catalog?.unit ? ` / ${s.service_catalog.unit}` : ''}
+                </p>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+            </Link>
             {canManage && (
-              <button onClick={() => handleRemove(s)} disabled={pending} className="text-gray-300 hover:text-red-500">
+              <button onClick={() => handleRemove(s)} disabled={pending} className="text-gray-300 hover:text-red-500 ml-2 shrink-0">
                 <X className="w-4 h-4" />
               </button>
             )}

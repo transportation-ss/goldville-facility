@@ -34,3 +34,19 @@ export async function getAllAppointmentCases(): Promise<AppointmentCase[]> {
     .order('appointment_date', { ascending: false })
   return (data ?? []) as AppointmentCase[]
 }
+
+// 住戶個人服務月曆用：某住戶在區間內的回診案件（排除已取消）
+export async function getAppointmentsForResident(
+  residentId: string, start: string, end: string
+): Promise<AppointmentCase[]> {
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('appointment_cases')
+    .select('*, resident:butler_residents(name, room)')
+    .eq('resident_id', residentId)
+    .neq('status', 'cancelled')
+    .gte('appointment_date', start)
+    .lte('appointment_date', end)
+    .order('appointment_date')
+  return (data ?? []) as AppointmentCase[]
+}
