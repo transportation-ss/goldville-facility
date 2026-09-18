@@ -5,6 +5,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
 } from 'recharts'
+
+const NEGATIVE_COLOR = '#dc2626'
 import { Loader2, Plus, X } from 'lucide-react'
 import { getFeeStats, getFeeStatsTrend, type FeeStatsResult, type FeeStatsRoom } from './actions'
 
@@ -189,7 +191,7 @@ export function FeeStatsView({ initialStats, initialMonth }: { initialStats: Fee
         </div>
         <div className="bg-white border rounded-xl p-4">
           <div className="text-xs text-gray-400 mb-1">毛利</div>
-          <div className="text-xl font-bold text-emerald-600">{fmt(totals.profit)}</div>
+          <div className={`text-xl font-bold ${totals.profit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmt(totals.profit)}</div>
         </div>
       </div>
 
@@ -203,7 +205,11 @@ export function FeeStatsView({ initialStats, initialMonth }: { initialStats: Fee
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v) => fmt(Number(v))} />
-                <Bar dataKey="value" fill={viewMode === 'income' ? '#3b82f6' : viewMode === 'cost' ? '#f97316' : '#059669'} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {chartData.map((d, i) => (
+                    <Cell key={i} fill={d.value < 0 ? NEGATIVE_COLOR : (viewMode === 'income' ? '#3b82f6' : viewMode === 'cost' ? '#f97316' : '#059669')} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -319,7 +325,7 @@ export function FeeStatsView({ initialStats, initialMonth }: { initialStats: Fee
             </div>
             <div className="border rounded-lg p-3">
               <div className="text-xs text-gray-400 mb-1">預估年毛利</div>
-              <div className="text-lg font-bold text-emerald-600">{fmt(forecast.profit)}</div>
+              <div className={`text-lg font-bold ${forecast.profit < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmt(forecast.profit)}</div>
             </div>
           </div>
         )}
