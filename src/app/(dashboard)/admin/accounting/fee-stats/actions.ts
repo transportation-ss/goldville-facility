@@ -76,11 +76,38 @@ async function fetchFeeStatsRaw(fromMonth: string, toMonth: string) {
 
   const occupiedRooms = new Set((residents ?? []).map(r => r.room).filter(Boolean))
 
-  return { rooms: rooms ?? [], entries: entries ?? [], costs: costs ?? [], misc: misc ?? [], occupiedRooms }
+  const { data: sharedPools, error: sharedError } = await supabase
+    .from('shared_cost_entries')
+    .select('period_month, pool_type, items')
+    .gte('period_month', `${fromMonth}-01`)
+    .lte('period_month', `${toMonth}-01`)
+  if (sharedError) throw new Error(sharedError.message)
+
+  return { rooms: rooms ?? [], entries: entries ?? [], costs: costs ?? [], misc: misc ?? [], occupiedRooms, sharedPools: sharedPools ?? [] }
+}
+
+// 住房池／全館池：依該月住房數／全館房數平均分攤，回傳「每房分攤金額」的逐月對照表
+function sharedAllocationByMonth(
+  sharedPools: { period_month: string; pool_type: string; items: ServiceItem[] }[],
+  allRoomCount: number,
+  occupiedRoomCount: number,
+) {
+  const occupiedShareByMonth = new Map<string, number>()
+  const allShareByMonth = new Map<string, number>()
+  for (const p of sharedPools) {
+    const month = p.period_month.slice(0, 7)
+    const total = sumItems(p.items)
+    if (p.pool_type === 'occupied') {
+      occupiedShareByMonth.set(month, occupiedRoomCount > 0 ? total / occupiedRoomCount : 0)
+    } else if (p.pool_type === 'all') {
+      allShareByMonth.set(month, allRoomCount > 0 ? total / allRoomCount : 0)
+    }
+  }
+  return { occupiedShareByMonth, allShareByMonth }
 }
 
 export async function getFeeStats(fromMonth: string, toMonth: string): Promise<FeeStatsResult> {
-  const { rooms, entries, costs, misc, occupiedRooms } = await fetchFeeStatsRaw(fromMonth, toMonth)
+  const { rooms, entries, costs, misc, occupiedRooms, sharedPools } = await fetchFeeStatsRaw(fromMonth, toMonth)
 
   const incomeByRoom = new Map<string, { rent: number; added: number }>()
   for (const e of entries) {
@@ -98,12 +125,18 @@ export async function getFeeStats(fromMonth: string, toMonth: string): Promise<F
     costEntryByRoomMonth.set(key, (costEntryByRoomMonth.get(key) ?? 0) + c.amount)
   }
 
+  const occupiedRoomCount = rooms.filter(r => occupiedRooms.has(r.name)).length
+  const { occupiedShareByMonth, allShareByMonth } = sharedAllocationByMonth(sharedPools, rooms.length, occupiedRoomCount)
+
   const costByRoom = new Map<string, number>()
   for (const r of rooms) {
     let total = 0
+    const occupied = occupiedRooms.has(r.name)
     for (const m of months) {
       const key = `${r.id}|${m}`
       total += costEntryByRoomMonth.get(key) ?? defaultCostForRoom(r.name)
+      total += allShareByMonth.get(m) ?? 0
+      if (occupied) total += occupiedShareByMonth.get(m) ?? 0
     }
     costByRoom.set(r.id, total)
   }
@@ -131,7 +164,7 @@ export type FeeStatsTrendPoint = {
 }
 
 export async function getFeeStatsTrend(fromMonth: string, toMonth: string): Promise<FeeStatsTrendPoint[]> {
-  const { rooms, entries, costs, misc, occupiedRooms } = await fetchFeeStatsRaw(fromMonth, toMonth)
+  const { rooms, entries, costs, misc, occupiedRooms, sharedPools } = await fetchFeeStatsRaw(fromMonth, toMonth)
 
   const incomeByRoomMonth = new Map<string, { rent: number; added: number }>()
   for (const e of entries) {
@@ -154,6 +187,9 @@ export async function getFeeStatsTrend(fromMonth: string, toMonth: string): Prom
     miscByMonth.set(key, (miscByMonth.get(key) ?? 0) + m.amount)
   }
 
+  const occupiedRoomCount = rooms.filter(r => occupiedRooms.has(r.name)).length
+  const { occupiedShareByMonth, allShareByMonth } = sharedAllocationByMonth(sharedPools, rooms.length, occupiedRoomCount)
+
   const months = monthsBetween(fromMonth, toMonth)
 
   return months.map(month => ({
@@ -162,14 +198,17 @@ export async function getFeeStatsTrend(fromMonth: string, toMonth: string): Prom
     rooms: rooms.map(r => {
       const key = `${r.id}|${month}`
       const income = incomeByRoomMonth.get(key)
+      const occupied = occupiedRooms.has(r.name)
+      const baseCost = costByRoomMonth.get(key) ?? defaultCostForRoom(r.name)
+      const cost = baseCost + (allShareByMonth.get(month) ?? 0) + (occupied ? occupiedShareByMonth.get(month) ?? 0 : 0)
       return {
         id: r.id,
         name: r.name,
         floor: r.floor,
-        occupied: occupiedRooms.has(r.name),
+        occupied,
         roomRent: income?.rent ?? 0,
         addedValue: income?.added ?? 0,
-        cost: costByRoomMonth.get(key) ?? defaultCostForRoom(r.name),
+        cost,
       }
     }),
   }))
