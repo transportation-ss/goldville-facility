@@ -300,6 +300,7 @@ function getNavByRole(role: string): RoleNav {
           {
             items: [
               { label: '房間費率表',   href: '/admin/accounting/rate-catalog', icon: Calculator },
+              { label: '加值服務',     href: '/admin/services',                icon: Package    },
               { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3  },
               { label: '設備說明書', href: '/manuals',  icon: BookOpen },
               { label: '緊急維修',   href: '/hardware', icon: Wrench   },

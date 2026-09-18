@@ -309,6 +309,7 @@ const accountingNav: (NavSingle | NavGroup)[] = [
       { label: '房間收入',     href: '/admin/accounting/room-income',  icon: Wallet     },
       { label: '房間成本',     href: '/admin/accounting/room-cost',    icon: Coins      },
       { label: '房間費率表',   href: '/admin/accounting/rate-catalog', icon: Calculator },
+      { label: '加值服務',     href: '/admin/services',                icon: Package    },
       { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3, exact: true },
     ],
   },
