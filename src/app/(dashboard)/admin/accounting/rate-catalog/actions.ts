@@ -67,10 +67,11 @@ export type RateOverride = {
   yearly_price: number | null
   weekly_price: number | null
   discount_amount: number
+  core_member_price: number | null
   note: string | null
 }
 
-const OVERRIDE_FIELD_KEYS = ['monthly_price', 'yearly_price', 'weekly_price', 'discount_amount'] as const
+const OVERRIDE_FIELD_KEYS = ['monthly_price', 'yearly_price', 'weekly_price', 'discount_amount', 'core_member_price'] as const
 
 export async function updateRateOverride(input: RateOverride) {
   const supabase = await createClient()
@@ -79,7 +80,7 @@ export async function updateRateOverride(input: RateOverride) {
 
   const { data: current } = await supabase
     .from('room_rate_overrides')
-    .select('monthly_price, yearly_price, weekly_price, discount_amount')
+    .select('monthly_price, yearly_price, weekly_price, discount_amount, core_member_price')
     .eq('room_name', input.room_name)
     .maybeSingle()
 

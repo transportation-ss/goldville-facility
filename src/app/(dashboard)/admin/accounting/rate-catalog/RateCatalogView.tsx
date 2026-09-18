@@ -28,6 +28,7 @@ const OVERRIDE_FIELD_LABELS: Record<string, string> = {
   yearly_price: '年租',
   weekly_price: '週租',
   discount_amount: '優惠折扣',
+  core_member_price: '核心成員',
 }
 
 const FIELD_GROUPS: { title: string; fields: { key: keyof RateConfigFields; label: string; optional?: boolean }[] }[] = [
@@ -97,14 +98,16 @@ export function RateCatalogView({
   const [saved, setSaved] = useState(false)
   const [showLog, setShowLog] = useState(false)
 
-  const fixedPriceRooms = overrideValues.filter(o => o.monthly_price != null || o.yearly_price != null || o.weekly_price != null)
-  const discountRooms = overrideValues.filter(o => !fixedPriceRooms.includes(o))
+  const coreMemberRooms = overrideValues.filter(o => o.core_member_price != null)
+  const fixedPriceRooms = overrideValues.filter(o => !coreMemberRooms.includes(o) && (o.monthly_price != null || o.yearly_price != null || o.weekly_price != null))
+  const discountRooms = overrideValues.filter(o => !coreMemberRooms.includes(o) && !fixedPriceRooms.includes(o))
 
   function overrideRowChanged(o: RateOverride) {
     const original = overrides.find(x => x.room_name === o.room_name)
     if (!original) return false
     return original.monthly_price !== o.monthly_price || original.yearly_price !== o.yearly_price
       || original.weekly_price !== o.weekly_price || original.discount_amount !== o.discount_amount
+      || original.core_member_price !== o.core_member_price
   }
 
   const dirty = FIELD_GROUPS.flatMap(g => g.fields).some(f => values[f.key] !== config[f.key])
@@ -115,7 +118,7 @@ export function RateCatalogView({
     setValues(v => ({ ...v, [key]: raw === '' ? null : Number(raw) }))
   }
 
-  function handleOverrideFieldChange(roomName: string, field: 'monthly_price' | 'yearly_price' | 'weekly_price' | 'discount_amount', raw: string) {
+  function handleOverrideFieldChange(roomName: string, field: 'monthly_price' | 'yearly_price' | 'weekly_price' | 'discount_amount' | 'core_member_price', raw: string) {
     setSaved(false)
     setOverrideValues(list => list.map(o => {
       if (o.room_name !== roomName) return o
@@ -171,7 +174,24 @@ export function RateCatalogView({
         ))}
 
         <div>
-          <h2 className="text-sm font-medium text-gray-900 mb-2.5">五、特殊房型固定價（每層01房，內含二人；老闆自住房一律 0）</h2>
+          <h2 className="text-sm font-medium text-gray-900 mb-2.5">五、核心成員固定價（依樓層）</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {coreMemberRooms.map(o => (
+              <div key={o.room_name}>
+                <label className="text-xs text-gray-500">{o.room_name}房 {o.note && `（${o.note}）`}</label>
+                <input
+                  type="number"
+                  className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
+                  value={o.core_member_price ?? ''}
+                  onChange={e => handleOverrideFieldChange(o.room_name, 'core_member_price', e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="text-sm font-medium text-gray-900 mb-2.5">六、特殊房型固定價（每層01房，內含二人；老闆自住房一律 0）</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -223,7 +243,7 @@ export function RateCatalogView({
         </div>
 
         <div>
-          <h2 className="text-sm font-medium text-gray-900 mb-2.5">六、02房優惠（在既定費率基礎上扣除，不分租期）</h2>
+          <h2 className="text-sm font-medium text-gray-900 mb-2.5">七、02房優惠（在既定費率基礎上扣除，不分租期）</h2>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {discountRooms.map(o => (
               <div key={o.room_name}>
