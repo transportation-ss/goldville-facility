@@ -181,11 +181,11 @@ export function FeeStatsView({ initialStats, initialMonth }: { initialStats: Fee
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white border rounded-xl p-4">
           <div className="text-xs text-gray-400 mb-1">收入</div>
-          <div className="text-xl font-bold text-gray-900">{fmt(totals.income)}</div>
+          <div className="text-xl font-bold text-blue-600">{fmt(totals.income)}</div>
         </div>
         <div className="bg-white border rounded-xl p-4">
           <div className="text-xs text-gray-400 mb-1">成本</div>
-          <div className="text-xl font-bold text-gray-900">{fmt(totals.cost)}</div>
+          <div className="text-xl font-bold text-orange-600">{fmt(totals.cost)}</div>
         </div>
         <div className="bg-white border rounded-xl p-4">
           <div className="text-xs text-gray-400 mb-1">毛利</div>
@@ -203,7 +203,7 @@ export function FeeStatsView({ initialStats, initialMonth }: { initialStats: Fee
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v) => fmt(Number(v))} />
-                <Bar dataKey="value" fill="#059669" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill={viewMode === 'income' ? '#3b82f6' : viewMode === 'cost' ? '#f97316' : '#059669'} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -311,11 +311,11 @@ export function FeeStatsView({ initialStats, initialMonth }: { initialStats: Fee
           <div className="grid grid-cols-3 gap-3">
             <div className="border rounded-lg p-3">
               <div className="text-xs text-gray-400 mb-1">預估年收入</div>
-              <div className="text-lg font-bold text-gray-900">{fmt(forecast.income)}</div>
+              <div className="text-lg font-bold text-blue-600">{fmt(forecast.income)}</div>
             </div>
             <div className="border rounded-lg p-3">
               <div className="text-xs text-gray-400 mb-1">預估年成本</div>
-              <div className="text-lg font-bold text-gray-900">{fmt(forecast.cost)}</div>
+              <div className="text-lg font-bold text-orange-600">{fmt(forecast.cost)}</div>
             </div>
             <div className="border rounded-lg p-3">
               <div className="text-xs text-gray-400 mb-1">預估年毛利</div>
