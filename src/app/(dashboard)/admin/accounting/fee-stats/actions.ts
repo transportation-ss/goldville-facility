@@ -45,6 +45,7 @@ async function fetchFeeStatsRaw(fromMonth: string, toMonth: string) {
     .select('id, name, floor, sort_order')
     .eq('room_type', '客房')
     .eq('is_active', true)
+    .eq('include_in_accounting', true)
     .order('sort_order')
   if (roomsError) throw new Error(roomsError.message)
 

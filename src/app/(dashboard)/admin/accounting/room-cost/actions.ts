@@ -22,6 +22,7 @@ export async function getRoomCostSummary(month: string): Promise<RoomCostSummary
     .select('id, name, floor, sort_order')
     .eq('room_type', '客房')
     .eq('is_active', true)
+    .eq('include_in_accounting', true)
     .order('sort_order')
   if (roomsError) throw new Error(roomsError.message)
 
@@ -105,6 +106,7 @@ export async function getSharedCostSummary(month: string): Promise<SharedCostSum
     .select('name')
     .eq('room_type', '客房')
     .eq('is_active', true)
+    .eq('include_in_accounting', true)
   if (roomsError) throw new Error(roomsError.message)
 
   const { data: residents } = await supabase
