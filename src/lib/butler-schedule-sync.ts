@@ -2,18 +2,23 @@
  * Google Sheets 管家班表同步工具
  * Sheet: https://docs.google.com/spreadsheets/d/1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM
  *
- * 已知分頁 GID（之後有 Google API Key 時改為動態抓取）：
- *   2015301849 → 3/30–5/3（舊資料）
- *   1878188924 → 6/29–7/31（舊資料）
- *   545316291  → 分頁「11508」，115年8月（目前使用中）
+ * 排班的人會不定期直接開新分頁（不是固定延續舊分頁），所以分頁 GID 清單
+ * 一律動態抓（見 listAllGids），不要再手動維護寫死的 GID 陣列——上次维护的清單
+ * 漏掉新分頁，導致新的一整週排班沒同步進來還沒有任何報錯。
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
 
 const SHEET_ID = '1F2I0tFhC-MEiWhC-9_VN7Bwju-AflWJloCINJ7_xfkM'
 
-// 已知的分頁 GID 清單，從最新到最舊排列（未來有 API Key 後可動態取得）
-const KNOWN_GIDS = ['545316291', '1878188924', '1672694789', '2015301849']
+// 從公開的 htmlview 頁面抓出這份試算表目前所有的分頁 GID（不需要 API Key）
+async function listAllGids(): Promise<string[]> {
+  const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview`, { cache: 'no-store' })
+  if (!res.ok) return []
+  const html = await res.text()
+  const gids = new Set([...html.matchAll(/gid=(\d+)/g)].map(m => m[1]))
+  return [...gids]
+}
 
 export type SheetEntry = {
   date: string            // YYYY-MM-DD
@@ -202,53 +207,17 @@ async function fetchGid(gid: string, filterStart?: string, filterEnd?: string): 
   return parseSheetCsv(await res.text(), filterStart, filterEnd)
 }
 
-// ── 依分頁「名稱」抓排班（不需 API Key，任何人可檢視的 sheet 皆可用）──
-async function fetchByName(sheetName: string, filterStart?: string, filterEnd?: string): Promise<SheetEntry[]> {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) return []
-  return parseSheetCsv(await res.text(), filterStart, filterEnd)
-}
-
-// ── 依日期算出分頁名稱 ─────────────────────────────────────
-// 1~9月：民國年3碼 + 月2碼（補0），例：115年8月 → "11508"
-// 10~12月：分頁實際命名為民國年3碼 + "0" + 月2碼（共6碼），
-// 例：114年10月 → "114010"、114年11月 → "114011"（已對照試算表實際分頁確認）
-function sheetNameForDate(date: string): string {
-  const [y, m] = date.split('-').map(Number)
-  const minguoYear = y - 1911
-  if (m >= 10) return `${minguoYear}0${m}`
-  return `${minguoYear}${String(m).padStart(2, '0')}`
-}
-
-// 列出日期範圍內橫跨的所有分頁名稱（通常 1 個，跨月時 2 個）
-function sheetNamesForRange(start: string, end: string): string[] {
-  const names = new Set<string>()
-  const cur = new Date(start)
-  const endD = new Date(end)
-  while (cur <= endD) {
-    names.add(sheetNameForDate(cur.toISOString().split('T')[0]))
-    cur.setMonth(cur.getMonth() + 1, 1)
-  }
-  // 確保結尾月份也涵蓋到（上面用月初跳格可能漏掉最後一個月）
-  names.add(sheetNameForDate(end))
-  return [...names]
-}
-
-// ── 主函式：優先用日期算出的分頁名稱抓取，並用已知 GID 補歷史資料 ──
+// ── 主函式：動態抓出所有分頁，逐一讀取後合併 ─────────────────
 export async function fetchSheetSchedule(opts?: { start?: string; end?: string }): Promise<SheetEntry[]> {
-  const byNameResults = opts?.start && opts?.end
-    ? await Promise.all(sheetNamesForRange(opts.start, opts.end).map(name => fetchByName(name, opts.start, opts.end)))
-    : []
-
+  const gids = await listAllGids()
   const byGidResults = await Promise.all(
-    KNOWN_GIDS.map(gid => fetchGid(gid, opts?.start, opts?.end))
+    gids.map(gid => fetchGid(gid, opts?.start, opts?.end))
   )
 
-  // 合併，去重（同 date+staffName 只留第一筆，優先「依名稱抓到的當月分頁」，再來才是舊的已知 GID）
+  // 合併，去重（同 date+staffName 只留第一筆）
   const seen = new Set<string>()
   const merged: SheetEntry[] = []
-  for (const entries of [...byNameResults, ...byGidResults]) {
+  for (const entries of byGidResults) {
     for (const e of entries) {
       const key = `${e.date}|${e.staffName}`
       if (!seen.has(key)) {
