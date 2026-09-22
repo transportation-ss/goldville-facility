@@ -30,6 +30,14 @@ interface Task {
   area_slug: string | null
   sort_order: number
   is_extra?: boolean
+  assigned_to?: string | null
+  assignee_name?: string | null
+}
+
+interface StaffOption {
+  id: string
+  display_name: string
+  role: string
 }
 
 interface Session {
@@ -53,6 +61,7 @@ interface Props {
   completions: Completion[]
   isAdmin: boolean
   currentUserName: string
+  staff?: StaffOption[]
 }
 
 const TIME_SLOTS = ['22:00', '23:00', '02:00', '05:00', '06:30']
@@ -154,6 +163,11 @@ function TaskRow({
           {task.is_extra && (
             <span className="inline-block text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded mt-1">加派</span>
           )}
+          {task.is_extra && task.assignee_name && (
+            <span className="inline-block text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded mt-1 ml-1">
+              指派：{task.assignee_name}
+            </span>
+          )}
         </div>
 
         {/* 備註按鈕 */}
@@ -198,7 +212,7 @@ function TaskRow({
   )
 }
 
-export function NightshiftSheet({ session, tasks, completions: initialCompletions, isAdmin, currentUserName }: Props) {
+export function NightshiftSheet({ session, tasks, completions: initialCompletions, isAdmin, currentUserName, staff = [] }: Props) {
   const router = useRouter()
   const locked = session.status === 'completed'
 
@@ -239,6 +253,7 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskCategory, setNewTaskCategory] = useState('巡視')
   const [newTaskSlot, setNewTaskSlot] = useState('22:00')
+  const [newTaskAssignee, setNewTaskAssignee] = useState('')
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
   const [closing, setClosing] = useState(false)
   const [reopening, setReopening] = useState(false)
@@ -306,8 +321,9 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
   const handleAddTask = () => {
     if (!newTaskTitle.trim()) return
     startTransition(async () => {
-      await addExtraTask(session.id, newTaskTitle.trim(), newTaskCategory, newTaskSlot)
+      await addExtraTask(session.id, newTaskTitle.trim(), newTaskCategory, newTaskSlot, newTaskAssignee || null)
       setNewTaskTitle('')
+      setNewTaskAssignee('')
       setShowAddTask(false)
     })
   }
@@ -497,6 +513,16 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
                     {TIME_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
+                <select
+                  value={newTaskAssignee}
+                  onChange={e => setNewTaskAssignee(e.target.value)}
+                  className="w-full text-sm border border-gray-300 rounded-lg px-2 py-2 mb-3"
+                >
+                  <option value="">指派給（不指定）</option>
+                  {staff.map(s => (
+                    <option key={s.id} value={s.id}>{s.display_name}</option>
+                  ))}
+                </select>
                 <button
                   onClick={handleAddTask}
                   disabled={!newTaskTitle.trim()}

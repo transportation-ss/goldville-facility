@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getOrCreateSession, autoLockSession } from './actions'
+import { getOrCreateSession, autoLockSession, getNightshiftStaff } from './actions'
 import { isInActiveWindow } from './utils'
 import { NightshiftSheet } from './NightshiftSheet'
 
@@ -47,6 +47,29 @@ export default async function NightshiftPage() {
     .eq('session_id', session.id)
     .order('created_at')
 
+  // 取得今日完成紀錄
+  const { data: rawCompletions } = await supabase
+    .from('nightshift_completions')
+    .select('id, template_id, extra_task_id, completed_by, completed_at, notes')
+    .eq('session_id', session.id)
+
+  // 取得完成人 + 加派任務指派對象的姓名
+  const userIds = [...new Set([
+    ...(rawCompletions ?? []).map(c => c.completed_by).filter(Boolean),
+    ...(extraTasks ?? []).map(t => t.assigned_to).filter(Boolean),
+  ])]
+  let userNames: Record<string, string> = {}
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('user_profiles')
+      .select('id, display_name')
+      .in('id', userIds)
+    userNames = Object.fromEntries((profiles ?? []).map(p => [p.id, p.display_name]))
+  }
+
+  // 大夜班人員清單（管理員加派任務時指定對象用）
+  const staff = isAdmin ? await getNightshiftStaff() : []
+
   // 組合所有任務
   const allTasks = [
     ...(templates ?? []).map(t => ({ ...t, is_extra: false })),
@@ -58,25 +81,10 @@ export default async function NightshiftPage() {
       area_slug: t.area_slug ?? null,
       sort_order: 999,
       is_extra: true,
+      assigned_to: t.assigned_to ?? null,
+      assignee_name: t.assigned_to ? (userNames[t.assigned_to] ?? null) : null,
     })),
   ]
-
-  // 取得今日完成紀錄（含完成人名稱）
-  const { data: rawCompletions } = await supabase
-    .from('nightshift_completions')
-    .select('id, template_id, extra_task_id, completed_by, completed_at, notes')
-    .eq('session_id', session.id)
-
-  // 取得完成人姓名
-  const userIds = [...new Set((rawCompletions ?? []).map(c => c.completed_by).filter(Boolean))]
-  let userNames: Record<string, string> = {}
-  if (userIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('id, display_name')
-      .in('id', userIds)
-    userNames = Object.fromEntries((profiles ?? []).map(p => [p.id, p.display_name]))
-  }
 
   const completions = (rawCompletions ?? []).map(c => ({
     ...c,
@@ -91,6 +99,7 @@ export default async function NightshiftPage() {
         completions={completions}
         isAdmin={isAdmin}
         currentUserName={profile?.display_name ?? ''}
+        staff={staff}
       />
     </div>
   )

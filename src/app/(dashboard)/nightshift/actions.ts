@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { getNightshiftDate } from './utils'
 
@@ -167,7 +168,8 @@ export async function addExtraTask(
   sessionId: string,
   title: string,
   category: string,
-  timeSlot: string
+  timeSlot: string,
+  assignedTo: string | null = null
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -176,7 +178,20 @@ export async function addExtraTask(
     title,
     category,
     time_slot: timeSlot,
+    assigned_to: assignedTo || null,
     added_by: user?.id ?? null,
   })
   revalidatePath('/nightshift')
+}
+
+// 取得大夜班人員清單（加派任務指派用）
+export async function getNightshiftStaff() {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('user_profiles')
+    .select('id, display_name, role')
+    .in('role', ['frontdesk_night', 'nightshift', 'admin', 'manager'])
+    .eq('status', 'active')
+    .order('display_name')
+  return data ?? []
 }
