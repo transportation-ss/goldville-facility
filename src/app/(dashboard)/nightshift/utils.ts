@@ -11,6 +11,12 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+// ─── 今天的日曆日期（不受 21:30 切班邏輯影響） ──
+// 用於「加派任務」選日期時預設今晚（= 今天日期開的班次）
+export function getTaiwanTodayDate(): string {
+  return formatDate(getTaiwanNow())
+}
+
 // ─── 班次日期邏輯 ──────────────────────────────
 // 21:30 開新單（以「當天」為日期）
 // 21:30 前則屬於「前一天」的班次

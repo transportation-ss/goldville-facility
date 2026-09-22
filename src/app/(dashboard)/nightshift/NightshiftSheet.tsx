@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   CheckCircle2, Circle, MessageSquare, Plus, X, Moon, Lock,
-  AlertTriangle, UserCheck, LockOpen, History,
+  AlertTriangle, UserCheck, LockOpen, History, Settings,
 } from 'lucide-react'
 import {
   toggleCompletion, saveTaskNotes, saveHandoverNotes,
@@ -341,6 +341,17 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {/* 任務管理連結（不受值班時段限制，可事先排定臨時／日常任務） */}
+            {isAdmin && (
+              <Link
+                href="/nightshift/manage"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                任務管理
+              </Link>
+            )}
+
             {/* 歷史紀錄連結 */}
             <Link
               href="/nightshift/history"

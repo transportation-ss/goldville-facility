@@ -5,10 +5,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { getNightshiftDate } from './utils'
 
-// 取得或建立今日班次
-export async function getOrCreateSession() {
+// 取得或建立指定日期的班次（session_date = 該晚 21:30 開始的班次）
+export async function getOrCreateSessionForDate(sessionDate: string) {
   const supabase = await createClient()
-  const sessionDate = getNightshiftDate()
 
   const { data: existing } = await supabase
     .from('nightshift_sessions')
@@ -26,6 +25,21 @@ export async function getOrCreateSession() {
 
   if (error) throw new Error(error.message)
   return created
+}
+
+// 取得或建立今日班次
+export async function getOrCreateSession() {
+  return getOrCreateSessionForDate(getNightshiftDate())
+}
+
+async function requireAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('user_profiles').select('role').eq('id', user?.id ?? '').single()
+  if (!profile || !['admin', 'manager'].includes(profile.role)) {
+    throw new Error('權限不足')
+  }
 }
 
 // 切換任務完成狀態
@@ -194,4 +208,89 @@ export async function getNightshiftStaff() {
     .eq('status', 'active')
     .order('display_name')
   return data ?? []
+}
+
+// ── 任務管理（/nightshift/manage）─────────────────────────
+
+// 指定某一晚加派臨時任務（不受 21:30 時段限制，可事先排好）
+export async function addExtraTaskForDate(
+  sessionDate: string,
+  title: string,
+  category: string,
+  timeSlot: string,
+  assignedTo: string | null
+) {
+  await requireAdmin()
+  const session = await getOrCreateSessionForDate(sessionDate)
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  await supabase.from('nightshift_extra_tasks').insert({
+    session_id: session.id,
+    title,
+    category,
+    time_slot: timeSlot,
+    assigned_to: assignedTo || null,
+    added_by: user?.id ?? null,
+  })
+  revalidatePath('/nightshift/manage')
+  revalidatePath('/nightshift')
+}
+
+// 取得指定日期班次已加派的臨時任務
+export async function listExtraTasksForDate(sessionDate: string) {
+  const supabase = await createClient()
+  const { data: session } = await supabase
+    .from('nightshift_sessions')
+    .select('id')
+    .eq('session_date', sessionDate)
+    .single()
+
+  if (!session) return []
+
+  const { data } = await supabase
+    .from('nightshift_extra_tasks')
+    .select('id, title, category, time_slot, assigned_to')
+    .eq('session_id', session.id)
+    .order('created_at')
+
+  const tasks = data ?? []
+  const staffIds = [...new Set(tasks.map(t => t.assigned_to).filter(Boolean))]
+  let names: Record<string, string> = {}
+  if (staffIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('user_profiles').select('id, display_name').in('id', staffIds)
+    names = Object.fromEntries((profiles ?? []).map(p => [p.id, p.display_name]))
+  }
+  return tasks.map(t => ({ ...t, assignee_name: t.assigned_to ? (names[t.assigned_to] ?? null) : null }))
+}
+
+// 取得所有日常任務模板（含已停用，管理頁用）
+export async function getAllTemplates() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('nightshift_task_templates')
+    .select('id, title, category, time_slot, is_active, sort_order')
+    .order('time_slot')
+    .order('sort_order')
+  return data ?? []
+}
+
+// 新增日常任務（套用到未來每一天的班次）
+export async function addTemplateTask(title: string, category: string, timeSlot: string) {
+  await requireAdmin()
+  const supabase = await createClient()
+  await supabase.from('nightshift_task_templates').insert({
+    title, category, time_slot: timeSlot, sort_order: 999,
+  })
+  revalidatePath('/nightshift/manage')
+  revalidatePath('/nightshift')
+}
+
+// 停用／啟用日常任務
+export async function toggleTemplateActive(id: string, active: boolean) {
+  await requireAdmin()
+  const supabase = await createClient()
+  await supabase.from('nightshift_task_templates').update({ is_active: active }).eq('id', id)
+  revalidatePath('/nightshift/manage')
+  revalidatePath('/nightshift')
 }
