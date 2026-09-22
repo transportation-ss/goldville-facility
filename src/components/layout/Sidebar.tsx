@@ -9,7 +9,7 @@ import {
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, BedDouble, History,
   Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope, FileSpreadsheet,
-  TrendingUp, Filter, ClipboardCheck, Calculator, Wallet, Coins, PieChart,
+  TrendingUp, Filter, ClipboardCheck, Calculator, Wallet, Coins, PieChart, Car, ChevronDown,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -55,6 +55,7 @@ const adminNav: NavItem[] = [
   { label: '房間登錄',     href: '/rooms',             icon: DoorOpen },
   { label: '樓層配置',     href: '/butler/floorplan',  icon: Layers   },
   { label: '數據後台',     href: process.env.NEXT_PUBLIC_USAGE_DASHBOARD_URL || 'http://localhost:3002', icon: BarChart3 },
+  { label: '交通派車後台', href: 'https://line-transport-dispatch.onrender.com/admin', icon: Car },
 ]
 
 // ─── 全員主導航（admin/manager）────────────────
@@ -387,20 +388,60 @@ function SubNavLink({ item, pathname, onClick }: { item: NavItem; pathname: stri
   )
 }
 
-function renderNav(nav: (NavSingle | NavGroup)[], pathname: string, onClick?: () => void) {
+function NavGroupBlock({
+  label, items, pathname, onClick, first, collapsed, onToggle,
+}: {
+  label: string
+  items: NavItem[]
+  pathname: string
+  onClick?: () => void
+  first: boolean
+  collapsed: boolean
+  onToggle?: () => void
+}) {
+  return (
+    <div className={first ? '' : 'mt-1'}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`w-full flex items-center justify-between px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider ${
+          onToggle ? 'cursor-pointer hover:text-gray-600' : ''
+        }`}
+      >
+        <span>{label}</span>
+        {onToggle && (
+          <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+        )}
+      </button>
+      {!collapsed && items.map(item => (
+        <SubNavLink key={item.href} item={item} pathname={pathname} onClick={onClick} />
+      ))}
+    </div>
+  )
+}
+
+function renderNav(
+  nav: (NavSingle | NavGroup)[],
+  pathname: string,
+  onClick: (() => void) | undefined,
+  collapsedGroups: Set<string>,
+  onToggleGroup?: (label: string) => void,
+) {
   return nav.map((section, i) => {
     if (section.type === 'single') {
       return <NavLink key={section.href} item={section} pathname={pathname} onClick={onClick} />
     }
     return (
-      <div key={section.label} className={i > 0 ? 'mt-1' : ''}>
-        <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-          {section.label}
-        </p>
-        {section.items.map(item => (
-          <SubNavLink key={item.href} item={item} pathname={pathname} onClick={onClick} />
-        ))}
-      </div>
+      <NavGroupBlock
+        key={section.label}
+        label={section.label}
+        items={section.items}
+        pathname={pathname}
+        onClick={onClick}
+        first={i === 0}
+        collapsed={collapsedGroups.has(section.label)}
+        onToggle={onToggleGroup ? () => onToggleGroup(section.label) : undefined}
+      />
     )
   })
 }
@@ -413,6 +454,44 @@ export function Sidebar({ role, displayName }: { role: string; displayName: stri
   const [isNavigating, setIsNavigating] = useState(false)
   const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const isAdmin = ADMIN_ROLES.includes(role)
+
+  // admin/manager 導覽群組預設折疊，只留「管理」展開；其他身分導覽較短，維持全展開
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() =>
+    isAdmin
+      ? new Set(fullNav.filter((s): s is NavGroup => s.type === 'group').map(s => s.label))
+      : new Set()
+  )
+
+  function toggleGroup(label: string) {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(label)) next.delete(label)
+      else next.add(label)
+      return next
+    })
+  }
+
+  // 切換頁面時，若目前頁面所在的群組是折疊的，自動展開，避免找不到目前所在位置
+  useEffect(() => {
+    if (!isAdmin) return
+    const allGroups = [
+      ...fullNav.filter((s): s is NavGroup => s.type === 'group'),
+      { label: '管理', items: adminNav },
+    ]
+    const active = allGroups.find(g =>
+      g.items.some(it => !it.href.startsWith('http') && (pathname === it.href || pathname.startsWith(it.href + '/')))
+    )
+    if (active) {
+      setCollapsedGroups(prev => {
+        if (!prev.has(active.label)) return prev
+        const next = new Set(prev)
+        next.delete(active.label)
+        return next
+      })
+    }
+  }, [pathname, isAdmin])
 
   useEffect(() => {
     if (navTimerRef.current) {
@@ -438,7 +517,6 @@ export function Sidebar({ role, displayName }: { role: string; displayName: stri
     router.push('/login')
   }
 
-  const isAdmin            = ADMIN_ROLES.includes(role)
   const isNightshift       = NIGHTSHIFT_ROLES.includes(role)
   const isTechnician       = TECHNICIAN_ROLES.includes(role)
   const isProcurement      = PROCUREMENT_ROLES.includes(role)
@@ -478,17 +556,18 @@ export function Sidebar({ role, displayName }: { role: string; displayName: stri
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {renderNav(nav, pathname, handleNavClick)}
+          {renderNav(nav, pathname, handleNavClick, collapsedGroups, isAdmin ? toggleGroup : undefined)}
 
           {isAdmin && (
-            <div className="mt-1">
-              <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                管理
-              </p>
-              {adminNav.map(item => (
-                <SubNavLink key={item.href} item={item} pathname={pathname} onClick={handleNavClick} />
-              ))}
-            </div>
+            <NavGroupBlock
+              label="管理"
+              items={adminNav}
+              pathname={pathname}
+              onClick={handleNavClick}
+              first={false}
+              collapsed={collapsedGroups.has('管理')}
+              onToggle={() => toggleGroup('管理')}
+            />
           )}
         </nav>
 
