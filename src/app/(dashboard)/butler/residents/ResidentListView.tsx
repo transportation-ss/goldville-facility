@@ -48,6 +48,7 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
   const [form, setForm] = useState({
     name:             resident?.name ?? '',
     nickname:         resident?.nickname ?? '',
+    transport_aliases: (resident?.transport_aliases ?? []).join('、'),
     room:             resident?.room ?? '',
     status:           resident?.status ?? 'active_resident' as ResidentStatus,
     move_in_date:     resident?.move_in_date ?? '',
@@ -100,6 +101,7 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
       const payload = {
         name:             form.name.trim(),
         nickname:         form.nickname.trim() || null,
+        transport_aliases: form.transport_aliases.split(/[、,，]/).map(s => s.trim()).filter(Boolean),
         room:             form.room.trim() || null,
         status:           form.status,
         move_in_date:     form.move_in_date || null,
@@ -176,6 +178,13 @@ function ResidentModal({ resident, butlers, residents, onClose }: {
                 value={form.nickname} onChange={e => set('nickname', e.target.value)}
                 placeholder="選填" />
             </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">交通報表別名（司機／家屬常用的稱呼，逗號分隔）</label>
+            <input className="w-full border rounded-lg px-3 py-2 text-sm"
+              value={form.transport_aliases} onChange={e => set('transport_aliases', e.target.value)}
+              placeholder="例：溫大姊、碧梨姐" />
+            <p className="text-[11px] text-gray-400 mt-1">交通報表匯出時，這些別名會自動對應到「{form.name || '本住戶'}」</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>

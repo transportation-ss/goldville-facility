@@ -8,6 +8,7 @@ import {
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
   Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope, Brush, FileSpreadsheet,
   TrendingUp, Filter, ClipboardCheck, Calculator, Wallet, Coins, PieChart, Car,
+  NotebookPen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -61,6 +62,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '住戶列表',     href: '/butler/residents', icon: Users         },
               { label: '加值服務',     href: '/admin/services',    icon: Package       },
               { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
+              { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '清潔值班',     href: '/butler/cleaning',  icon: Brush         },
               { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
@@ -242,6 +244,7 @@ function getNavByRole(role: string): RoleNav {
           { label: '清潔值班', href: '/butler/cleaning', icon: Brush     },
           { label: '管家清單', href: '/butler/staff', icon: UserCog      },
           { label: '服務紀錄', href: '/butler/logs', icon: BookOpen      },
+          { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
         ],
         more: [
           {
@@ -316,6 +319,7 @@ function getNavByRole(role: string): RoleNav {
         primary: [
           { label: '管家任務', href: '/butler',           icon: Sparkles },
           { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen },
+          { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
           { label: '清潔值班', href: '/butler/cleaning',  icon: Brush    },
           { label: '住戶列表', href: '/butler/residents', icon: Users    },
           { label: '班表',     href: '/butler/schedule',  icon: History  },

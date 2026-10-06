@@ -1,21 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { getButlerTasksByWeek, getButlerStaff } from '../actions'
-import { ButlerWeekView } from './ButlerWeekView'
+import { ButlerMonthView } from './ButlerMonthView'
 
 export const dynamic = 'force-dynamic'
-
-function getWeekRange(dateStr: string) {
-  // dateStr 已經是台灣時區的日曆日期字串，這裡用 UTC 運算避免主機時區
-  // 不同導致 getDay()/getDate() 算出錯的星期幾（曾在 UTC 主機上把週一誤判成週日）
-  const d = new Date(dateStr + 'T00:00:00Z')
-  const day = d.getUTCDay() // 0=Sun
-  const mon = new Date(d)
-  mon.setUTCDate(d.getUTCDate() - (day === 0 ? 6 : day - 1))
-  const sun = new Date(mon)
-  sun.setUTCDate(mon.getUTCDate() + 6)
-  const fmt = (dt: Date) => dt.toISOString().slice(0, 10)
-  return { start: fmt(mon), end: fmt(sun) }
-}
 
 function getTaiwanDate() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
@@ -23,7 +10,10 @@ function getTaiwanDate() {
 
 export default async function ButlerTasksPage() {
   const today = getTaiwanDate()
-  const { start, end } = getWeekRange(today)
+  const [year, month] = today.split('-').map(Number)
+  const start = `${year}-${String(month).padStart(2, '0')}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -36,9 +26,10 @@ export default async function ButlerTasksPage() {
   ])
 
   return (
-    <ButlerWeekView
+    <ButlerMonthView
       today={today}
-      weekStart={start}
+      year={year}
+      month={month}
       tasks={tasks}
       staff={staff}
       userRole={profile?.role ?? ''}

@@ -10,6 +10,7 @@ import {
   Users, BookOpen, KeyRound, BedDouble, History,
   Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope, FileSpreadsheet,
   TrendingUp, Filter, ClipboardCheck, Calculator, Wallet, Coins, PieChart, Car, ChevronDown,
+  NotebookPen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -101,6 +102,7 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '住戶列表',     href: '/butler/residents', icon: Users         },
       { label: '加值服務',     href: '/admin/services',    icon: Package       },
       { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
+      { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
       { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
       { label: '管家清單',     href: '/butler/staff',     icon: UserCog       },
       { label: '班表管理',     href: '/butler/schedule',  icon: History       },
@@ -271,6 +273,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '加值服務報表', href: '/admin/services/fees', icon: BarChart3   },
       { label: '管家清單', href: '/butler/staff',      icon: UserCog       },
       { label: '服務紀錄', href: '/butler/logs',       icon: BookOpen      },
+      { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
       { label: '回診表單', href: '/butler/appointments', icon: Stethoscope },
       { label: '班表管理', href: '/butler/schedule',   icon: History       },
       { label: '交通報表', href: '/butler/transport-report', icon: FileSpreadsheet },
@@ -331,6 +334,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '管家任務', href: '/butler',           icon: Sparkles, exact: true },
       { label: '住戶列表', href: '/butler/residents', icon: Users     },
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
+      { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
       { label: '回診表單', href: '/butler/appointments', icon: Stethoscope },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
       { label: '照片庫',   href: '/butler/photos',    icon: Images    },

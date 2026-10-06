@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Plus, Clock, MapPin, User, CheckCircle2, Circle, AlertCircle, Pencil, Trash2, CalendarDays, History, Printer, X, Camera, RotateCcw } from 'lucide-react'
 import type { ButlerTask, ButlerStaff } from './actions'
+import { HandoverQuickAdd } from './HandoverQuickAdd'
 import { createButlerTask, updateButlerTask, deleteButlerTask, completeButlerTask, uncompleteButlerTask, updateCompletionData, findResidentIdBySpace } from './actions'
 
 interface Props {
@@ -500,7 +501,7 @@ export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props
             </button>
             <Link href="/butler/tasks"
               className="flex items-center gap-1 text-xs text-gray-500 border rounded-lg px-2.5 py-1.5 hover:bg-gray-50">
-              <CalendarDays className="w-3.5 h-3.5" />本週
+              <CalendarDays className="w-3.5 h-3.5" />本月
             </Link>
             <Link href="/butler/history"
               className="flex items-center gap-1 text-xs text-gray-500 border rounded-lg px-2.5 py-1.5 hover:bg-gray-50">
@@ -589,6 +590,8 @@ export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props
             </>
           )}
         </div>
+
+        <HandoverQuickAdd />
 
         {/* Modals */}
         {(modal === 'add' || modal === 'edit') && (

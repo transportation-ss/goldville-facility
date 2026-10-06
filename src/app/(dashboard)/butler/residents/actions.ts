@@ -12,6 +12,7 @@ export type ButlerResident = {
   id: string
   name: string
   nickname: string | null
+  transport_aliases: string[]
   room: string | null
   status: ResidentStatus
   move_in_date: string | null
@@ -97,6 +98,7 @@ export async function getButlerOptions(): Promise<ButlerOption[]> {
 export async function createResident(input: {
   name: string
   nickname?: string | null
+  transport_aliases?: string[]
   room?: string | null
   status: ResidentStatus
   move_in_date?: string | null
@@ -131,6 +133,7 @@ export async function createResident(input: {
 export async function updateResident(id: string, input: Partial<{
   name: string
   nickname: string | null
+  transport_aliases: string[]
   room: string | null
   status: ResidentStatus
   move_in_date: string | null

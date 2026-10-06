@@ -22,6 +22,7 @@ interface Resident {
   room: string
   status: string
   butlerNickname: string
+  transportAliases: string[]
 }
 
 /** 上一個完整月份（例如 9 月執行時回傳 8/1-8/31），或指定年月 */
@@ -75,7 +76,7 @@ async function getActiveResidents(): Promise<Resident[]> {
   const supabase = createAdminClient()
   const { data: residents } = await supabase
     .from('butler_residents')
-    .select('name, room, primary_butler_id, status')
+    .select('name, room, primary_butler_id, status, transport_aliases')
     .neq('status', 'vacant')
   const { data: profiles } = await supabase
     .from('user_profiles')
@@ -100,10 +101,21 @@ async function getActiveResidents(): Promise<Resident[]> {
     butlerNickname: r.primary_butler_id
       ? (NICKNAME[r.primary_butler_id] || nameById.get(r.primary_butler_id) || '')
       : '',
+    transportAliases: r.transport_aliases ?? [],
   }))
 }
 
-const aliasMap: Record<string, string> = aliasMapping
+// 住戶自行在住戶列表維護的別名優先於這份舊的寫死清單
+function buildAliasMap(residents: Resident[]): Record<string, string> {
+  const map: Record<string, string> = { ...aliasMapping }
+  for (const r of residents) {
+    for (const alias of r.transportAliases) {
+      if (alias) map[alias] = r.name
+    }
+  }
+  return map
+}
+
 const nonResidentSet = new Set<string>(nonResidentNames)
 
 interface CategorizedRow extends RawRow {
@@ -120,6 +132,7 @@ interface Categorized {
 
 function categorize(rows: RawRow[], residents: Resident[]): Categorized {
   const residentNames = new Set(residents.map(r => r.name))
+  const aliasMap = buildAliasMap(residents)
   const tripHasButler = new Map<string, boolean>()
   for (const r of rows) {
     if (r.isButler) tripHasButler.set(r.tripId, true)
