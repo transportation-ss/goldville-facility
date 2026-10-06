@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { defaultMeal, todayTW, fetchMealCount, MEAL_LABEL, type MealCount, type MealKey } from '@/lib/meal-sheet'
+import { defaultTarget, fetchMealCount, MEAL_LABEL, type MealCount, type MealKey } from '@/lib/meal-sheet'
 
 // 餐廳廚房小幫手：群組內輸入「用餐人數」→ 以 reply（不佔推播額度）回覆用餐人數卡片。
 // 只讀 Google Sheet，不寫任何資料。
@@ -105,7 +105,7 @@ async function handle(ev: LineEvent) {
   if (ev.type === 'message' && ev.message?.type === 'text') {
     const m = KEYWORD.exec((ev.message.text ?? '').trim())
     if (!m) return                                  // 群組裡其他訊息一律不理
-    meal = m[1] ? MEAL_BY_WORD[m[1]] : defaultMeal()
+    meal = m[1] ? MEAL_BY_WORD[m[1]] : defaultTarget().meal
   } else if (ev.type === 'postback') {
     const m = /^meal=(breakfast|lunch|dinner)$/.exec(ev.postback?.data ?? '')
     if (!m) return
@@ -113,7 +113,7 @@ async function handle(ev: LineEvent) {
   } else return
 
   try {
-    const card = buildCard(await fetchMealCount(todayTW(), meal))
+    const card = buildCard(await fetchMealCount(defaultTarget().date, meal))
     await reply(ev.replyToken, card)
   } catch (e) {
     console.error('[meal-card] failed', e)

@@ -21,16 +21,20 @@ export type MealCount = {
   batch2: Batch | null
 }
 
-export function todayTW(): string {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
-}
-
-// 依台北時間預設餐別
-export function defaultMeal(date = new Date()): MealKey {
-  const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false }).format(date)) % 24
-  if (h < 10) return 'breakfast'
-  if (h < 15) return 'lunch'
-  return 'dinner'
+// 依台北時間決定「用餐日 + 預設餐別」：
+// 前一日 22:00 ~ 當日 07:59 → 當日早餐；08:00 ~ 13:30 → 當日午餐；13:31 ~ 21:59 → 當日晚餐
+export function defaultTarget(now = new Date()): { date: string; meal: MealKey } {
+  const tz = { timeZone: 'Asia/Taipei' }
+  const today = now.toLocaleDateString('sv-SE', tz)
+  const [h, mi] = now.toLocaleTimeString('en-GB', { ...tz, hour12: false, hour: '2-digit', minute: '2-digit' }).split(':').map(Number)
+  const mins = (h % 24) * 60 + mi
+  if (mins >= 22 * 60) {
+    const [y, m, d] = today.split('-').map(Number)
+    return { date: new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10), meal: 'breakfast' }
+  }
+  if (mins < 8 * 60) return { date: today, meal: 'breakfast' }
+  if (mins <= 13 * 60 + 30) return { date: today, meal: 'lunch' }
+  return { date: today, meal: 'dinner' }
 }
 
 // 'YYYY-MM-DD' → 該週一~週日的分頁名（無前導 0）
