@@ -280,6 +280,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '住戶列表',     href: '/butler/residents', icon: Users     },
               { label: '加值服務',     href: '/admin/services',    icon: Package   },
               { label: '加值服務報表', href: '/admin/services/fees', icon: BarChart3 },
+              { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
               { label: '回診表單',     href: '/butler/appointments', icon: Stethoscope },
               { label: '班表',         href: '/butler/schedule',  icon: History   },
               { label: '交通報表',     href: '/butler/transport-report', icon: FileSpreadsheet },
