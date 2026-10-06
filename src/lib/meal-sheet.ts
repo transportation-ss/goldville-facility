@@ -21,6 +21,10 @@ export type MealCount = {
   batch2: Batch | null
 }
 
+export function todayTW(): string {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
+}
+
 // 依台北時間預設餐別
 export function defaultMeal(date = new Date()): MealKey {
   const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', hour12: false }).format(date)) % 24

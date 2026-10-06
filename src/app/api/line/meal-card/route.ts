@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { todayTW } from '@/lib/dining'
-import { defaultMeal, fetchMealCount, MEAL_LABEL, type MealCount, type MealKey } from '@/lib/meal-sheet'
+import { defaultMeal, todayTW, fetchMealCount, MEAL_LABEL, type MealCount, type MealKey } from '@/lib/meal-sheet'
 
 // 餐廳廚房小幫手：群組內輸入「用餐人數」→ 以 reply（不佔推播額度）回覆用餐人數卡片。
 // 只讀 Google Sheet，不寫任何資料。
