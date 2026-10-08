@@ -29,6 +29,35 @@ async function reply(replyToken: string, message: unknown) {
   if (!res.ok) console.error('[meal-card] reply failed', res.status, await res.text())
 }
 
+// 「用餐按鈕」：貼一張按鈕卡（reply，不佔額度），點按鈕走 postback，不會在群組洗出訊息
+const BUTTON_KEYWORD = /^用餐按鈕$/
+const btn = (label: string, data: string, primary = false) => ({
+  type: 'button',
+  style: primary ? 'primary' : 'secondary',
+  color: primary ? '#10B981' : undefined,
+  height: 'sm',
+  action: { type: 'postback', label, data },
+})
+const BUTTON_CARD = {
+  type: 'flex',
+  altText: '用餐人數查詢按鈕',
+  contents: {
+    type: 'bubble',
+    size: 'kilo',
+    body: {
+      type: 'box', layout: 'vertical', spacing: 'sm',
+      contents: [
+        { type: 'text', text: '用餐人數查詢', weight: 'bold', size: 'md' },
+        btn('用餐人數', 'meal=auto', true),
+        {
+          type: 'box', layout: 'horizontal', spacing: 'sm',
+          contents: [btn('早餐', 'meal=breakfast'), btn('午餐', 'meal=lunch'), btn('晚餐', 'meal=dinner')],
+        },
+      ],
+    },
+  },
+}
+
 type LineEvent = {
   type: string
   replyToken?: string
@@ -40,13 +69,15 @@ async function handle(ev: LineEvent) {
   if (!ev.replyToken) return
   let requested: MealKey | undefined
   if (ev.type === 'message' && ev.message?.type === 'text') {
-    const m = KEYWORD.exec((ev.message.text ?? '').trim())
+    const text = (ev.message.text ?? '').trim()
+    if (BUTTON_KEYWORD.test(text)) return reply(ev.replyToken, BUTTON_CARD)
+    const m = KEYWORD.exec(text)
     if (!m) return                                  // 群組裡其他訊息一律不理
     requested = m[1] ? MEAL_BY_WORD[m[1]] : undefined
   } else if (ev.type === 'postback') {
-    const m = /^meal=(breakfast|lunch|dinner)$/.exec(ev.postback?.data ?? '')
+    const m = /^meal=(auto|breakfast|lunch|dinner)$/.exec(ev.postback?.data ?? '')
     if (!m) return
-    requested = m[1] as MealKey
+    requested = m[1] === 'auto' ? undefined : m[1] as MealKey
   } else return
 
   const t = resolveTarget(new Date(), requested)
