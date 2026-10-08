@@ -17,24 +17,40 @@ export type MealCount = {
   staple: number | null        // 主食份數（早餐無）
   vegSoup: number | null       // 素食湯（早餐無）
   extra: number | null         // 附餐加點（僅晚餐）
+  guestSlots: { time: string; count: number }[] | null  // 早餐：旅客（房客）各時段人數
   batch1: Batch | null         // 早餐無批次摘要
   batch2: Batch | null
 }
 
-// 依台北時間決定「用餐日 + 預設餐別」：
-// 前一日 22:00 ~ 當日 07:59 → 當日早餐；08:00 ~ 13:30 → 當日午餐；13:31 ~ 21:59 → 當日晚餐
-export function defaultTarget(now = new Date()): { date: string; meal: MealKey } {
+export type Target = {
+  date: string                       // 用餐日 YYYY-MM-DD
+  meal: MealKey
+  dayTag: '今天' | '明天'
+  phase: 'estimate' | 'reported'     // 早餐才有意義：預估（隔天早餐、晚班回報前）／已回報
+}
+
+// 依台北時間決定「用餐日 + 餐別 + 狀態」。requested 為使用者明確指定的餐別（按鈕／指令），省略則用預設。
+// 預設餐別：22:00~07:59 早餐、08:00~13:30 午餐、13:31~21:59 晚餐。
+// 早餐日期：00:00~06:59 看今天；07:00 起看明天（櫃台約 07:30 開始回報隔天早餐）。
+// 午／晚餐日期：22:00 起看明天，其餘看今天。
+// 早餐狀態：明天早餐在 22:00 晚班回報前為「預估」，其餘為「已回報」。
+export function resolveTarget(now = new Date(), requested?: MealKey): Target {
   const tz = { timeZone: 'Asia/Taipei' }
   const today = now.toLocaleDateString('sv-SE', tz)
   const [h, mi] = now.toLocaleTimeString('en-GB', { ...tz, hour12: false, hour: '2-digit', minute: '2-digit' }).split(':').map(Number)
   const mins = (h % 24) * 60 + mi
-  if (mins >= 22 * 60) {
-    const [y, m, d] = today.split('-').map(Number)
-    return { date: new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10), meal: 'breakfast' }
+  const [y, m, d] = today.split('-').map(Number)
+  const tomorrow = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
+
+  const meal: MealKey = requested
+    ?? (mins >= 22 * 60 || mins < 8 * 60 ? 'breakfast' : mins <= 13 * 60 + 30 ? 'lunch' : 'dinner')
+  const isTomorrow = meal === 'breakfast' ? mins >= 7 * 60 : mins >= 22 * 60
+  return {
+    date: isTomorrow ? tomorrow : today,
+    meal,
+    dayTag: isTomorrow ? '明天' : '今天',
+    phase: isTomorrow && mins < 22 * 60 ? 'estimate' : 'reported',
   }
-  if (mins < 8 * 60) return { date: today, meal: 'breakfast' }
-  if (mins <= 13 * 60 + 30) return { date: today, meal: 'lunch' }
-  return { date: today, meal: 'dinner' }
 }
 
 // 'YYYY-MM-DD' → 該週一~週日的分頁名（無前導 0）
@@ -100,9 +116,15 @@ export async function fetchMealCount(date: string, meal: MealKey): Promise<MealC
   const out: MealCount = {
     meal, dateLabel,
     meat: num(rows[total][c0]), veg: val(total),
-    staple: null, vegSoup: null, extra: null, batch1: null, batch2: null,
+    staple: null, vegSoup: null, extra: null, guestSlots: null, batch1: null, batch2: null,
   }
-  if (meal === 'breakfast') return out
+  if (meal === 'breakfast') {
+    // 「房客」標籤格（合併儲存格，只有首列有字）起的前 4 列依序＝7:00 / 7:30 / 8:00 / 8:30，人數在該日 c0+1
+    const g = find('房客')
+    if (g < 0) throw new Error('「早餐」區塊找不到「房客」列')
+    out.guestSlots = ['07:00', '07:30', '08:00', '08:30'].map((time, k) => ({ time, count: num(rows[g + k]?.[c0 + 1]) ?? 0 }))
+    return out
+  }
 
   // 午餐的批次摘要列標籤欄是空的，故以「主食份數」為錨點、依固定順序往下讀；
   // 晚餐在素食湯後多一列「附餐加點」
