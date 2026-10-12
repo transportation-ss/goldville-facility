@@ -10,7 +10,7 @@ import {
   Users, BookOpen, KeyRound, BedDouble, History,
   Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope, FileSpreadsheet,
   TrendingUp, Filter, ClipboardCheck, Calculator, Wallet, Coins, PieChart, Car, ChevronDown,
-  NotebookPen,
+  UtensilsCrossed, NotebookPen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -100,6 +100,7 @@ const fullNav: (NavSingle | NavGroup)[] = [
       { label: '管家任務',     href: '/butler',           icon: Sparkles,     exact: true },
       { label: '管家派工',     href: '/butler/plan',      icon: ClipboardList },
       { label: '住戶列表',     href: '/butler/residents', icon: Users         },
+      { label: '用餐管理',     href: '/butler/dining',    icon: UtensilsCrossed },
       { label: '加值服務',     href: '/admin/services',    icon: Package       },
       { label: '服務紀錄',     href: '/butler/logs',      icon: BookOpen      },
       { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
@@ -222,6 +223,7 @@ const techHousekeepingNav: (NavSingle | NavGroup)[] = [
 const frontdeskDayNav: (NavSingle | NavGroup)[] = [
   { type: 'single', label: '工務任務', href: '/work-orders', icon: ClipboardList },
   { type: 'single', label: '住戶列表', href: '/butler/residents', icon: Users },
+  { type: 'single', label: '用餐管理', href: '/butler/dining', icon: UtensilsCrossed },
   {
     type: 'group', label: '房務',
     items: [
@@ -269,6 +271,7 @@ const butlerManagerNav: (NavSingle | NavGroup)[] = [
       { label: '管家任務', href: '/butler',            icon: Sparkles,     exact: true },
       { label: '管家派工', href: '/butler/plan',       icon: ClipboardList },
       { label: '住戶列表', href: '/butler/residents',  icon: Users         },
+      { label: '用餐管理', href: '/butler/dining',   icon: UtensilsCrossed },
       { label: '加值服務', href: '/admin/services',    icon: Package       },
       { label: '加值服務報表', href: '/admin/services/fees', icon: BarChart3   },
       { label: '管家清單', href: '/butler/staff',      icon: UserCog       },
@@ -333,6 +336,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
     items: [
       { label: '管家任務', href: '/butler',           icon: Sparkles, exact: true },
       { label: '住戶列表', href: '/butler/residents', icon: Users     },
+      { label: '用餐管理', href: '/butler/dining',    icon: UtensilsCrossed },
       { label: '服務紀錄', href: '/butler/logs',      icon: BookOpen  },
       { label: '管家交接本', href: '/butler/handover', icon: NotebookPen },
       { label: '回診表單', href: '/butler/appointments', icon: Stethoscope },
