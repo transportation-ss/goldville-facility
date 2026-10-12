@@ -40,3 +40,23 @@ export function isInActiveWindow(): boolean {
   const mins = tw.getHours() * 60 + tw.getMinutes()
   return mins >= 21 * 60 + 30 || mins < 7 * 60 + 30
 }
+
+// ─── 補點判斷 ─────────────────────────────────
+// 一個時段的任務應在「該時段開始 ～ 下一時段開始」之間完成；
+// 最後一個時段（06:30）以 07:30 收班為界。晚於界線才點 = 補點。
+const SLOT_ORDER = ['22:00', '23:00', '02:00', '05:00', '06:30']
+
+function slotStartMs(sessionDate: string, hhmm: string): number {
+  const base = Date.parse(`${sessionDate}T${hhmm}:00+08:00`)
+  // 凌晨時段屬於班次隔天
+  return hhmm < '12:00' ? base + 24 * 3600 * 1000 : base
+}
+
+export function isLateTick(sessionDate: string, timeSlot: string, completedAt: string): boolean {
+  const idx = SLOT_ORDER.indexOf(timeSlot)
+  if (idx < 0) return false
+  const boundary = idx < SLOT_ORDER.length - 1
+    ? slotStartMs(sessionDate, SLOT_ORDER[idx + 1])
+    : slotStartMs(sessionDate, '07:30')
+  return new Date(completedAt).getTime() > boundary
+}

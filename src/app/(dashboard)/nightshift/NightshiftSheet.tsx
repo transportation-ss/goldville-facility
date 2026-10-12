@@ -152,7 +152,7 @@ function TaskRow({
 
           {isCompleted && (
             <p className="text-xs text-emerald-600 mt-0.5">
-              ✓ {completion.completer_name ?? '已完成'}・{new Date(completion.completed_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+              ✓ {completion.completer_name ?? '已完成'}・{new Date(completion.completed_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' })}
             </p>
           )}
 
@@ -380,7 +380,7 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
                   <span className="text-xs font-medium">已結束</span>
                   {session.ended_at && (
                     <span className="text-xs text-gray-400 ml-1">
-                      {new Date(session.ended_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(session.ended_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' })}
                     </span>
                   )}
                 </div>
@@ -423,7 +423,7 @@ export function NightshiftSheet({ session, tasks, completions: initialCompletion
                       {slot.name === currentUserName && <span className="ml-1.5 text-xs font-normal text-indigo-400">（我）</span>}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {slot.at ? new Date(slot.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      {slot.at ? new Date(slot.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' }) : ''}
                     </p>
                   </div>
                 ) : (

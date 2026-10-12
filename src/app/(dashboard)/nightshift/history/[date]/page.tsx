@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, Circle, Moon, Lock, UserCheck } from 'lucide-react'
 import { ReopenButton } from './ReopenButton'
+import { isLateTick } from '../../utils'
 
 const TIME_SLOTS = ['22:00', '23:00', '02:00', '05:00', '06:30']
 const CATEGORY_HEADER: Record<string, string> = {
@@ -80,6 +81,10 @@ export default async function NightshiftHistoryDatePage({
 
   const total = allTasks.length
   const done = completions.length
+  const lateCount = completions.filter(c => {
+    const t = allTasks.find(t => t.is_extra ? t.id === c.extra_task_id : t.id === c.template_id)
+    return t && isLateTick(date, t.time_slot, c.completed_at)
+  }).length
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
   const dateObj = new Date(date)
@@ -111,7 +116,7 @@ export default async function NightshiftHistoryDatePage({
               <Moon className="w-4 h-4 text-blue-300" />
               <div>
                 <p className="text-sm font-bold">歷史紀錄</p>
-                <p className="text-xs text-gray-400">{dateStr}</p>
+                <p className="text-xs text-gray-400">{dateStr}{lateCount > 0 && <span className="ml-2 text-orange-300">補點 {lateCount}</span>}</p>
               </div>
             </div>
           </div>
@@ -159,7 +164,7 @@ export default async function NightshiftHistoryDatePage({
                     <div>
                       <span className="text-sm text-gray-800">{slot.name}</span>
                       <span className="text-xs text-gray-400 ml-2">
-                        {slot.at ? new Date(slot.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        {slot.at ? new Date(slot.at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' }) : ''}
                       </span>
                     </div>
                   ) : (
@@ -190,6 +195,7 @@ export default async function NightshiftHistoryDatePage({
                 task.is_extra ? c.extra_task_id === task.id : c.template_id === task.id
               )
               const isCompleted = !!completion
+              const isLate = !!completion && isLateTick(date, task.time_slot, completion.completed_at)
               return (
                 <div
                   key={task.id}
@@ -209,7 +215,8 @@ export default async function NightshiftHistoryDatePage({
                       {isCompleted && (
                         <p className="text-xs text-emerald-600 mt-0.5">
                           ✓ {completion.completer_name ?? '已完成'}・
-                          {new Date(completion.completed_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(completion.completed_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' })}
+                          {isLate && <span className="ml-1.5 bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded">補點</span>}
                         </p>
                       )}
                       {completion?.notes && (

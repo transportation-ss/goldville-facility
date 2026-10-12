@@ -1,14 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { isLateTick } from '../utils'
 import { Moon, ChevronRight, ClipboardCheck, MessageSquare } from 'lucide-react'
 
 export default async function NightshiftHistoryPage() {
   const supabase = await createClient()
 
-  // 取得所有班次（最近 60 天）
+  // 取得所有班次（最近 60 天），完成數/加派數用巢狀 count 一次帶回（不受 1000 筆上限影響）
   const { data: sessions } = await supabase
     .from('nightshift_sessions')
-    .select('id, session_date, status, handover_notes, created_at')
+    .select('id, session_date, status, handover_notes, created_at, nightshift_completions(count), nightshift_extra_tasks(count)')
     .order('session_date', { ascending: false })
     .limit(60)
 
@@ -18,25 +19,39 @@ export default async function NightshiftHistoryPage() {
     )
   }
 
-  // 取得每個 session 的完成數
-  const sessionIds = sessions.map(s => s.id)
-  const { data: completionCounts } = await supabase
-    .from('nightshift_completions')
-    .select('session_id')
-    .in('session_id', sessionIds)
-
-  const countMap: Record<string, number> = {}
-  for (const c of completionCounts ?? []) {
-    countMap[c.session_id] = (countMap[c.session_id] ?? 0) + 1
-  }
-
-  // 取得任務總數
+  // 取得固定任務總數
   const { count: totalTasks } = await supabase
     .from('nightshift_task_templates')
     .select('id', { count: 'exact', head: true })
     .eq('is_active', true)
 
-  const total = totalTasks ?? 31
+  const baseTotal = totalTasks ?? 31
+
+  // 補點統計：分頁撈完成紀錄（PostgREST 單次上限 1000 筆）
+  const sessionIds = sessions.map(s => s.id)
+  const sessionDateById = Object.fromEntries(sessions.map(s => [s.id, s.session_date]))
+  const [{ data: tpls }, { data: extras }] = await Promise.all([
+    supabase.from('nightshift_task_templates').select('id, time_slot'),
+    supabase.from('nightshift_extra_tasks').select('id, time_slot').in('session_id', sessionIds),
+  ])
+  const slotById = Object.fromEntries([...(tpls ?? []), ...(extras ?? [])].map(t => [t.id, t.time_slot]))
+  const lateMap: Record<string, number> = {}
+  for (let from = 0; ; from += 1000) {
+    const { data: rows, error } = await supabase
+      .from('nightshift_completions')
+      .select('session_id, template_id, extra_task_id, completed_at')
+      .in('session_id', sessionIds)
+      .order('id')
+      .range(from, from + 999)
+    if (error) { console.error('[nightshift/history] 補點統計查詢失敗', error); break }
+    for (const r of rows ?? []) {
+      const slot = slotById[r.template_id ?? r.extra_task_id]
+      if (slot && isLateTick(sessionDateById[r.session_id], slot, r.completed_at)) {
+        lateMap[r.session_id] = (lateMap[r.session_id] ?? 0) + 1
+      }
+    }
+    if (!rows || rows.length < 1000) break
+  }
 
   return (
     <div>
@@ -50,7 +65,10 @@ export default async function NightshiftHistoryPage() {
 
       <div className="space-y-2">
         {sessions.map(session => {
-          const done = countMap[session.id] ?? 0
+          const total = baseTotal + (session.nightshift_extra_tasks?.[0]?.count ?? 0)
+          // 重複點擊可能產生重複紀錄，完成數不超過總數
+          const done = Math.min(session.nightshift_completions?.[0]?.count ?? 0, total)
+          const lateCount = Math.min(lateMap[session.id] ?? 0, done)
           const pct = Math.round((done / total) * 100)
           const isFullyDone = done >= total
           const dateObj = new Date(session.session_date)
@@ -93,6 +111,7 @@ export default async function NightshiftHistoryPage() {
                       />
                     </div>
                     <span className="text-xs text-gray-500 shrink-0">{done}/{total}</span>
+                    {lateCount > 0 && <span className="text-xs text-orange-600 shrink-0">補點 {lateCount}</span>}
                   </div>
                   {session.handover_notes && (
                     <p className="text-xs text-amber-600 mt-1 truncate">
