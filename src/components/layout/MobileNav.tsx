@@ -88,6 +88,7 @@ function getNavByRole(role: string): RoleNav {
               { label: '房間收入',     href: '/admin/accounting/room-income',  icon: Wallet     },
               { label: '房間成本',     href: '/admin/accounting/room-cost',    icon: Coins      },
               { label: '房間費率表',   href: '/admin/accounting/rate-catalog', icon: Calculator },
+              { label: '試算沙盒',     href: '/admin/accounting/simulator',    icon: TrendingUp },
               { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3  },
             ],
           },
@@ -305,6 +306,7 @@ function getNavByRole(role: string): RoleNav {
           {
             items: [
               { label: '房間費率表',   href: '/admin/accounting/rate-catalog', icon: Calculator },
+              { label: '試算沙盒',     href: '/admin/accounting/simulator',    icon: TrendingUp },
               { label: '加值服務',     href: '/admin/services',                icon: Package    },
               { label: '加值服務報表', href: '/admin/services/fees',           icon: BarChart3  },
               { label: '設備說明書', href: '/manuals',  icon: BookOpen },
