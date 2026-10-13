@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { NotebookPen } from 'lucide-react'
 import { createHandoverNote } from './handover/actions'
 
-export function HandoverQuickAdd() {
+export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => void; hideLink?: boolean }) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [saving, setSaving] = useState(false)
@@ -20,6 +20,7 @@ export function HandoverQuickAdd() {
       await createHandoverNote({ title, content })
       setTitle(''); setContent(''); setDone(true)
       setTimeout(() => setDone(false), 3000)
+      onCreated?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : '送出失敗')
     } finally { setSaving(false) }
@@ -31,7 +32,9 @@ export function HandoverQuickAdd() {
         <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
           <NotebookPen className="w-4 h-4 text-emerald-600" /> 今天值得一提
         </p>
-        <Link href="/butler/handover" className="text-xs text-emerald-600 hover:underline">看交接本 →</Link>
+        {!hideLink && (
+          <Link href="/butler/handover" className="text-xs text-emerald-600 hover:underline">看交接本 →</Link>
+        )}
       </div>
       <input value={title} onChange={e => setTitle(e.target.value)} placeholder="標題（例：317 長輩跌倒處置）"
         className="w-full border rounded-lg px-3 py-2 text-sm" />
