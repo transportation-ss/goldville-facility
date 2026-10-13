@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { SimCharts } from './SimCharts'
+import { EnvBar } from './EnvBar'
+import {
+  createEnvironment, deleteEnvironment, getEnvironmentModel, renameEnvironment, saveEnvironment,
+  type EnvMeta,
+} from './actions'
 import { simulate, type Action, type Fn, type Item, type Model, type SimEvent } from '@/lib/simulator/engine'
 
 const STORAGE_KEY = 'simulator-model-v1'
@@ -230,23 +235,107 @@ function EventsSection({ model, setModel }: { model: Model; setModel: React.Disp
   )
 }
 
-export function SimulatorView() {
-  const [model, setModel] = useState<Model>(SAMPLE)
-  const [loaded, setLoaded] = useState(false)
+const LAST_ENV_KEY = 'simulator-last-env'
 
-  useEffect(() => {
+export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
+  const [model, setModel] = useState<Model>(SAMPLE)
+  const [envs, setEnvs] = useState<EnvMeta[]>(initialEnvs)
+  const [currentId, setCurrentId] = useState<string | null>(null)
+  const [savedJson, setSavedJson] = useState<string | null>(null)   // 目前環境上次儲存的內容，用來判斷是否有未儲存變更
+  const [loaded, setLoaded] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const dirty = currentId !== null && JSON.stringify(model) !== savedJson
+
+  const readDraft = (): Model => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      // 只能在掛載後讀 localStorage（SSR 讀不到），一次性載入
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setModel(JSON.parse(raw))
+      if (raw) return JSON.parse(raw) as Model
     } catch { /* 無法讀取就用範例 */ }
-    setLoaded(true)
-  }, [])
+    return SAMPLE
+  }
+
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true); setError(null)
+    try { await fn() } catch (e) { setError(e instanceof Error ? e.message : '操作失敗') } finally { setBusy(false) }
+  }
+
+  const loadEnv = async (id: string) => {
+    const m = await getEnvironmentModel(id)
+    setModel(m); setSavedJson(JSON.stringify(m)); setCurrentId(id)
+    try { localStorage.setItem(LAST_ENV_KEY, id) } catch { /* 不影響使用 */ }
+  }
+
+  // 掛載後一次性載入：上次使用的環境 → 第一個環境 → 草稿（SSR 讀不到 localStorage）
   useEffect(() => {
-    if (!loaded) return
+    let lastId: string | null = null
+    try { lastId = localStorage.getItem(LAST_ENV_KEY) } catch { /* 忽略 */ }
+    const target = initialEnvs.find(e => e.id === lastId) ?? initialEnvs[0]
+    if (target) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      run(() => loadEnv(target.id)).finally(() => setLoaded(true))
+    } else {
+      setModel(readDraft())
+      setLoaded(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 草稿（未存成環境）只暫存在本機
+  useEffect(() => {
+    if (!loaded || currentId !== null) return
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(model)) } catch { /* 不影響使用 */ }
-  }, [model, loaded])
+  }, [model, loaded, currentId])
+
+  useEffect(() => {
+    if (!dirty) return
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', h)
+    return () => window.removeEventListener('beforeunload', h)
+  }, [dirty])
+
+  const confirmDiscard = () => !dirty || window.confirm('目前環境有未儲存的變更，切換後會遺失。要繼續嗎？')
+
+  const selectEnv = (id: string | null) => {
+    if (!confirmDiscard()) return
+    if (id === null) { setCurrentId(null); setSavedJson(null); setModel(readDraft()); return }
+    run(() => loadEnv(id))
+  }
+  const saveCurrent = () => currentId && run(async () => {
+    const updated = await saveEnvironment(currentId, model)
+    setSavedJson(JSON.stringify(model))
+    setEnvs(es => es.map(e => (e.id === currentId ? { ...e, updated_at: updated } : e)))
+  })
+  const createFrom = (defaultName: string, derivedFrom?: string) => {
+    const name = window.prompt('環境名稱', defaultName)?.trim()
+    if (!name) return
+    run(async () => {
+      const meta = await createEnvironment(name, model, derivedFrom)
+      setEnvs(es => [...es, meta]); setCurrentId(meta.id); setSavedJson(JSON.stringify(model))
+      try { localStorage.setItem(LAST_ENV_KEY, meta.id) } catch { /* 不影響使用 */ }
+    })
+  }
+  const cur = envs.find(e => e.id === currentId)
+  const renameCurrent = () => {
+    if (!cur) return
+    const name = window.prompt('新名稱', cur.name)?.trim()
+    if (!name || name === cur.name) return
+    run(async () => {
+      await renameEnvironment(cur.id, name)
+      setEnvs(es => es.map(e => (e.id === cur.id ? { ...e, name } : e)))
+    })
+  }
+  const deleteCurrent = () => {
+    if (!cur || !window.confirm(`確定刪除環境「${cur.name}」？此動作無法復原。`)) return
+    run(async () => {
+      await deleteEnvironment(cur.id)
+      const rest = envs.filter(e => e.id !== cur.id)
+      setEnvs(rest)
+      if (rest[0]) await loadEnv(rest[0].id)
+      else { setCurrentId(null); setSavedJson(null); setModel(readDraft()) }
+    })
+  }
 
   const result = useMemo(() => simulate(model), [model])
   const baseline = useMemo(() => simulate({ ...model, events: [] }), [model])
@@ -263,6 +352,10 @@ export function SimulatorView() {
 
   return (
     <div className="space-y-6">
+      <EnvBar envs={envs} currentId={currentId} dirty={dirty} busy={busy} error={error}
+        onSelect={selectEnv} onSave={saveCurrent} onSaveAsNew={() => createFrom('2026 現實')}
+        onCopy={() => cur && createFrom(`${cur.name} 副本`, cur.id)} onRename={renameCurrent} onDelete={deleteCurrent} />
+
       {result.errors.length > 0 && (
         <div className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
           {result.errors.map(e => <div key={e}>{e}</div>)}
