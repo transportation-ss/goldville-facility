@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SimCharts } from './SimCharts'
 import { EnvBar } from './EnvBar'
+import { HOTEL_TEMPLATE } from './template'
 import {
   createEnvironment, deleteEnvironment, getEnvironmentModel, renameEnvironment, saveEnvironment,
   type EnvMeta,
@@ -11,17 +12,7 @@ import { simulate, type Action, type Fn, type Item, type Model, type SimEvent } 
 
 const STORAGE_KEY = 'simulator-model-v1'
 
-const SAMPLE: Model = {
-  months: 12,
-  drivers: { 房數: 40, 入住率: 0.8, 員工數: 10 },
-  items: [
-    { id: 'i1', name: '房費收入', kind: 'income', group: '收入', enabled: true, fn: { t: 'unit', price: 30000, factors: ['房數', '入住率'] } },
-    { id: 'i2', name: '員工薪資', kind: 'expense', group: '人事', enabled: true, fn: { t: 'unit', price: 40000, factors: ['員工數'] } },
-    { id: 'i3', name: '勞健保', kind: 'expense', group: '人事', enabled: true, fn: { t: 'percent', of: ['item:i2'], pct: 0.18 } },
-    { id: 'i4', name: '共用水電', kind: 'expense', group: '固定費用', enabled: true, fn: { t: 'fixed', amount: 100000 } },
-  ],
-  events: [],
-}
+const SAMPLE: Model = HOTEL_TEMPLATE
 
 const FN_LABEL: Record<Fn['t'], string> = {
   fixed: '固定金額', unit: '單價×數量', percent: '比例', growth: '成長', once: '一次性',
@@ -340,6 +331,12 @@ export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
   const result = useMemo(() => simulate(model), [model])
   const baseline = useMemo(() => simulate({ ...model, events: [] }), [model])
   const hasEvents = model.events.some(e => e.enabled)
+  // 加總變數的當前值（第 1 個月、未套事件），僅供畫面參考
+  const sumValues = useMemo(() => {
+    const cur: Record<string, number> = { ...model.drivers }
+    for (const [k, names] of Object.entries(model.sums ?? {})) cur[k] = names.reduce((s, n) => s + (cur[n] ?? 0), 0)
+    return cur
+  }, [model.drivers, model.sums])
   const patchItem = (id: string, p: Partial<Item>) =>
     setModel(m => ({ ...m, items: m.items.map(i => (i.id === id ? { ...i, ...p } : i)) }))
   const sum = (a: number[]) => a.reduce((s, v) => s + v, 0)
@@ -386,6 +383,30 @@ export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
           const k = window.prompt('變數名稱')?.trim()
           if (k && !(k in model.drivers)) setModel(m => ({ ...m, drivers: { ...m.drivers, [k]: 0 } }))
         }}>＋ 新增變數</button>
+
+        <div className="mt-5 border-t pt-3">
+          <div className="text-sm font-medium text-gray-700 mb-2">
+            加總變數 <span className="text-xs font-normal text-gray-500">由其他變數相加而來（例如入住總房數），事件改不動它；後面的可引用前面的加總變數</span>
+          </div>
+          <div className="space-y-2">
+            {Object.entries(model.sums ?? {}).map(([k, names]) => (
+              <div key={k + "|" + names.join(",")} className="flex flex-wrap items-center gap-2">
+                <span className="text-sm w-32 truncate" title={k}>{k}</span>
+                <span className="text-sm font-medium w-16 text-right">{fmt(sumValues[k] ?? 0)}</span>
+                <span className="text-xs text-gray-500">＝</span>
+                <input className={inputCls + ' flex-1 min-w-64'} placeholder="變數名稱，逗號分隔" defaultValue={names.join(',')}
+                  onBlur={e => setModel(m => ({ ...m, sums: { ...m.sums, [k]: e.target.value.split(/[,，]/).map(s => s.trim()).filter(Boolean) } }))} />
+                <button className="text-xs text-red-500" onClick={() => setModel(m => {
+                  const s = { ...m.sums }; delete s[k]; return { ...m, sums: s }
+                })}>刪除</button>
+              </div>
+            ))}
+          </div>
+          <button className="mt-2 text-sm text-emerald-700" onClick={() => {
+            const k = window.prompt('加總變數名稱')?.trim()
+            if (k && !(k in model.drivers) && !(k in (model.sums ?? {}))) setModel(m => ({ ...m, sums: { ...m.sums, [k]: [] } }))
+          }}>＋ 新增加總變數</button>
+        </div>
       </section>
 
       <section className="bg-white rounded-lg border p-4 overflow-x-auto">

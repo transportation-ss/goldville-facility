@@ -39,6 +39,7 @@ export type SimEvent = {
 export type Model = {
   months: number
   drivers: Record<string, number>
+  sums?: Record<string, string[]>   // 加總變數：值＝所列變數（或在它之前定義的加總變數）之和，事件改不動它
   items: Item[]
   events: SimEvent[]
 }
@@ -83,6 +84,9 @@ function stateAt(model: Model, t: number): State {
         items.set(act.item.id, structuredClone(act.item))
       }
     }
+  }
+  for (const [k, names] of Object.entries(model.sums ?? {})) {
+    drivers[k] = names.reduce((s, n) => s + (drivers[n] ?? 0), 0)
   }
   return { drivers, items }
 }
@@ -132,6 +136,12 @@ export function simulate(model: Model): Result {
 
   const values: Record<string, number[]> = Object.fromEntries(all.map(i => [i.id, Array(n).fill(0)]))
   const errors = new Set<string>()
+  const known = new Set(Object.keys(model.drivers))
+  for (const [k, names] of Object.entries(model.sums ?? {})) {
+    if (known.has(k)) errors.add(`加總變數「${k}」與一般變數同名`)
+    for (const nm of names) if (!known.has(nm)) errors.add(`加總變數「${k}」引用了不存在的變數「${nm}」`)
+    known.add(k)
+  }
   const income = Array<number>(n).fill(0)
   const expense = Array<number>(n).fill(0)
 
