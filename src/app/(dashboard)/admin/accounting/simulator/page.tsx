@@ -19,7 +19,14 @@ export default async function SimulatorPage() {
     redirect('/dashboard')
   }
 
-  const envs = await listEnvironments()
+  // 環境清單讀不到時不讓整頁壞掉：試算本身仍可用，並把原因顯示出來
+  let envs: Awaited<ReturnType<typeof listEnvironments>> = []
+  let envError: string | null = null
+  try {
+    envs = await listEnvironments()
+  } catch (e) {
+    envError = e instanceof Error ? e.message : String(e)
+  }
 
   return (
     <div>
@@ -27,6 +34,11 @@ export default async function SimulatorPage() {
         <h1 className="text-xl font-bold text-gray-900">試算沙盒</h1>
         <p className="text-sm text-gray-500 mt-1">自訂變數與收支項目，逐月試算（每個環境是一份獨立模型，存檔後全會計共用）</p>
       </div>
+      {envError && (
+        <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          環境清單讀取失敗，目前只能使用草稿（無法存檔）：{envError}
+        </div>
+      )}
       <SimulatorView initialEnvs={envs} />
     </div>
   )
