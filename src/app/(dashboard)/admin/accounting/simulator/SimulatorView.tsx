@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { SimCharts } from './SimCharts'
 import { EnvBar } from './EnvBar'
-import { HOTEL_TEMPLATE } from './template'
+import { HOTEL_TEMPLATE } from './hotelTemplate'
 import {
   createEnvironment, deleteEnvironment, getEnvironmentModel, renameEnvironment, saveEnvironment,
   type EnvMeta,
