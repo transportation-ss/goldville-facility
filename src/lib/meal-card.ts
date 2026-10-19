@@ -41,15 +41,21 @@ export function buildCard(c: MealCount, t: Target) {
   if (c.batch2) body.push(...section('第二批次', [
     row('葷食人數', c.batch2.meat), row('不吃豬肉', c.batch2.pork), row('素食人數', c.batch2.veg),
   ]))
+  let noGuestData = false
   if (c.guestSlots) {
-    // 預估階段時段常尚未填寫：全 0 時不顯示四行「0 位」，避免被誤解為「沒有旅客」
-    const unreported = t.phase === 'estimate' && c.guestSlots.every(g => g.count === 0)
-    body.push(...section('旅客用餐時段', unreported
-      ? [{ type: 'text', text: '旅客用餐時段尚未回報', size: 'sm', color: '#9CA3AF' }]
+    // 時段全空白／全 0 時不顯示四行「0 位」，避免被誤解為「沒有旅客」（依資料判斷，不看時間）
+    noGuestData = c.guestSlots.every(g => !g.count)
+    body.push(...section('旅客用餐時段', noGuestData
+      ? [{ type: 'text', text: '旅客用餐時段尚未回報（或無旅客），請向櫃台確認', size: 'sm', color: '#9CA3AF', wrap: true }]
       : c.guestSlots.map(g => row(g.time, g.count, { unit: ' 位' }))))
   }
   if (isB) {
-    body.push({ type: 'text', text: t.phase === 'estimate' ? NOTE_ESTIMATE : NOTE_REPORTED, size: 'xs', color: '#9CA3AF', wrap: true, margin: 'lg' })
+    // 有旅客資料才說「依晚班回報」；沒資料時不能宣稱已回報
+    const note = t.phase === 'estimate' || noGuestData ? NOTE_ESTIMATE : NOTE_REPORTED
+    body.push({ type: 'text', text: note, size: 'xs', color: '#9CA3AF', wrap: true, margin: 'lg' })
+  }
+  if (c.warnings.length) {
+    body.push({ type: 'text', text: `⚠ ${c.warnings.join('、')}，請向廚房／櫃台確認`, size: 'xs', color: '#DC2626', wrap: true, margin: 'lg' })
   }
 
   return {

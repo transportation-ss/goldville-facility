@@ -17,7 +17,8 @@ export type MealCount = {
   staple: number | null        // 主食份數（早餐無）
   vegSoup: number | null       // 素食湯（早餐無）
   extra: number | null         // 附餐加點（僅晚餐）
-  guestSlots: { time: string; count: number }[] | null  // 早餐：旅客（房客）各時段人數
+  guestSlots: { time: string; count: number | null }[] | null  // 早餐：旅客（房客）各時段人數；空白＝null（不當 0）
+  warnings: string[]           // 數字自我檢查不通過時的提醒（版面可能被改動）
   batch1: Batch | null         // 早餐無批次摘要
   batch2: Batch | null
 }
@@ -85,20 +86,46 @@ const num = (v: string | undefined): number | null => {
   return /^-?\d+$/.test(t) ? Number(t) : null
 }
 
-export async function fetchMealCount(date: string, meal: MealKey): Promise<MealCount> {
-  const tab = weekTabName(date)
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`
-  const res = await fetch(url, { cache: 'no-store' })
-  if (!res.ok) throw new Error(`讀取用餐總表失敗（HTTP ${res.status}）`)
-  const rows = parseCsv(await res.text())
+// 分頁名稱偶有手誤（如 10/19-10-25），依序嘗試標準名稱與已知變體
+function tabCandidates(date: string): string[] {
+  const std = weekTabName(date)
+  return [std, std.replace(/-(\d+)\/(\d+)$/, '-$1-$2')]
+}
 
-  // 分頁不存在時 Google 會回傳別的分頁 → 靠標題的「日期+星期」驗證
+// 標題列找出該日期起始欄。舊格式「10/12（一)」在同一格；新格式日期（10/19）與星期（一）分兩格、星期在右側。
+// 新格式的星期格若被 Google 匯出略掉，仍以日期相符為準；右側有星期字但對不上則不採用。
+function findDayColumn(header: string[], m: number, d: number, wd: string): number {
+  const old = header.findIndex(h => new RegExp(`^\\s*${m}/${d}\\s*[（(]\\s*${wd}`).test(h))
+  if (old >= 0) return old
+  const onlyDate = new RegExp(`^\\s*${m}/${d}\\s*$`)
+  const anyWd = /^\s*[（(]?\s*(?:星期|週|周)?[日一二三四五六]\s*[）)]?\s*$/
+  const thisWd = new RegExp(`[${wd}]`)
+  return header.findIndex((h, i) => {
+    if (!onlyDate.test(h)) return false
+    const next = header.slice(i + 1, i + 8).find(x => x.trim() !== '')
+    return next === undefined || !anyWd.test(next) || thisWd.test(next)
+  })
+}
+
+export async function fetchMealCount(date: string, meal: MealKey): Promise<MealCount> {
   const [y, m, d] = date.split('-').map(Number)
   const wd = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]
-  const re = new RegExp(`^\\s*${m}/${d}\\s*[（(]\\s*${wd}`)
-  const header = rows[0] ?? []
-  const c0 = header.findIndex(h => re.test(h))
-  if (c0 < 0) throw new Error(`用餐總表找不到「${m}/${d}（${wd}）」這一天（分頁 ${tab}）`)
+  // 分頁不存在時 Google 會回傳別的分頁 → 靠標題的日期驗證，對不上就試下一個名稱
+  let rows: string[][] = []
+  let c0 = -1
+  const tabs = tabCandidates(date)
+  for (const tab of tabs) {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) })
+    if (!res.ok) throw new Error(`讀取用餐總表失敗（HTTP ${res.status}）`)
+    const text = await res.text()
+    // 分享被關掉時 Google 可能回 200 加登入頁 HTML
+    if (text.trimStart().startsWith('<')) throw new Error('用餐總表無法讀取，請確認分享設定為「知道連結者可檢視」')
+    rows = parseCsv(text)
+    c0 = findDayColumn(rows[0] ?? [], m, d, wd)
+    if (c0 >= 0) break
+  }
+  if (c0 < 0) throw new Error(`用餐總表找不到「${m}/${d}（${wd}）」這一天（分頁 ${tabs[0]}）`)
   const dateLabel = `${m}/${d}（${wd}）`
 
   // 切出該餐區塊：第 0 欄標記 早/中/晚 的列起，到下一個標記前
@@ -116,13 +143,13 @@ export async function fetchMealCount(date: string, meal: MealKey): Promise<MealC
   const out: MealCount = {
     meal, dateLabel,
     meat: num(rows[total][c0]), veg: val(total),
-    staple: null, vegSoup: null, extra: null, guestSlots: null, batch1: null, batch2: null,
+    staple: null, vegSoup: null, extra: null, guestSlots: null, batch1: null, batch2: null, warnings: [],
   }
   if (meal === 'breakfast') {
     // 「房客」標籤格（合併儲存格，只有首列有字）起的前 4 列依序＝7:00 / 7:30 / 8:00 / 8:30，人數在該日 c0+1
     const g = find('房客')
     if (g < 0) throw new Error('「早餐」區塊找不到「房客」列')
-    out.guestSlots = ['07:00', '07:30', '08:00', '08:30'].map((time, k) => ({ time, count: num(rows[g + k]?.[c0 + 1]) ?? 0 }))
+    out.guestSlots = ['07:00', '07:30', '08:00', '08:30'].map((time, k) => ({ time, count: num(rows[g + k]?.[c0 + 1]) }))
     return out
   }
 
@@ -136,5 +163,10 @@ export async function fetchMealCount(date: string, meal: MealKey): Promise<MealC
   if (label(b).includes('附餐')) { out.extra = val(b); b += 1 }
   out.batch1 = { meat: val(b), staple: val(b + 1), pork: val(b + 2), veg: val(b + 3) }
   out.batch2 = { meat: val(b + 4), pork: val(b + 5), veg: val(b + 6) }
+
+  // 自我檢查：兩批次的葷／素應等於總計。對不上多半是 Sheet 版面被改（插列、移欄），寧可提醒也不要悄悄給錯數字
+  const nums = [out.meat, out.veg, out.batch1.meat, out.batch1.veg, out.batch2.meat, out.batch2.veg]
+  if (nums.some(x => x == null)) out.warnings.push('部分數字讀不到')
+  else if (out.batch1.meat! + out.batch2.meat! !== out.meat || out.batch1.veg! + out.batch2.veg! !== out.veg) out.warnings.push('批次人數加總與總計對不上')
   return out
 }
