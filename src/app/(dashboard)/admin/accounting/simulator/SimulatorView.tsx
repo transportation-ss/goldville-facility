@@ -8,9 +8,10 @@ import {
   createEnvironment, deleteEnvironment, getEnvironmentModel, renameEnvironment, saveEnvironment,
   type EnvMeta,
 } from './actions'
-import { simulate, type Action, type Fn, type Item, type Model, type SimEvent } from '@/lib/simulator/engine'
+import { simulate, withSums, type Action, type Fn, type Item, type Model, type SimEvent } from '@/lib/simulator/engine'
 
 const STORAGE_KEY = 'simulator-model-v1'
+const COLLAPSE_KEY = 'simulator-collapsed'
 
 const SAMPLE: Model = HOTEL_TEMPLATE
 
@@ -37,6 +38,16 @@ const numCls = 'border border-gray-300 rounded px-2 py-1 text-sm w-24 text-right
 
 function Num({ value, onChange, step }: { value: number; onChange: (v: number) => void; step?: number }) {
   return <input type="number" className={numCls} value={value} step={step} onChange={e => onChange(Number(e.target.value))} />
+}
+
+// 變數所屬分類（純畫面用）；改分類只影響顯示位置，不影響計算
+function VarMove({ value, onMove }: { value: string; onMove: (to: 'income' | 'expense' | 'other') => void }) {
+  return (
+    <select className="border border-gray-200 rounded px-1 py-0.5 text-xs text-gray-500" value={value} title="移到其他分類"
+      onChange={e => onMove(e.target.value as 'income' | 'expense' | 'other')}>
+      <option value="income">收入</option><option value="expense">支出</option><option value="other">其他</option>
+    </select>
+  )
 }
 
 function FnEditor({ fn, onChange }: { fn: Fn; onChange: (f: Fn) => void }) {
@@ -332,14 +343,68 @@ export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
   const baseline = useMemo(() => simulate({ ...model, events: [] }), [model])
   const hasEvents = model.events.some(e => e.enabled)
   // 加總變數的當前值（第 1 個月、未套事件），僅供畫面參考
-  const sumValues = useMemo(() => {
-    const cur: Record<string, number> = { ...model.drivers }
-    for (const [k, names] of Object.entries(model.sums ?? {})) cur[k] = names.reduce((s, n) => s + (cur[n] ?? 0), 0)
-    return cur
-  }, [model.drivers, model.sums])
+  const sumValues = useMemo(() => withSums(model.drivers, model.sums), [model.drivers, model.sums])
   const patchItem = (id: string, p: Partial<Item>) =>
     setModel(m => ({ ...m, items: m.items.map(i => (i.id === id ? { ...i, ...p } : i)) }))
   const sum = (a: number[]) => a.reduce((s, v) => s + v, 0)
+
+  // 摺疊狀態只存在各人瀏覽器，不進模型
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSE_KEY)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (raw) setCollapsed(new Set(JSON.parse(raw) as string[]))
+    } catch { /* 忽略 */ }
+  }, [])
+  const toggleCollapsed = (key: string) => {
+    const next = new Set(collapsed)
+    if (next.has(key)) next.delete(key); else next.add(key)
+    setCollapsed(next)
+    try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...next])) } catch { /* 不影響使用 */ }
+  }
+
+  // 變數分組：收入 → 支出 → 其他（沒被列到的）
+  const varGroups = useMemo(() => {
+    const all = [...Object.keys(model.drivers), ...Object.keys(model.sums ?? {})]
+    const placed = new Set<string>()
+    const pick = (list: string[] | undefined) => (list ?? []).filter(n => {
+      if (!all.includes(n) || placed.has(n)) return false
+      placed.add(n); return true
+    })
+    const income = pick(model.varGroups?.income)
+    const expense = pick(model.varGroups?.expense)
+    const other = all.filter(n => !placed.has(n))
+    return [
+      { key: 'income', label: '收入變數', names: income },
+      { key: 'expense', label: '支出變數', names: expense },
+      { key: 'other', label: '其他變數', names: other },
+    ]
+  }, [model.drivers, model.sums, model.varGroups])
+
+  const moveVar = (name: string, to: 'income' | 'expense' | 'other') => setModel(m => {
+    const g = { income: (m.varGroups?.income ?? []).filter(n => n !== name), expense: (m.varGroups?.expense ?? []).filter(n => n !== name) }
+    if (to !== 'other') g[to] = [...g[to], name]
+    return { ...m, varGroups: g }
+  })
+  const removeVar = (name: string) => setModel(m => {
+    const drivers = { ...m.drivers }; delete drivers[name]
+    const sums = { ...m.sums }; delete sums[name]
+    return {
+      ...m, drivers, sums,
+      varGroups: { income: (m.varGroups?.income ?? []).filter(n => n !== name), expense: (m.varGroups?.expense ?? []).filter(n => n !== name) },
+    }
+  })
+  const addVar = (groupKey: string, isSum: boolean) => {
+    const k = window.prompt(isSum ? '加總變數名稱' : '變數名稱')?.trim()
+    if (!k || k in model.drivers || k in (model.sums ?? {})) return
+    setModel(m => {
+      const next: Model = isSum ? { ...m, sums: { ...m.sums, [k]: [] } } : { ...m, drivers: { ...m.drivers, [k]: 0 } }
+      const g = { income: [...(m.varGroups?.income ?? [])], expense: [...(m.varGroups?.expense ?? [])] }
+      if (groupKey === 'income' || groupKey === 'expense') g[groupKey].push(k)
+      return { ...next, varGroups: g }
+    })
+  }
 
   const groups = useMemo(() => {
     const seen: { kind: Item['kind']; group: string }[] = []
@@ -359,6 +424,25 @@ export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
         </div>
       )}
 
+      {/* 固定在上方：改任何數字都能立刻看到結果，不必捲到最底 */}
+      <section className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-gray-50/95 backdrop-blur border-b">
+        <div className="grid grid-cols-3 gap-3">
+          {([
+            ['總收入', sum(result.income)], ['總支出', sum(result.expense)], ['淨利', sum(result.net)],
+          ] as const).map(([label, v]) => (
+            <div key={label} className="bg-white rounded-lg border px-3 py-2">
+              <div className="text-xs text-gray-500">{label}（{model.months} 個月）</div>
+              <div className={'text-lg font-bold ' + (label === '淨利' && v < 0 ? 'text-red-600' : 'text-gray-900')}>{fmt(v)}</div>
+            </div>
+          ))}
+        </div>
+        {hasEvents && (
+          <div className="text-xs text-gray-500 mt-1">
+            含事件；淨利比不含事件{sum(result.net) - sum(baseline.net) >= 0 ? '多' : '少'} {fmt(Math.abs(sum(result.net) - sum(baseline.net)))}
+          </div>
+        )}
+      </section>
+
       <section className="bg-white rounded-lg border p-4">
         <div className="flex items-center gap-3 mb-3">
           <h2 className="font-semibold text-gray-900">變數</h2>
@@ -368,44 +452,56 @@ export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
               onChange={e => setModel(m => ({ ...m, months: Math.max(1, Math.min(120, Number(e.target.value) || 1)) }))} />
           </label>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {Object.entries(model.drivers).map(([k, v]) => (
-            <div key={k} className="flex items-center gap-2">
-              <span className="text-sm w-24 truncate" title={k}>{k}</span>
-              <Num value={v} step={0.05} onChange={nv => setModel(m => ({ ...m, drivers: { ...m.drivers, [k]: nv } }))} />
-              <button className="text-xs text-red-500" onClick={() => setModel(m => {
-                const d = { ...m.drivers }; delete d[k]; return { ...m, drivers: d }
-              })}>刪除</button>
-            </div>
-          ))}
-        </div>
-        <button className="mt-3 text-sm text-emerald-700" onClick={() => {
-          const k = window.prompt('變數名稱')?.trim()
-          if (k && !(k in model.drivers)) setModel(m => ({ ...m, drivers: { ...m.drivers, [k]: 0 } }))
-        }}>＋ 新增變數</button>
-
-        <div className="mt-5 border-t pt-3">
-          <div className="text-sm font-medium text-gray-700 mb-2">
-            加總變數 <span className="text-xs font-normal text-gray-500">由其他變數相加而來（例如入住總房數），事件改不動它；後面的可引用前面的加總變數</span>
-          </div>
-          <div className="space-y-2">
-            {Object.entries(model.sums ?? {}).map(([k, names]) => (
-              <div key={k + "|" + names.join(",")} className="flex flex-wrap items-center gap-2">
-                <span className="text-sm w-32 truncate" title={k}>{k}</span>
-                <span className="text-sm font-medium w-16 text-right">{fmt(sumValues[k] ?? 0)}</span>
-                <span className="text-xs text-gray-500">＝</span>
-                <input className={inputCls + ' flex-1 min-w-64'} placeholder="變數名稱，逗號分隔" defaultValue={names.join(',')}
-                  onBlur={e => setModel(m => ({ ...m, sums: { ...m.sums, [k]: e.target.value.split(/[,，]/).map(s => s.trim()).filter(Boolean) } }))} />
-                <button className="text-xs text-red-500" onClick={() => setModel(m => {
-                  const s = { ...m.sums }; delete s[k]; return { ...m, sums: s }
-                })}>刪除</button>
+        <div className="space-y-3">
+          {varGroups.map(g => {
+            const open = !collapsed.has('v:' + g.key)
+            const plain = g.names.filter(n => !(n in (model.sums ?? {})))
+            const sumNames = g.names.filter(n => n in (model.sums ?? {}))
+            if (g.key === 'other' && g.names.length === 0) return null
+            return (
+              <div key={g.key} className="border rounded">
+                <button className="w-full flex items-center gap-2 px-3 py-2 text-left bg-gray-50 rounded-t" onClick={() => toggleCollapsed('v:' + g.key)}>
+                  <span className="text-xs text-gray-500 w-3">{open ? '▾' : '▸'}</span>
+                  <span className="text-sm font-medium text-gray-800">{g.label}</span>
+                  <span className="text-xs text-gray-500">{g.names.length} 個</span>
+                </button>
+                {open && (
+                  <div className="p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {plain.map(k => (
+                        <div key={k} className="flex items-center gap-2">
+                          <span className="text-sm w-24 truncate" title={k}>{k}</span>
+                          <Num value={model.drivers[k] ?? 0} step={0.05} onChange={nv => setModel(m => ({ ...m, drivers: { ...m.drivers, [k]: nv } }))} />
+                          <VarMove value={g.key} onMove={to => moveVar(k, to)} />
+                          <button className="text-xs text-red-500" onClick={() => removeVar(k)}>刪除</button>
+                        </div>
+                      ))}
+                    </div>
+                    {sumNames.length > 0 && (
+                      <div className="mt-3 space-y-2 border-t pt-3">
+                        <div className="text-xs text-gray-500">加總變數：由其他變數相加而來，事件改不動它，與順序無關</div>
+                        {sumNames.map(k => (
+                          <div key={k + '|' + (model.sums?.[k] ?? []).join(',')} className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm w-32 truncate" title={k}>{k}</span>
+                            <span className="text-sm font-medium w-16 text-right">{fmt(sumValues[k] ?? 0)}</span>
+                            <span className="text-xs text-gray-500">＝</span>
+                            <input className={inputCls + ' flex-1 min-w-64'} placeholder="變數名稱，逗號分隔" defaultValue={(model.sums?.[k] ?? []).join(',')}
+                              onBlur={e => setModel(m => ({ ...m, sums: { ...m.sums, [k]: e.target.value.split(/[,，]/).map(s => s.trim()).filter(Boolean) } }))} />
+                            <VarMove value={g.key} onMove={to => moveVar(k, to)} />
+                            <button className="text-xs text-red-500" onClick={() => removeVar(k)}>刪除</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-3 flex gap-4 text-sm">
+                      <button className="text-emerald-700" onClick={() => addVar(g.key, false)}>＋ 新增變數</button>
+                      <button className="text-emerald-700" onClick={() => addVar(g.key, true)}>＋ 新增加總變數</button>
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-          <button className="mt-2 text-sm text-emerald-700" onClick={() => {
-            const k = window.prompt('加總變數名稱')?.trim()
-            if (k && !(k in model.drivers) && !(k in (model.sums ?? {}))) setModel(m => ({ ...m, sums: { ...m.sums, [k]: [] } }))
-          }}>＋ 新增加總變數</button>
+            )
+          })}
         </div>
       </section>
 
@@ -418,8 +514,23 @@ export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
               <th className="pb-2 pr-2">分類</th><th className="pb-2 pr-2">計算方式</th><th className="pb-2 pr-2">參數</th><th />
             </tr>
           </thead>
-          <tbody>
-            {model.items.map(it => (
+          {groups.map(g => {
+            const key = `i:${g.kind}:${g.group}`
+            const open = !collapsed.has(key)
+            const its = model.items.filter(i => i.kind === g.kind && i.group === g.group)
+            const m1 = its.reduce((s, i) => s + (result.values[i.id]?.[0] ?? 0), 0)
+            const total = its.reduce((s, i) => s + sum(result.values[i.id] ?? []), 0)
+            return (
+          <tbody key={key}>
+            <tr className="border-t bg-gray-50 cursor-pointer select-none" onClick={() => toggleCollapsed(key)}>
+              <td colSpan={7} className="py-1.5 px-2">
+                <span className="text-xs text-gray-500 inline-block w-4">{open ? '▾' : '▸'}</span>
+                <span className="font-medium text-gray-800">{g.kind === 'income' ? '收入' : '支出'}／{g.group}</span>
+                <span className="text-xs text-gray-500 ml-2">{its.length} 項</span>
+                <span className="float-right text-xs text-gray-600">第 1 月 {fmt(m1)}　合計 {fmt(total)}</span>
+              </td>
+            </tr>
+            {open && its.map(it => (
               <tr key={it.id} className={'border-t align-top ' + (it.enabled ? '' : 'opacity-50')}>
                 <td className="py-2 pr-2"><input type="checkbox" checked={it.enabled} onChange={e => patchItem(it.id, { enabled: e.target.checked })} /></td>
                 <td className="py-2 pr-2 min-w-32">
@@ -442,6 +553,8 @@ export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
               </tr>
             ))}
           </tbody>
+            )
+          })}
         </table>
         <div className="mt-3 flex gap-4 text-sm">
           <button className="text-emerald-700" onClick={() => setModel(m => ({ ...m, items: [...m.items, { id: newId(), name: '新收入', kind: 'income', group: '收入', enabled: true, fn: defaultFn('fixed') }] }))}>＋ 新增收入</button>
@@ -451,17 +564,6 @@ export function SimulatorView({ initialEnvs }: { initialEnvs: EnvMeta[] }) {
       </section>
 
       <EventsSection model={model} setModel={setModel} />
-
-      <section className="grid grid-cols-3 gap-3">
-        {[
-          ['總收入', sum(result.income)], ['總支出', sum(result.expense)], ['淨利', sum(result.net)],
-        ].map(([label, v]) => (
-          <div key={label as string} className="bg-white rounded-lg border p-3">
-            <div className="text-xs text-gray-500">{label}（{model.months} 個月）</div>
-            <div className={'text-lg font-bold ' + (label === '淨利' && (v as number) < 0 ? 'text-red-600' : 'text-gray-900')}>{fmt(v as number)}</div>
-          </div>
-        ))}
-      </section>
 
       <SimCharts model={model} result={result} baseline={baseline} hasEvents={hasEvents} />
 

@@ -40,6 +40,7 @@ export type Model = {
   months: number
   drivers: Record<string, number>
   sums?: Record<string, string[]>   // 加總變數：值＝所列變數（或在它之前定義的加總變數）之和，事件改不動它
+  varGroups?: { income?: string[]; expense?: string[] }   // 變數（含加總變數）的收入/支出分類，純畫面用；沒列到的算「其他」。用陣列是因為 jsonb 不保留物件 key 順序
   items: Item[]
   events: SimEvent[]
 }
@@ -85,10 +86,26 @@ function stateAt(model: Model, t: number): State {
       }
     }
   }
-  for (const [k, names] of Object.entries(model.sums ?? {})) {
-    drivers[k] = names.reduce((s, n) => s + (drivers[n] ?? 0), 0)
+  return { drivers: withSums(drivers, model.sums), items }
+}
+
+// 加總變數與定義順序無關（資料庫 jsonb 會重排 key）：依引用關係遞迴計算，循環引用視為 0
+export function withSums(base: Record<string, number>, sums: Record<string, string[]> | undefined): Record<string, number> {
+  const out = { ...base }
+  if (!sums) return out
+  const done = new Set<string>()
+  const visiting = new Set<string>()
+  const calc = (k: string): number => {
+    if (!(k in sums) || done.has(k)) return out[k] ?? 0
+    if (visiting.has(k)) return 0
+    visiting.add(k)
+    out[k] = sums[k].reduce((s, n) => s + calc(n), 0)
+    visiting.delete(k)
+    done.add(k)
+    return out[k]
   }
-  return { drivers, items }
+  for (const k of Object.keys(sums)) calc(k)
+  return out
 }
 
 // 展開 percent 的引用 → 項目 id 清單
@@ -136,12 +153,22 @@ export function simulate(model: Model): Result {
 
   const values: Record<string, number[]> = Object.fromEntries(all.map(i => [i.id, Array(n).fill(0)]))
   const errors = new Set<string>()
-  const known = new Set(Object.keys(model.drivers))
-  for (const [k, names] of Object.entries(model.sums ?? {})) {
-    if (known.has(k)) errors.add(`加總變數「${k}」與一般變數同名`)
+  const sums = model.sums ?? {}
+  const known = new Set([...Object.keys(model.drivers), ...Object.keys(sums)])
+  for (const [k, names] of Object.entries(sums)) {
+    if (k in model.drivers) errors.add(`加總變數「${k}」與一般變數同名`)
     for (const nm of names) if (!known.has(nm)) errors.add(`加總變數「${k}」引用了不存在的變數「${nm}」`)
-    known.add(k)
   }
+  // 加總變數之間的循環引用
+  const state = new Map<string, 1 | 2>()
+  const walk = (k: string): void => {
+    if (state.get(k) === 2) return
+    if (state.get(k) === 1) { errors.add(`加總變數之間有循環引用：「${k}」`); return }
+    state.set(k, 1)
+    for (const nm of sums[k] ?? []) if (nm in sums) walk(nm)
+    state.set(k, 2)
+  }
+  for (const k of Object.keys(sums)) walk(k)
   const income = Array<number>(n).fill(0)
   const expense = Array<number>(n).fill(0)
 
