@@ -92,18 +92,42 @@ function tabCandidates(date: string): string[] {
   return [std, std.replace(/-(\d+)\/(\d+)$/, '-$1-$2')]
 }
 
-// 標題列找出該日期起始欄。舊格式「10/12（一)」在同一格；新格式日期（10/19）與星期（一）分兩格、星期在右側。
-// 新格式的星期格若被 Google 匯出略掉，仍以日期相符為準；右側有星期字但對不上則不採用。
+// 優先用 export（原文照出）：gviz 會依欄位型別推測而吞掉格式不同的儲存格（如「10/24 農曆十五」整格消失）。
+// export 需要分頁 gid，從 htmlview 的分頁清單查（快取 5 分鐘）；分頁以「週一日期-」開頭比對，容忍尾端手誤。
+// 查不到 gid 才退回 gviz。
+let tabCache: { at: number; tabs: { name: string; gid: string }[] } | null = null
+async function listTabs(force = false): Promise<{ name: string; gid: string }[]> {
+  if (!force && tabCache && Date.now() - tabCache.at < 5 * 60_000) return tabCache.tabs
+  try {
+    const res = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/htmlview`, { cache: 'no-store', signal: AbortSignal.timeout(8000) })
+    const html = await res.text()
+    const tabs = [...html.matchAll(/items\.push\(\{name: "([^"]*)"[^}]*?gid: "(\d+)"/g)].map(x => ({ name: x[1].replace(/\\\//g, '/'), gid: x[2] }))
+    if (tabs.length) tabCache = { at: Date.now(), tabs }
+  } catch { /* 用舊快取或退回 gviz */ }
+  return tabCache?.tabs ?? []
+}
+
+async function csvUrls(date: string): Promise<string[]> {
+  const prefix = weekTabName(date).split('-')[0] + '-'
+  const find = (tabs: { name: string; gid: string }[]) => tabs.find(t => t.name.startsWith(prefix))
+  const hit = find(await listTabs()) ?? find(await listTabs(true))
+  if (hit) return [`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${hit.gid}`]
+  return tabCandidates(date).map(tab => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`)
+}
+
+// 標題列找出該日期起始欄：只認開頭的「M/D」，後面的註記（農曆、假日、改名…）一律忽略。
+// 星期當輔助驗證：同格有「（一)」或右側格是單純星期字時，必須和該日相符；都沒有（或被 Google 匯出略掉）就以日期為準。
 function findDayColumn(header: string[], m: number, d: number, wd: string): number {
-  const old = header.findIndex(h => new RegExp(`^\\s*${m}/${d}\\s*[（(]\\s*${wd}`).test(h))
-  if (old >= 0) return old
-  const onlyDate = new RegExp(`^\\s*${m}/${d}\\s*$`)
-  const anyWd = /^\s*[（(]?\s*(?:星期|週|周)?[日一二三四五六]\s*[）)]?\s*$/
-  const thisWd = new RegExp(`[${wd}]`)
+  const dateStart = new RegExp(`^\\s*${m}/${d}(?![\\d/])`)
+  const inCell = /[（(]\s*([日一二三四五六])/
+  const alone = /^\s*[（(]?\s*(?:星期|週|周)?([日一二三四五六])\s*[）)]?\s*$/
   return header.findIndex((h, i) => {
-    if (!onlyDate.test(h)) return false
+    if (!dateStart.test(h)) return false
+    const own = inCell.exec(h)?.[1]
+    if (own) return own === wd
     const next = header.slice(i + 1, i + 8).find(x => x.trim() !== '')
-    return next === undefined || !anyWd.test(next) || thisWd.test(next)
+    const theirs = next === undefined ? undefined : alone.exec(next)?.[1]
+    return theirs === undefined || theirs === wd
   })
 }
 
@@ -114,8 +138,7 @@ export async function fetchMealCount(date: string, meal: MealKey): Promise<MealC
   let rows: string[][] = []
   let c0 = -1
   const tabs = tabCandidates(date)
-  for (const tab of tabs) {
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`
+  for (const url of await csvUrls(date)) {
     const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(8000) })
     if (!res.ok) throw new Error(`讀取用餐總表失敗（HTTP ${res.status}）`)
     const text = await res.text()
