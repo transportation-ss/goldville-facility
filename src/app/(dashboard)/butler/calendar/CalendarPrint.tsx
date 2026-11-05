@@ -2,7 +2,7 @@ import { forwardRef } from 'react'
 import { dayNote, toneOf, type Tone } from '@/lib/butler-calendar'
 import type { CalendarEvent } from './actions'
 
-// 列印用月曆版面：A4 橫式（297×210mm）以 1123×794px 繪製，再由 html2canvas 轉成 PDF。
+// 列印用月曆版面：以 1123×794px（A 系列橫式比例）繪製，再由 html2canvas 轉成 A3 橫式 PDF。
 // 一律用行內樣式，避免轉圖時依賴外部 CSS。
 
 const EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']

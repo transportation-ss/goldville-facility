@@ -37,6 +37,9 @@ export function toneOf(date: string, time: string | null, title: string): Tone {
   return hit ? hit.tone : 'special'
 }
 
+// 該月沒有存過公告時的預設內容；{{文字}} 印成紅字
+export const DEFAULT_NOTE = '※每日收垃圾時間：{{16:00-17:30}}\n※若活動時間有更改會再另行通知'
+
 export const TONE_TEXT: Record<Tone, string> = {
   normal: 'text-gray-900',
   fixed: 'text-blue-600',

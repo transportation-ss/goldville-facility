@@ -8,7 +8,7 @@ import {
   createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, copyDayEvents,
   type CalendarEvent, type EventInput,
 } from './actions'
-import { dayNote, toneOf, TONE_TEXT } from '@/lib/butler-calendar'
+import { dayNote, toneOf, TONE_TEXT, DEFAULT_NOTE } from '@/lib/butler-calendar'
 import { CalendarPrint } from './CalendarPrint'
 
 type Butler = { id: string; name: string }
@@ -68,6 +68,7 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
   const [noteDraft, setNoteDraft] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
+  const noteRef = useRef<HTMLTextAreaElement>(null)
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<string | null>(today.startsWith(initialYm) ? today : null)
   const [multi, setMulti] = useState(false)
@@ -88,17 +89,28 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
     setLoading(true)
     try {
       const [list, n] = await Promise.all([getMonthEvents(next), getMonthNote(next)])
-      setEvents(list); setNote(n ?? '')
+      setEvents(list); setNote(n ?? DEFAULT_NOTE)
     }
     catch (e) { alert(e instanceof Error ? e.message : '讀取失敗') }
     finally { setLoading(false) }
   }
 
-  async function openNoteEdit() {
+  function openNoteEdit() {
     if (!guardPast()) return
-    if (note) return setNoteDraft(note)
-    // 這個月還沒有公告：帶入上個月的公告當起點（例如每日收垃圾時間每月都一樣）
-    try { setNoteDraft((await getMonthNote(shiftYm(ym, -1))) ?? '') } catch { setNoteDraft('') }
+    setNoteDraft(note)
+  }
+
+  // 選取文字後按「紅字」：用 {{ }} 包起來；已是紅字則拿掉標記
+  function toggleRed() {
+    const el = noteRef.current
+    if (!el || noteDraft === null) return
+    const { selectionStart: s, selectionEnd: e } = el
+    if (s === e) return alert('請先在公告框裡選取要變紅的文字')
+    const picked = noteDraft.slice(s, e)
+    const wrapped = noteDraft.slice(s - 2, s) === '{{' && noteDraft.slice(e, e + 2) === '}}'
+    setNoteDraft(wrapped
+      ? noteDraft.slice(0, s - 2) + picked + noteDraft.slice(e + 2)
+      : noteDraft.slice(0, s) + '{{' + picked + '}}' + noteDraft.slice(e))
   }
 
   async function saveNote() {
@@ -123,9 +135,10 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
         const el = printRef.current
         if (!el) return
         const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import('html2canvas-pro'), import('jspdf')])
-        const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
-        const pdf = new jsPDF('l', 'mm', 'a4')
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 297, 210)
+        // 原件為 A3 橫式（420×297mm）；A3 與 A4 長寬比相同，要印 A4 時列印設定選「符合頁面大小」即可
+        const canvas = await html2canvas(el, { scale: 3, useCORS: true, backgroundColor: '#ffffff' })
+        const pdf = new jsPDF('l', 'mm', 'a3')
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 420, 297)
         pdf.save(`活動月曆_${ym}.pdf`)
       } catch (e) {
         if (!cancelled) alert(e instanceof Error ? e.message : '匯出 PDF 失敗')
@@ -248,9 +261,21 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
       {/* 每月公告（印在月曆最上方）；{{文字}} 會印成紅字 */}
       {noteDraft !== null ? (
         <div className="bg-white border rounded-xl p-3 space-y-2">
-          <textarea value={noteDraft} onChange={e => setNoteDraft(e.target.value)} rows={3} autoFocus
-            placeholder="每行一則公告。用 {{ }} 包住的字會印成紅字，例如：* 每日收垃圾時間：{{16:00-17:30}}"
+          <textarea ref={noteRef} value={noteDraft} onChange={e => setNoteDraft(e.target.value)} rows={3} autoFocus
+            placeholder="每行一則公告"
             className="w-full border rounded-lg px-3 py-2 text-sm" />
+          <div className="flex flex-wrap items-center gap-2">
+            {/* mouseDown 擋掉預設行為，避免按鈕搶走文字框的選取範圍 */}
+            <button type="button" onMouseDown={e => e.preventDefault()} onClick={toggleRed}
+              className="text-xs rounded-lg border border-red-300 text-red-600 px-2.5 py-1 hover:bg-red-50">
+              選取文字後按：紅字／取消紅字
+            </button>
+            <button type="button" onClick={() => setNoteDraft(DEFAULT_NOTE)} className="text-xs text-gray-400 px-2 py-1">還原預設</button>
+          </div>
+          <div className="text-sm text-gray-700 border-t pt-2">
+            <div className="text-xs text-gray-400 mb-0.5">預覽</div>
+            <NoteText text={noteDraft} />
+          </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setNoteDraft(null)} className="text-xs text-gray-500 px-3 py-1.5">取消</button>
             <button onClick={saveNote} className="text-xs bg-emerald-600 text-white rounded-lg px-3 py-1.5">儲存公告</button>
@@ -259,14 +284,7 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
       ) : (note || canEdit) && (
         <div className="bg-white border rounded-xl px-3 py-2 flex items-start gap-2">
           <div className="flex-1 text-sm text-gray-700">
-            {note
-              ? note.split('\n').filter(l => l.trim()).map((l, i) => (
-                <div key={i}>
-                  {l.split(/(\{\{.*?\}\})/g).filter(Boolean).map((p, j) => p.startsWith('{{') && p.endsWith('}}')
-                    ? <span key={j} className="text-red-600">{p.slice(2, -2)}</span> : <span key={j}>{p}</span>)}
-                </div>
-              ))
-              : <span className="text-gray-400">尚無本月公告</span>}
+            {note ? <NoteText text={note} /> : <span className="text-gray-400">尚無本月公告</span>}
           </div>
           {canEdit && (
             <button onClick={openNoteEdit} className="text-gray-400 hover:text-emerald-600"><Pencil className="w-4 h-4" /></button>
@@ -456,6 +474,19 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
         />
       )}
     </div>
+  )
+}
+
+function NoteText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split('\n').filter(l => l.trim()).map((l, i) => (
+        <div key={i}>
+          {l.split(/(\{\{.*?\}\})/g).filter(Boolean).map((p, j) => p.startsWith('{{') && p.endsWith('}}')
+            ? <span key={j} className="text-red-600">{p.slice(2, -2)}</span> : <span key={j}>{p}</span>)}
+        </div>
+      ))}
+    </>
   )
 }
 

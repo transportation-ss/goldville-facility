@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getMonthEvents, getMonthNote } from './actions'
 import { CalendarView } from './CalendarView'
+import { DEFAULT_NOTE } from '@/lib/butler-calendar'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,7 +32,7 @@ export default async function ButlerCalendarPage({ searchParams }: { searchParam
       ym={ym}
       today={today}
       events={events}
-      note={note ?? ''}
+      note={note ?? DEFAULT_NOTE}
       butlers={(butlers ?? []).map(b => ({ id: b.id as string, name: (b.display_name as string) || '未命名' }))}
       canEdit={EDIT_ROLES.includes(role)}
     />
