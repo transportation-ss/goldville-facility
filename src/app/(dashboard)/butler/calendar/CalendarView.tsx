@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Copy, Trash2, X, Pencil, CheckSquare, FileDown, Sparkles } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Plus, Copy, Trash2, X, Pencil, CheckSquare, FileDown, Sparkles, Loader2 } from 'lucide-react'
 import {
   getMonthEvents, getMonthNote, saveMonthNote, applyTemplate,
   createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, copyDayEvents,
@@ -23,6 +23,23 @@ interface Props {
 }
 
 const DAY_LABELS = ['一', '二', '三', '四', '五', '六', '日']
+
+// 每個會呼叫伺服器的按鈕：點下去轉圈，超過時限沒回應就停止等待（不再轉圈、不更新畫面）
+const TIMEOUT_MS = 5000
+class TimeoutError extends Error {}
+const TIMEOUT_MSG = '等了 5 秒沒有回應，已停止等待。這次操作可能已經完成，請重新整理確認。'
+
+function withTimeout<T>(p: Promise<T>, ms = TIMEOUT_MS): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new TimeoutError()), ms)
+    p.then(v => { clearTimeout(timer); resolve(v) }, e => { clearTimeout(timer); reject(e) })
+  })
+}
+
+const errMsg = (e: unknown, fallback: string) =>
+  e instanceof TimeoutError ? TIMEOUT_MSG : e instanceof Error ? e.message : fallback
+
+const Spin = () => <Loader2 className="w-3.5 h-3.5 animate-spin" />
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const ymOf = (y: number, m: number) => `${y}-${pad(m)}`
@@ -69,13 +86,12 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
   const [printing, setPrinting] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
   const noteRef = useRef<HTMLTextAreaElement>(null)
-  const [loading, setLoading] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)   // 目前正在等伺服器的按鈕
   const [selected, setSelected] = useState<string | null>(today.startsWith(initialYm) ? today : null)
   const [multi, setMulti] = useState(false)
   const [picked, setPicked] = useState<string[]>([])
   const [pastAck, setPastAck] = useState(false)
   const [form, setForm] = useState<{ id: string | null; data: EventInput } | null>(null)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [copyOpen, setCopyOpen] = useState(false)
 
@@ -85,14 +101,19 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
   const butlerName = (id: string) => butlers.find(b => b.id === id)?.name ?? '（已離職）'
   const ownersText = (ids: string[]) => ids.map(butlerName).join('、')
 
+  // 轉圈 + 錯誤／逾時提示；同時間只允許一個操作
+  async function run(key: string, fn: () => Promise<void>, fallback: string) {
+    if (busy) return
+    setBusy(key)
+    try { await fn() }
+    catch (e) { alert(errMsg(e, fallback)) }
+    finally { setBusy(null) }
+  }
+
+  // 逾時時直接 throw，不會寫入畫面狀態（避免晚到的舊資料蓋掉現在看的月份）
   async function load(next: string) {
-    setLoading(true)
-    try {
-      const [list, n] = await Promise.all([getMonthEvents(next), getMonthNote(next)])
-      setEvents(list); setNote(n ?? DEFAULT_NOTE)
-    }
-    catch (e) { alert(e instanceof Error ? e.message : '讀取失敗') }
-    finally { setLoading(false) }
+    const [list, n] = await withTimeout(Promise.all([getMonthEvents(next), getMonthNote(next)]))
+    setEvents(list); setNote(n ?? DEFAULT_NOTE)
   }
 
   function openNoteEdit() {
@@ -113,17 +134,23 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
       : noteDraft.slice(0, s) + '{{' + picked + '}}' + noteDraft.slice(e))
   }
 
-  async function saveNote() {
+  function saveNote() {
     if (noteDraft === null) return
-    try { await saveMonthNote(ym, noteDraft); setNote(noteDraft.trim()); setNoteDraft(null) }
-    catch (e) { alert(e instanceof Error ? e.message : '儲存失敗') }
+    const draft = noteDraft
+    run('note', async () => {
+      await withTimeout(saveMonthNote(ym, draft))
+      setNote(draft.trim()); setNoteDraft(null)
+    }, '儲存失敗')
   }
 
-  async function fillTemplate() {
+  function fillTemplate() {
     if (!guardPast()) return
     if (!confirm('把固定班表（早上運動、下午聚樂部、週三藝術療癒＋運動、週日健口操）填入「目前沒有任何活動」的日期？\n已有活動的日期不會動。')) return
-    try { alert(`已新增 ${await applyTemplate(ym)} 筆活動`); await load(ym) }
-    catch (e) { alert(e instanceof Error ? e.message : '套用失敗') }
+    run('template', async () => {
+      const n = await withTimeout(applyTemplate(ym))
+      await load(ym)
+      alert(`已新增 ${n} 筆活動`)
+    }, '套用失敗')
   }
 
   // 列印版面渲染完成後轉 PDF
@@ -136,12 +163,13 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
         if (!el) return
         const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import('html2canvas-pro'), import('jspdf')])
         // 原件為 A3 橫式（420×297mm）；A3 與 A4 長寬比相同，要印 A4 時列印設定選「符合頁面大小」即可
-        const canvas = await html2canvas(el, { scale: 3, useCORS: true, backgroundColor: '#ffffff' })
+        // 轉圖在本機運算、比一般按鈕慢，時限放寬到 20 秒
+        const canvas = await withTimeout(html2canvas(el, { scale: 3, useCORS: true, backgroundColor: '#ffffff' }), 20000)
         const pdf = new jsPDF('l', 'mm', 'a3')
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 420, 297)
         pdf.save(`活動月曆_${ym}.pdf`)
       } catch (e) {
-        if (!cancelled) alert(e instanceof Error ? e.message : '匯出 PDF 失敗')
+        if (!cancelled) alert(e instanceof TimeoutError ? '匯出 PDF 超過 20 秒沒完成，已停止，請再試一次。' : errMsg(e, '匯出 PDF 失敗'))
       } finally { if (!cancelled) setPrinting(false) }
     })()
     return () => { cancelled = true }
@@ -150,7 +178,7 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
   function goMonth(next: string) {
     setYm(next); setSelected(null); setPicked([]); setPastAck(false); setForm(null)
     window.history.replaceState(null, '', `?m=${next}`)
-    load(next)
+    run('month', () => load(next), '讀取失敗')
   }
 
   // 編輯過去月份前，先提醒一次
@@ -184,23 +212,21 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
 
   async function submit(ev: React.FormEvent) {
     ev.preventDefault()
-    if (!form) return
-    setSaving(true); setError('')
+    if (!form || busy) return
+    setBusy('save'); setError('')
     try {
-      if (form.id) await updateCalendarEvent(form.id, form.data)
-      else await createCalendarEvent(form.data)
+      await withTimeout(form.id ? updateCalendarEvent(form.id, form.data) : createCalendarEvent(form.data))
       setForm(null)
       await load(ym)
     } catch (e) {
-      setError(e instanceof Error ? e.message : '儲存失敗')
-    } finally { setSaving(false) }
+      setError(errMsg(e, '儲存失敗'))   // 逾時／失敗時表單保留，內容不會遺失
+    } finally { setBusy(null) }
   }
 
-  async function remove(id: string) {
+  function remove(id: string) {
     if (!guardPast()) return
     if (!confirm('確定要刪除這個活動？')) return
-    try { await deleteCalendarEvent(id); await load(ym) }
-    catch (e) { alert(e instanceof Error ? e.message : '刪除失敗') }
+    run(`del:${id}`, async () => { await withTimeout(deleteCalendarEvent(id)); await load(ym) }, '刪除失敗')
   }
 
   const copySources = multi && picked.length ? picked : selected ? [selected] : []
@@ -218,24 +244,24 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button onClick={() => goMonth(shiftYm(ym, -1))} className="p-1.5 rounded-lg border hover:bg-gray-50"><ChevronLeft className="w-4 h-4" /></button>
+        <button onClick={() => goMonth(shiftYm(ym, -1))} disabled={!!busy} className="p-1.5 rounded-lg border hover:bg-gray-50 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
         <div className="font-semibold text-gray-800 min-w-[7rem] text-center">{yy} 年 {mm} 月</div>
-        <button onClick={() => goMonth(shiftYm(ym, 1))} className="p-1.5 rounded-lg border hover:bg-gray-50"><ChevronRight className="w-4 h-4" /></button>
+        <button onClick={() => goMonth(shiftYm(ym, 1))} disabled={!!busy} className="p-1.5 rounded-lg border hover:bg-gray-50 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
         {ym !== currentYm && (
-          <button onClick={() => goMonth(currentYm)} className="text-xs text-emerald-600 px-2 py-1">回本月</button>
+          <button onClick={() => goMonth(currentYm)} disabled={!!busy} className="text-xs text-emerald-600 px-2 py-1 disabled:opacity-40">回本月</button>
         )}
-        {loading && <span className="text-xs text-gray-400">載入中…</span>}
+        {busy === 'month' && <span className="inline-flex items-center gap-1 text-xs text-gray-400"><Spin /> 載入中…</span>}
         <div className="ml-auto flex flex-wrap gap-2">
           <button onClick={() => setPrinting(true)} disabled={printing}
             className="inline-flex items-center gap-1 text-xs rounded-lg border px-2.5 py-1.5 text-gray-600 hover:bg-gray-50 disabled:opacity-40">
-            <FileDown className="w-3.5 h-3.5" /> {printing ? '產生中…' : '匯出 PDF'}
+            {printing ? <Spin /> : <FileDown className="w-3.5 h-3.5" />} {printing ? '產生中…' : '匯出 PDF'}
           </button>
         </div>
         {canEdit && (
           <div className="flex flex-wrap gap-2 w-full md:w-auto">
-            <button onClick={fillTemplate}
-              className="inline-flex items-center gap-1 text-xs rounded-lg border px-2.5 py-1.5 text-gray-600 hover:bg-gray-50">
-              <Sparkles className="w-3.5 h-3.5" /> 套用固定班表
+            <button onClick={fillTemplate} disabled={!!busy}
+              className="inline-flex items-center gap-1 text-xs rounded-lg border px-2.5 py-1.5 text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+              {busy === 'template' ? <Spin /> : <Sparkles className="w-3.5 h-3.5" />} 套用固定班表
             </button>
             <button
               onClick={() => { setMulti(m => !m); setPicked([]) }}
@@ -278,7 +304,10 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setNoteDraft(null)} className="text-xs text-gray-500 px-3 py-1.5">取消</button>
-            <button onClick={saveNote} className="text-xs bg-emerald-600 text-white rounded-lg px-3 py-1.5">儲存公告</button>
+            <button onClick={saveNote} disabled={!!busy}
+              className="inline-flex items-center gap-1 text-xs bg-emerald-600 text-white rounded-lg px-3 py-1.5 disabled:opacity-60">
+              {busy === 'note' && <Spin />} {busy === 'note' ? '儲存中…' : '儲存公告'}
+            </button>
           </div>
         </div>
       ) : (note || canEdit) && (
@@ -373,7 +402,9 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
                 {canEdit && (
                   <div className="flex gap-1">
                     <button onClick={() => openEdit(e)} className="p-1.5 text-gray-400 hover:text-emerald-600"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => remove(e.id)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => remove(e.id)} disabled={!!busy} className="p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-60">
+                      {busy === `del:${e.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
                   </div>
                 )}
               </div>
@@ -445,9 +476,9 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
             {error && <p className="text-xs text-red-500">{error}</p>}
             <div className="flex gap-2 justify-end pt-1">
               <button type="button" onClick={() => setForm(null)} className="text-sm text-gray-500 px-3 py-2">取消</button>
-              <button type="submit" disabled={saving || !form.data.title.trim()}
-                className="text-sm bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-40">
-                {saving ? '儲存中…' : '儲存'}
+              <button type="submit" disabled={busy === 'save' || !form.data.title.trim()}
+                className="inline-flex items-center gap-1.5 text-sm bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-40">
+                {busy === 'save' && <Spin />} {busy === 'save' ? '儲存中…' : '儲存'}
               </button>
             </div>
           </form>
@@ -469,7 +500,7 @@ export function CalendarView({ ym: initialYm, today, events: initialEvents, note
           onDone={async (n) => {
             setCopyOpen(false)
             alert(`已複製 ${n} 筆活動`)
-            await load(ym)
+            try { await load(ym) } catch (e) { alert(errMsg(e, '讀取失敗')) }
           }}
         />
       )}
@@ -515,8 +546,8 @@ function CopyDialog({ sources, startYm, currentYm, onClose, onDone }: {
     if (targets.some(d => d.slice(0, 7) < currentYm) &&
         !confirm('目標包含過去的月份，不建議更改舊資料。\n確定仍要複製嗎？')) return
     setBusy(true); setError('')
-    try { await onDone(await copyDayEvents(sources, targets)) }
-    catch (e) { setError(e instanceof Error ? e.message : '複製失敗'); setBusy(false) }
+    try { await onDone(await withTimeout(copyDayEvents(sources, targets))) }
+    catch (e) { setError(errMsg(e, '複製失敗')); setBusy(false) }
   }
 
   return (
@@ -555,8 +586,8 @@ function CopyDialog({ sources, startYm, currentYm, onClose, onDone }: {
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="text-sm text-gray-500 px-3 py-2">取消</button>
           <button onClick={run} disabled={busy || targets.length === 0}
-            className="text-sm bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-40">
-            {busy ? '複製中…' : '複製'}
+            className="inline-flex items-center gap-1.5 text-sm bg-emerald-600 text-white rounded-lg px-4 py-2 disabled:opacity-40">
+            {busy && <Spin />} {busy ? '複製中…' : '複製'}
           </button>
         </div>
       </div>
