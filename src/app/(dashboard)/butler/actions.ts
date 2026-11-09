@@ -251,7 +251,7 @@ export async function findResidentIdBySpace(space: string): Promise<string | nul
   const { data } = await supabase
     .from('butler_residents')
     .select('id, name, room')
-    .eq('status', 'active_resident')
+    .in('status', ['active_resident', 'service_only'])
   const match = (data ?? []).find(r => space.includes(r.name) || space === `${r.room ?? ''}${r.name}`.trim())
   return match?.id ?? null
 }

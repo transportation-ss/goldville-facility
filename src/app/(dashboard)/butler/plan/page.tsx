@@ -37,7 +37,7 @@ export default async function ButlerPlanPage({
     getAllActiveResidentServices(),
   ])
   const activeResidents = residents
-    .filter(r => r.status === 'active_resident')
+    .filter(r => r.status === 'active_resident' || r.status === 'service_only')
     .map(r => ({ id: r.id, name: r.name, room: r.room }))
 
   return <ButlerPlanView today={today} viewDate={viewDate} tasks={tasks} staff={staff}
