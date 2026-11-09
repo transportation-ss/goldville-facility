@@ -6,6 +6,7 @@ import { Plus, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Users, MapPin 
 import type { ButlerTask, ButlerStaff } from '../actions'
 import { createButlerTask, updateButlerTask, deleteButlerTask } from '../actions'
 import type { ResidentService } from '../residents/actions'
+import type { ServiceCategory } from '@/lib/butler-categories'
 
 // dateStr 是台灣時區的日曆日期字串，這裡固定用 UTC 運算避免主機時區換算出錯的一天
 function addDays(dateStr: string, n: number): string {
@@ -103,10 +104,12 @@ function MiniCalendar({ monthCursor, selected, onToggle, onChangeMonth }: {
   )
 }
 
-const CATEGORY_OPTIONS: { value: 'medication' | 'cleaning' | 'companion' | 'other'; label: string }[] = [
+const CATEGORY_OPTIONS: { value: ServiceCategory; label: string }[] = [
   { value: 'medication', label: '用藥管理' },
   { value: 'cleaning',   label: '清潔掃房' },
   { value: 'companion',  label: '陪伴服務' },
+  { value: 'exercise',   label: '運動' },
+  { value: 'activity',   label: '活動' },
   { value: 'other',      label: '其他' },
 ]
 
@@ -158,7 +161,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
         space: form.space.trim() || null, notes: form.notes.trim() || null,
         assigned_to_ids: form.assigned_to_ids,
         priority: form.priority as 'normal' | 'urgent',
-        category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
+        category: form.category as ServiceCategory,
         fee: form.fee ? Number(form.fee) : null,
         resident_service_id: form.resident_service_id || null,
       }
@@ -189,7 +192,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
         space: form.space.trim() || null, notes: form.notes.trim() || null,
           assigned_to_ids: form.assigned_to_ids,
           priority: form.priority as 'normal' | 'urgent',
-          category: form.category as 'medication' | 'cleaning' | 'companion' | 'other',
+          category: form.category as ServiceCategory,
           fee: form.fee ? Number(form.fee) : null,
           resident_service_id: form.resident_service_id || null,
         })
@@ -263,6 +266,8 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
               <label className="text-xs text-gray-500 mb-1 block">工作長度</label>
               <select className="w-full border rounded-lg px-3 py-2 text-sm"
                 value={form.duration_minutes} onChange={e => set('duration_minutes', e.target.value)}>
+                <option value="10">10 分</option>
+                <option value="15">15 分</option>
                 <option value="30">30 分</option>
                 <option value="60">1 小時</option>
                 <option value="90">1.5 小時</option>
@@ -419,12 +424,12 @@ function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onCli
           const slotTask = rowTasks.find(t => {
             if (!t.start_time) return false
             const ts = timeToSlot(t.start_time)
-            const te = ts + Math.round((t.duration_minutes ?? 30) / 30)
+            const te = ts + Math.max(1, Math.round((t.duration_minutes ?? 30) / 30))
             return slot >= ts && slot < te
           })
           const isStart = slotTask && timeToSlot(slotTask.start_time!) === slot
           if (slotTask && !isStart) return null
-          const span = slotTask ? Math.round((slotTask.duration_minutes ?? 30) / 30) : 1
+          const span = slotTask ? Math.max(1, Math.round((slotTask.duration_minutes ?? 30) / 30)) : 1
           const isUrgent = slotTask?.priority === 'urgent'
           const isDone = slotTask?.status === 'completed'
           const isAppointment = slotTask?.source === 'appointment'

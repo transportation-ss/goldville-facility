@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Type, Camera, Heading, Trash2, GripVertical, Loader2, Images, Check, X, Sparkles, Wand2, Plus } from 'lucide-react'
 import type { ButlerResident, LogBlock, ServiceLog } from '../../../actions'
 import { createServiceLog, updateServiceLog, getServiceLogsInRange } from '../../../actions'
+import type { ServiceCategory, ServiceModuleKey } from '@/lib/butler-categories'
 
 type PeriodType = 'day' | 'week' | 'month' | 'custom'
 
@@ -13,13 +14,15 @@ const PERIOD_LABEL: Record<PeriodType, string> = {
 }
 
 // 常用服務模組：點了新增一個模組區塊（副標題＋備註），可在同一篇紀錄裡疊加多個模組
-const SERVICE_MODULES: { key: 'medication' | 'cleaning' | 'companion'; label: string; heading: string }[] = [
+const SERVICE_MODULES: { key: ServiceModuleKey; label: string; heading: string }[] = [
   { key: 'medication', label: '用藥管理', heading: '用藥紀錄' },
   { key: 'cleaning',   label: '清潔掃房', heading: '清掃摘要' },
   { key: 'companion',  label: '陪伴服務', heading: '陪伴紀錄' },
+  { key: 'exercise',   label: '運動',     heading: '運動紀錄' },
+  { key: 'activity',   label: '活動',     heading: '活動紀錄' },
 ]
-const MODULE_LABEL: Record<'medication' | 'cleaning' | 'companion', string> =
-  Object.fromEntries(SERVICE_MODULES.map(m => [m.key, m.heading])) as Record<'medication' | 'cleaning' | 'companion', string>
+const MODULE_LABEL: Record<ServiceModuleKey, string> =
+  Object.fromEntries(SERVICE_MODULES.map(m => [m.key, m.heading])) as Record<ServiceModuleKey, string>
 
 function formatDateCompact(d: string) {
   return d.replace(/-/g, '')
@@ -493,7 +496,7 @@ export function LogEditor({ resident, otherResidents = [], authorName, existingL
   existingLog?: ServiceLog
   cloudName?: string
   cleaningPrefill?: { title: string; blocks: LogBlock[]; meta: string }
-  initialCategory?: 'medication' | 'cleaning' | 'companion'
+  initialCategory?: ServiceModuleKey
 }) {
   const router = useRouter()
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })
@@ -511,7 +514,7 @@ export function LogEditor({ resident, otherResidents = [], authorName, existingL
       { type: 'text',    text: '' },
     ]
   )
-  const [category, setCategory] = useState<'medication' | 'cleaning' | 'companion' | 'other' | null>(
+  const [category, setCategory] = useState<ServiceCategory | null>(
     existingLog?.category ?? initialCategory ?? null
   )
   const [extraResidentIds, setExtraResidentIds] = useState<string[]>([])

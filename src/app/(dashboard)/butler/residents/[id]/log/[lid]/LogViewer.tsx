@@ -8,7 +8,7 @@ import { deleteServiceLog } from '../../../actions'
 import { LogEditor } from '../new/LogEditor'
 
 const PERIOD_LABEL = { day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間' }
-const MODULE_LABEL = { medication: '用藥紀錄', cleaning: '清掃摘要', companion: '陪伴紀錄' } as const
+const MODULE_LABEL = { medication: '用藥紀錄', cleaning: '清掃摘要', companion: '陪伴紀錄', exercise: '運動紀錄', activity: '活動紀錄' } as const
 
 function PrintBlockView({ block }: { block: LogBlock }) {
   if (block.type === 'module') {

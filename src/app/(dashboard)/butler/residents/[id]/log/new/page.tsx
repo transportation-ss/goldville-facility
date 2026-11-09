@@ -4,6 +4,7 @@ import { getResident, getResidents } from '../../../actions'
 import { getButlerTaskById } from '../../../../actions'
 import { LogEditor } from './LogEditor'
 import { createClient } from '@/lib/supabase/server'
+import type { ServiceModuleKey } from '@/lib/butler-categories'
 
 // 完成任務時的照片存在 Supabase Storage，跟服務紀錄照片走的 Cloudinary 相簿是兩套系統，
 // 帶入草稿前先搬一份到 Cloudinary 對應的住民資料夾，照片庫才看得到。
@@ -53,9 +54,11 @@ export default async function NewLogPage({
     medication: '用藥紀錄',
     cleaning: '清掃摘要',
     companion: '陪伴紀錄',
+    exercise: '運動紀錄',
+    activity: '活動紀錄',
   }
   const moduleKey = (category ?? (template === 'cleaning' ? 'cleaning' : undefined)) as
-    'medication' | 'cleaning' | 'companion' | undefined
+    ServiceModuleKey | undefined
   const heading = (category && CATEGORY_HEADING[category]) ?? (template === 'cleaning' ? '清掃摘要' : undefined)
 
   // 完成任務時填的備注/照片跟服務紀錄的目的重疊，直接帶進來當草稿內容，省得管家重打一次
@@ -88,7 +91,7 @@ export default async function NewLogPage({
       authorName={profile?.display_name ?? ''}
       cloudName={process.env.CLOUDINARY_CLOUD_NAME ?? ''}
       cleaningPrefill={cleaningPrefill}
-      initialCategory={(category ?? (template === 'cleaning' ? 'cleaning' : undefined)) as 'medication' | 'cleaning' | 'companion' | undefined}
+      initialCategory={(category ?? (template === 'cleaning' ? 'cleaning' : undefined)) as ServiceModuleKey | undefined}
     />
   )
 }

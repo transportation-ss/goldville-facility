@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { ServiceCategory } from '@/lib/butler-categories'
 
 export type ButlerTask = {
   id: string
@@ -23,7 +24,7 @@ export type ButlerTask = {
   created_at: string
   source: string | null
   source_ref: string | null
-  category: 'medication' | 'cleaning' | 'companion' | 'other' | null
+  category: ServiceCategory | null
   resident_service_id: string | null
   fee: number | null
   assignee?: { id: string; display_name: string } | null
@@ -154,7 +155,7 @@ export async function createButlerTask(input: {
   assigned_to?: string | null
   assigned_to_ids?: string[]
   priority?: 'normal' | 'urgent'
-  category?: 'medication' | 'cleaning' | 'companion' | 'other' | null
+  category?: ServiceCategory | null
   resident_service_id?: string | null
   fee?: number | null
 }) {
@@ -190,7 +191,7 @@ export async function updateButlerTask(id: string, updates: Partial<{
   priority: 'normal' | 'urgent'
   status: 'pending' | 'in_progress' | 'completed'
   completion_notes: string | null
-  category: 'medication' | 'cleaning' | 'companion' | 'other' | null
+  category: ServiceCategory | null
   resident_service_id: string | null
   fee: number | null
 }>) {

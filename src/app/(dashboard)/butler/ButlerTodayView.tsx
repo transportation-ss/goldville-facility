@@ -120,6 +120,8 @@ function TaskModal({ task, staff, today, onClose }: {
               <select className="w-full border rounded-lg px-3 py-2 text-sm"
                 value={form.duration_minutes} onChange={e => set('duration_minutes', e.target.value)}>
                 <option value="">不指定</option>
+                <option value="10">10 分</option>
+                <option value="15">15 分</option>
                 <option value="30">30 分</option>
                 <option value="60">1 小時</option>
                 <option value="90">1.5 小時</option>
