@@ -424,7 +424,7 @@ export async function dispatchServiceItem(residentId: string, input: {
   duration_minutes?: number | null
   assigned_to_ids?: string[]
 }) {
-  await createButlerTask({
+  const taskRes = await createButlerTask({
     task_date: input.task_date,
     start_time: input.start_time,
     duration_minutes: input.duration_minutes,
@@ -436,6 +436,7 @@ export async function dispatchServiceItem(residentId: string, input: {
     resident_service_id: input.resident_service_id,
     fee: 0,
   })
+  if (taskRes.error) throw new Error(taskRes.error)
   revalidatePath(`/butler/residents/${residentId}/services/${input.resident_service_id}`)
   revalidatePath(`/butler/residents/${residentId}/schedule`)
 }

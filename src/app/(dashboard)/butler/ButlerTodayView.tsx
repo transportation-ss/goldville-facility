@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Clock, MapPin, User, CheckCircle2, Circle, AlertCircle, Pencil, Trash2, CalendarDays, History, Printer, X, Camera, RotateCcw } from 'lucide-react'
 import type { ButlerTask, ButlerStaff } from './actions'
 import { HandoverQuickAdd } from './HandoverQuickAdd'
+import { uploadTaskPhoto } from '@/lib/upload-task-photo'
 import { createButlerTask, updateButlerTask, deleteButlerTask, completeButlerTask, uncompleteButlerTask, updateCompletionData, findResidentIdBySpace } from './actions'
 
 interface Props {
@@ -39,6 +40,7 @@ function TaskModal({ task, staff, today, onClose }: {
   onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [form, setForm] = useState({
     title:            task?.title ?? '',
     subtitle:         task?.subtitle ?? '',
@@ -56,6 +58,7 @@ function TaskModal({ task, staff, today, onClose }: {
     e.preventDefault()
     if (!form.title.trim()) return
     setSaving(true)
+    setError('')
     try {
       const payload = {
         title:            form.title.trim(),
@@ -68,9 +71,11 @@ function TaskModal({ task, staff, today, onClose }: {
         assigned_to:      form.assigned_to || null,
         priority:         form.priority as 'normal' | 'urgent',
       }
-      if (task) { await updateButlerTask(task.id, payload) }
-      else       { await createButlerTask(payload) }
+      const res = task ? await updateButlerTask(task.id, payload) : await createButlerTask(payload)
+      if (res.error) { setError(res.error); return }
       onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '儲存失敗，請截圖回報')
     } finally { setSaving(false) }
   }
 
@@ -150,6 +155,7 @@ function TaskModal({ task, staff, today, onClose }: {
             <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={2}
               value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="其他說明…" />
           </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 break-words">儲存失敗：{error}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
               className="flex-1 border rounded-lg py-2 text-sm text-gray-600">取消</button>
@@ -169,7 +175,10 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
   const router = useRouter()
   const [notes, setNotes] = useState(task.completion_notes ?? '')
   const [photoPreview, setPhotoPreview] = useState<string | null>(task.completion_photo_url ?? null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoRemoved, setPhotoRemoved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const isAlreadyDone = task.status === 'completed'
   // 完成後如果能對到住戶，先問要不要順手寫服務紀錄，同一個 Modal 內完成，不跳原生 confirm() 也不用二次導頁
@@ -178,22 +187,32 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = ev => setPhotoPreview(ev.target?.result as string)
-    reader.readAsDataURL(file)
+    setPhotoFile(file)
+    setPhotoRemoved(false)
+    setPhotoPreview(URL.createObjectURL(file))
   }
 
   async function handleSave() {
     setSaving(true)
+    setError('')
     try {
+      // 新選的照片先上傳換成網址；沒換照片就不重送舊照片（舊資料可能是很大的 base64）
+      let photoUrl: string | undefined = undefined
+      if (photoFile) photoUrl = await uploadTaskPhoto(photoFile, task.task_date)
+      else if (!photoRemoved && photoPreview && !photoPreview.startsWith('data:')) photoUrl = photoPreview
+
       if (isAlreadyDone) {
-        await updateCompletionData(task.id, notes, photoPreview)
+        const res = await updateCompletionData(task.id, notes, photoUrl)
+        if (res.error) { setError(res.error); return }
         onClose()
       } else {
-        await completeButlerTask(task.id, notes, photoPreview)
+        const res = await completeButlerTask(task.id, notes, photoUrl)
+        if (res.error) { setError(res.error); return }
         const residentId = task.space ? await findResidentIdBySpace(task.space) : null
         if (residentId) { setLogResidentId(residentId) } else { onClose() }
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '儲存失敗，請截圖回報')
     } finally { setSaving(false) }
   }
 
@@ -253,7 +272,7 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
               <div className="relative">
                 <img src={photoPreview} alt="完成照片" className="w-full rounded-lg object-cover max-h-48" />
                 <button
-                  onClick={() => { setPhotoPreview(null); if (fileRef.current) fileRef.current.value = '' }}
+                  onClick={() => { setPhotoPreview(null); setPhotoFile(null); setPhotoRemoved(true); if (fileRef.current) fileRef.current.value = '' }}
                   className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1">
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -270,6 +289,7 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
             <input ref={fileRef} type="file" accept="image/*" capture="environment"
               className="hidden" onChange={handlePhotoChange} />
           </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 break-words">儲存失敗：{error}</p>}
           <div className="flex gap-2 pt-1">
             <button onClick={onClose} className="flex-1 border rounded-lg py-2 text-sm text-gray-600">取消</button>
             <button onClick={handleSave} disabled={saving}
@@ -288,7 +308,11 @@ function UncompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => v
   const [saving, setSaving] = useState(false)
   async function handleUndo() {
     setSaving(true)
-    try { await uncompleteButlerTask(task.id); onClose() }
+    try {
+      const res = await uncompleteButlerTask(task.id)
+      if (res.error) { alert('取消失敗：' + res.error); return }
+      onClose()
+    } catch (err) { alert('取消失敗：' + (err instanceof Error ? err.message : '請截圖回報')) }
     finally { setSaving(false) }
   }
   return (
@@ -476,7 +500,12 @@ export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props
 
   async function handleDelete(id: string) {
     if (!confirm('確定要刪除這個任務？')) return
-    startTransition(() => { deleteButlerTask(id) })
+    startTransition(async () => {
+      try {
+        const res = await deleteButlerTask(id)
+        if (res.error) alert('刪除失敗：' + res.error)
+      } catch (err) { alert('刪除失敗：' + (err instanceof Error ? err.message : '請截圖回報')) }
+    })
   }
 
   const twDate = new Date(today + 'T00:00:00+08:00')

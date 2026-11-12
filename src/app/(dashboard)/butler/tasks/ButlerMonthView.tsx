@@ -41,10 +41,16 @@ function getFirstDayOfWeek(year: number, month: number): number {
 function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => void }) {
   const [notes, setNotes] = useState(task.completion_notes ?? '')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleComplete() {
     setSaving(true)
-    try { await completeButlerTask(task.id, notes); onClose() }
+    setError('')
+    try {
+      const res = await completeButlerTask(task.id, notes)
+      if (res.error) { setError(res.error); return }
+      onClose()
+    } catch (err) { setError(err instanceof Error ? err.message : '儲存失敗，請截圖回報') }
     finally { setSaving(false) }
   }
 
@@ -59,6 +65,7 @@ function CompleteModal({ task, onClose }: { task: ButlerTask; onClose: () => voi
           <textarea className="w-full border rounded-lg px-3 py-2 text-sm resize-none" rows={3}
             value={notes} onChange={e => setNotes(e.target.value)}
             placeholder="回報備注（選填）…" />
+          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 break-words">儲存失敗：{error}</p>}
           <div className="flex gap-2">
             <button onClick={onClose} className="flex-1 border rounded-lg py-2 text-sm text-gray-600">取消</button>
             <button onClick={handleComplete} disabled={saving}

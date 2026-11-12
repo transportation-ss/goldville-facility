@@ -121,6 +121,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
   existingTask?: ButlerTask | null; onClose: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [copyOpen, setCopyOpen] = useState(false)
   const baseDate = existingTask?.task_date ?? defaultDate
   const [copyMonthCursor, setCopyMonthCursor] = useState(baseDate.slice(0, 8) + '01')
@@ -152,6 +153,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
     e.preventDefault()
     if (!form.title.trim()) return
     setSaving(true)
+    setError('')
     try {
       const payload = {
         title: form.title.trim(), task_date: form.task_date,
@@ -165,16 +167,23 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
         fee: form.fee ? Number(form.fee) : null,
         resident_service_id: form.resident_service_id || null,
       }
-      if (existingTask) { await updateButlerTask(existingTask.id, payload) }
-      else              { await createButlerTask(payload) }
+      const res = existingTask ? await updateButlerTask(existingTask.id, payload) : await createButlerTask(payload)
+      if (res.error) { setError(res.error); return }
       onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '儲存失敗，請截圖回報')
     } finally { setSaving(false) }
   }
 
   async function handleDelete() {
     if (!existingTask || !confirm('確定刪除？')) return
     setSaving(true)
-    try { await deleteButlerTask(existingTask.id); onClose() }
+    setError('')
+    try {
+      const res = await deleteButlerTask(existingTask.id)
+      if (res.error) { setError(res.error); return }
+      onClose()
+    } catch (err) { setError(err instanceof Error ? err.message : '刪除失敗，請截圖回報') }
     finally { setSaving(false) }
   }
 
@@ -182,9 +191,10 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
     if (!form.title.trim() || copyDates.length === 0) return
     setSaving(true)
     setCopyDoneCount(null)
+    setError('')
     try {
       for (const date of copyDates) {
-        await createButlerTask({
+        const res = await createButlerTask({
           title: form.title.trim(), task_date: date,
           start_time: copyTime || null,
           duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
@@ -196,9 +206,12 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
           fee: form.fee ? Number(form.fee) : null,
           resident_service_id: form.resident_service_id || null,
         })
+        if (res.error) { setError(`複製到 ${date} 失敗：${res.error}`); return }
       }
       setCopyDoneCount(copyDates.length)
       setCopyDates([])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '複製失敗，請截圖回報')
     } finally { setSaving(false) }
   }
 
@@ -390,6 +403,7 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
               刪除任務
             </button>
           )}
+          {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 break-words">失敗：{error}</p>}
           <div className="flex gap-2">
             <button type="button" onClick={onClose}
               className="flex-1 border rounded-lg py-2 text-sm text-gray-600">取消</button>

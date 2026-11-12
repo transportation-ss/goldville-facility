@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { ServiceCategory } from '@/lib/butler-categories'
 
+// server action 丟出的錯誤在正式環境會被 Next 遮成通用訊息，所以改成回傳讓畫面能顯示真正原因
+export type ActionResult = { error?: string }
+
 export type ButlerTask = {
   id: string
   task_date: string
@@ -158,10 +161,10 @@ export async function createButlerTask(input: {
   category?: ServiceCategory | null
   resident_service_id?: string | null
   fee?: number | null
-}) {
+}): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('未登入')
+  if (!user) return { error: '未登入，請重新登入' }
 
   const { assigned_to, assigned_to_ids, ...rest } = input
   // assigned_to_ids 才是可以有多人的權威欄位；沒帶就從舊的單一 assigned_to 帶入相容
@@ -174,8 +177,9 @@ export async function createButlerTask(input: {
     priority: input.priority ?? 'normal',
     created_by: user.id,
   })
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
   revalidatePath('/butler')
+  return {}
 }
 
 export async function updateButlerTask(id: string, updates: Partial<{
@@ -194,7 +198,7 @@ export async function updateButlerTask(id: string, updates: Partial<{
   category: ServiceCategory | null
   resident_service_id: string | null
   fee: number | null
-}>) {
+}>): Promise<ActionResult> {
   const supabase = await createClient()
   const { assigned_to, assigned_to_ids, ...rest } = updates
   const payload: Record<string, unknown> = { ...rest, updated_at: new Date().toISOString() }
@@ -210,21 +214,23 @@ export async function updateButlerTask(id: string, updates: Partial<{
     .from('butler_tasks')
     .update(payload)
     .eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
   revalidatePath('/butler')
+  return {}
 }
 
-export async function deleteButlerTask(id: string) {
+export async function deleteButlerTask(id: string): Promise<ActionResult> {
   const supabase = await createClient()
   const { error } = await supabase.from('butler_tasks').delete().eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
   revalidatePath('/butler')
+  return {}
 }
 
-export async function completeButlerTask(id: string, notes: string, photoUrl?: string | null) {
+export async function completeButlerTask(id: string, notes: string, photoUrl?: string | null): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('未登入')
+  if (!user) return { error: '未登入，請重新登入' }
 
   // 共用任務池（沒有任何指派對象）：誰按完成就算誰的，直接在完成時認領
   const { data: existing } = await supabase.from('butler_tasks').select('assigned_to, assigned_to_ids').eq('id', id).single()
@@ -241,8 +247,9 @@ export async function completeButlerTask(id: string, notes: string, photoUrl?: s
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
   revalidatePath('/butler')
+  return {}
 }
 
 // 依「房號＋姓名」字串比對住戶，供清潔任務完成後導去服務紀錄時預先找到 resident_id
@@ -257,24 +264,26 @@ export async function findResidentIdBySpace(space: string): Promise<string | nul
   return match?.id ?? null
 }
 
-export async function uncompleteButlerTask(id: string) {
+export async function uncompleteButlerTask(id: string): Promise<ActionResult> {
   const supabase = await createClient()
   const { error } = await supabase
     .from('butler_tasks')
     .update({ status: 'pending', completion_notes: null, completion_photo_url: null, updated_at: new Date().toISOString() })
     .eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
   revalidatePath('/butler')
+  return {}
 }
 
-export async function updateCompletionData(id: string, notes: string, photoUrl?: string | null) {
+export async function updateCompletionData(id: string, notes: string, photoUrl?: string | null): Promise<ActionResult> {
   const supabase = await createClient()
   const { error } = await supabase
     .from('butler_tasks')
     .update({ completion_notes: notes || null, completion_photo_url: photoUrl ?? undefined, updated_at: new Date().toISOString() })
     .eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) return { error: error.message }
   revalidatePath('/butler')
+  return {}
 }
 
 // ── 班表 CRUD ─────────────────────────────────────────────
