@@ -8,6 +8,18 @@ export function residentLabel(r: { name: string; room: string | null }) {
   return r.room ? `${r.room} ${r.name}` : r.name
 }
 
+// 房號前後不可再接數字，避免「2011」誤中 201
+function mentionsRoom(text: string, room: string) {
+  let i = text.indexOf(room)
+  while (i !== -1) {
+    const before = text[i - 1]
+    const after = text[i + room.length]
+    if (!(before && /\d/.test(before)) && !(after && /\d/.test(after))) return true
+    i = text.indexOf(room, i + 1)
+  }
+  return false
+}
+
 // 住戶清單在同一個頁面內只抓一次
 let cache: Promise<LinkableResident[]> | null = null
 function loadResidents() {
@@ -17,13 +29,13 @@ function loadResidents() {
 
 /**
  * 住戶挑選：打房號或姓名出現建議，由人點選才連結（不會自動偷連）。
- * titleHint：標題文字，若包含某位住戶的房號或姓名，會多顯示一排「建議連結」。
+ * textHint：標題與內文，若提到某位住戶的房號或姓名，會多顯示一排「建議連結」。
  */
-export function HandoverResidentPicker({ selectedIds, onAdd, onRemove, titleHint = '', busy = false, showChips = true }: {
+export function HandoverResidentPicker({ selectedIds, onAdd, onRemove, textHint = '', busy = false, showChips = true }: {
   selectedIds: string[]
   onAdd: (r: LinkableResident) => void
   onRemove: (r: LinkableResident) => void
-  titleHint?: string
+  textHint?: string
   busy?: boolean
   showChips?: boolean
 }) {
@@ -50,13 +62,13 @@ export function HandoverResidentPicker({ selectedIds, onAdd, onRemove, titleHint
   }, [query, residents, selectedIds])
 
   const hinted = useMemo(() => {
-    const t = titleHint.trim()
+    const t = textHint.trim()
     if (!t) return []
     return residents
       .filter(r => !selectedIds.includes(r.id))
-      .filter(r => (r.room && t.includes(r.room)) || (r.name.length >= 2 && t.includes(r.name)))
-      .slice(0, 4)
-  }, [titleHint, residents, selectedIds])
+      .filter(r => (r.room && mentionsRoom(t, r.room)) || (r.name.length >= 2 && t.includes(r.name)))
+      .slice(0, 6)
+  }, [textHint, residents, selectedIds])
 
   return (
     <div className="space-y-1.5">
@@ -76,7 +88,7 @@ export function HandoverResidentPicker({ selectedIds, onAdd, onRemove, titleHint
 
       {hinted.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-gray-400">標題提到：</span>
+          <span className="text-[11px] text-gray-400">文中提到：</span>
           {hinted.map(r => (
             <button key={r.id} type="button" disabled={busy} onClick={() => onAdd(r)}
               className="inline-flex items-center gap-0.5 text-xs border border-dashed border-emerald-300 text-emerald-600 rounded-full px-2 py-0.5 hover:bg-emerald-50 disabled:opacity-40">

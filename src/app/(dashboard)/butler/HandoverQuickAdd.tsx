@@ -45,7 +45,7 @@ export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => vo
         className="w-full border rounded-lg px-3 py-2 text-sm" />
       <HandoverResidentPicker
         selectedIds={residentIds}
-        titleHint={title}
+        textHint={title + ' ' + content}
         onAdd={r => setResidentIds(ids => (ids.includes(r.id) ? ids : [...ids, r.id]))}
         onRemove={r => setResidentIds(ids => ids.filter(id => id !== r.id))}
       />
