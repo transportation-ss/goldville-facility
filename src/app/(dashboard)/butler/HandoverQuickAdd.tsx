@@ -4,10 +4,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { NotebookPen } from 'lucide-react'
 import { createHandoverNote } from './handover/actions'
+import { HandoverResidentPicker } from './handover/HandoverResidentPicker'
 
 export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => void; hideLink?: boolean }) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [residentIds, setResidentIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
@@ -17,8 +19,8 @@ export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => vo
     if (!title.trim()) return
     setSaving(true); setError('')
     try {
-      await createHandoverNote({ title, content })
-      setTitle(''); setContent(''); setDone(true)
+      await createHandoverNote({ title, content, residentIds })
+      setTitle(''); setContent(''); setResidentIds([]); setDone(true)
       setTimeout(() => setDone(false), 3000)
       onCreated?.()
     } catch (err) {
@@ -41,6 +43,12 @@ export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => vo
       <textarea value={content} onChange={e => setContent(e.target.value)} rows={3}
         placeholder="內文：發生什麼事、做了什麼、接手的人要注意什麼"
         className="w-full border rounded-lg px-3 py-2 text-sm" />
+      <HandoverResidentPicker
+        selectedIds={residentIds}
+        titleHint={title}
+        onAdd={r => setResidentIds(ids => (ids.includes(r.id) ? ids : [...ids, r.id]))}
+        onRemove={r => setResidentIds(ids => ids.filter(id => id !== r.id))}
+      />
       {error && <p className="text-xs text-red-500">{error}</p>}
       <button type="submit" disabled={saving || !title.trim()}
         className="w-full bg-emerald-600 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-40">

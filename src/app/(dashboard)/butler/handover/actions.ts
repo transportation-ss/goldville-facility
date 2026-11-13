@@ -16,6 +16,10 @@ export type HandoverComment = {
   likes: HandoverLike[]
 }
 
+export type HandoverResident = { resident_id: string; name: string; room: string | null }
+
+export type LinkableResident = { id: string; name: string; room: string | null }
+
 export type HandoverNote = {
   id: string
   note_date: string
@@ -26,6 +30,7 @@ export type HandoverNote = {
   created_at: string
   likes: HandoverLike[]
   comments: HandoverComment[]
+  residents: HandoverResident[]
 }
 
 type NameEmbed = { display_name: string | null } | { display_name: string | null }[] | null
@@ -52,19 +57,90 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out
 }
 
-export async function createHandoverNote(input: { title: string; content: string }) {
+/** 可連結的住戶：現住 + 純服務對象（不含已退住／空房） */
+export async function listLinkableResidents(): Promise<LinkableResident[]> {
+  const { supabase } = await requireUser()
+  const { data, error } = await supabase
+    .from('butler_residents')
+    .select('id, name, room')
+    .in('status', ['active_resident', 'service_only'])
+    .order('room', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as LinkableResident[]
+}
+
+export async function createHandoverNote(input: { title: string; content: string; residentIds?: string[] }) {
   const { supabase, user } = await requireUser()
 
   const title = input.title.trim()
   if (!title) throw new Error('請填寫標題')
 
-  const { error } = await supabase.from('butler_handover_notes').insert({
+  const { data: note, error } = await supabase.from('butler_handover_notes').insert({
     note_date: taiwanToday(),
     title,
     content: input.content.trim(),
     author_id: user.id,
+  }).select('id').single()
+  if (error || !note) throw new Error(error?.message ?? '新增失敗')
+
+  const residentIds = [...new Set(input.residentIds ?? [])]
+  if (residentIds.length > 0) {
+    const { error: linkError } = await supabase.from('butler_handover_note_residents').insert(
+      residentIds.map(resident_id => ({ note_id: note.id, resident_id, created_by: user.id })),
+    )
+    if (linkError) {
+      // 連結失敗就整則收回，避免留下沒連到住戶的留言讓使用者以為有連
+      await supabase.from('butler_handover_notes').delete().eq('id', note.id)
+      throw new Error('連結住戶失敗，交接事項未送出：' + linkError.message)
+    }
+  }
+}
+
+/** 事後補連住戶（作者與主管；由 RLS 把關） */
+export async function addHandoverNoteResident(input: { noteId: string; residentId: string }) {
+  const { supabase, user } = await requireUser()
+  const { error } = await supabase.from('butler_handover_note_residents').insert({
+    note_id: input.noteId, resident_id: input.residentId, created_by: user.id,
   })
+  if (error && error.code !== '23505') throw new Error(error.message)
+}
+
+/** 取消連結住戶 */
+export async function removeHandoverNoteResident(input: { noteId: string; residentId: string }) {
+  const { supabase } = await requireUser()
+  const { data, error } = await supabase.from('butler_handover_note_residents')
+    .delete().eq('note_id', input.noteId).eq('resident_id', input.residentId).select('id')
   if (error) throw new Error(error.message)
+  if (!data || data.length === 0) throw new Error('沒有權限取消連結，或連結已不存在')
+}
+
+export type ResidentHandoverNote = {
+  id: string
+  note_date: string
+  title: string
+  content: string
+  author_name: string
+  created_at: string
+}
+
+/** 某位住戶相關的交接事項（新到舊） */
+export async function getHandoverNotesForResident(residentId: string): Promise<ResidentHandoverNote[]> {
+  const { supabase } = await requireUser()
+  const { data, error } = await supabase
+    .from('butler_handover_note_residents')
+    .select('note:butler_handover_notes(id, note_date, title, content, created_at, author:user_profiles(display_name))')
+    .eq('resident_id', residentId)
+  if (error) throw new Error(error.message)
+
+  type Row = { note: { id: string; note_date: string; title: string; content: string; created_at: string; author: NameEmbed } | { id: string; note_date: string; title: string; content: string; created_at: string; author: NameEmbed }[] | null }
+  return ((data ?? []) as unknown as Row[])
+    .map(r => (Array.isArray(r.note) ? r.note[0] : r.note))
+    .filter((n): n is NonNullable<typeof n> => !!n)
+    .map(n => ({
+      id: n.id, note_date: n.note_date, title: n.title, content: n.content,
+      author_name: nameOf(n.author), created_at: n.created_at,
+    }))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 
 export async function deleteHandoverNote(id: string) {
@@ -200,6 +276,17 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
     likeRows.push(...((data ?? []) as unknown as LikeRow[]))
   }
 
+  type LinkRow = { note_id: string; resident_id: string; resident: { name: string; room: string | null } | { name: string; room: string | null }[] | null }
+  const linkRows: LinkRow[] = []
+  for (const ids of chunk(noteIds, 50)) {
+    const { data, error: rErr } = await supabase
+      .from('butler_handover_note_residents')
+      .select('note_id, resident_id, resident:butler_residents(name, room)')
+      .in('note_id', ids)
+    if (rErr) throw new Error(rErr.message)
+    linkRows.push(...((data ?? []) as unknown as LinkRow[]))
+  }
+
   const likesOf = (match: (l: LikeRow) => boolean): HandoverLike[] =>
     likeRows.filter(match).map(l => ({ user_id: l.user_id, user_name: nameOf(l.user) }))
 
@@ -212,6 +299,10 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
     author_name: nameOf(n.author as NameEmbed),
     created_at: n.created_at,
     likes: likesOf(l => l.note_id === n.id),
+    residents: linkRows.filter(l => l.note_id === n.id).flatMap(l => {
+      const r = Array.isArray(l.resident) ? l.resident[0] : l.resident
+      return r ? [{ resident_id: l.resident_id, name: r.name, room: r.room }] : []
+    }),
     comments: commentRows
       .filter(c => c.note_id === n.id)
       .map(c => ({

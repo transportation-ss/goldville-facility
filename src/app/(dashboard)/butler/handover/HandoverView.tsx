@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronLeft, ChevronRight, Trash2, ThumbsUp, MessageCircle } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Trash2, ThumbsUp, MessageCircle, X, UserPlus } from 'lucide-react'
 import {
   getHandoverNotesByMonth, deleteHandoverNote, createHandoverComment, deleteHandoverComment,
-  toggleHandoverLike, type HandoverNote, type HandoverComment, type HandoverLike,
+  toggleHandoverLike, addHandoverNoteResident, removeHandoverNoteResident, type HandoverNote, type HandoverComment, type HandoverLike,
 } from './actions'
 import { HandoverQuickAdd } from '../HandoverQuickAdd'
+import { HandoverResidentPicker, residentLabel } from './HandoverResidentPicker'
 
 interface Props {
   today: string
@@ -16,6 +17,8 @@ interface Props {
   notes: HandoverNote[]
   userId: string
   userRole: string
+  initialDate?: string
+  focusNoteId?: string
 }
 
 const MONTH_LABELS = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月']
@@ -88,15 +91,24 @@ function ReplyBox({ placeholder, onSubmit, onCancel }: {
   )
 }
 
-export function HandoverView({ today, year, month, notes, userId, userRole }: Props) {
+export function HandoverView({ today, year, month, notes, userId, userRole, initialDate, focusNoteId }: Props) {
   const [viewYear, setViewYear]   = useState(year)
   const [viewMonth, setViewMonth] = useState(month)
   const [viewNotes, setViewNotes] = useState(notes)
   const [loadingMonth, setLoadingMonth] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<string | null>(today)
+  const [selectedDate, setSelectedDate] = useState<string | null>(initialDate ?? today)
   // 目前開啟回覆框的位置：'note:<id>' 或 'comment:<id>'
   const [replyTarget, setReplyTarget] = useState<string | null>(null)
+  // 正在編輯住戶連結的交接事項 id
+  const [editLinksId, setEditLinksId] = useState<string | null>(null)
+  const [linkBusy, setLinkBusy] = useState(false)
   const [, startTransition] = useTransition()
+
+  // 從住戶頁「相關交接」點進來時，捲到該則交接事項
+  useEffect(() => {
+    if (!focusNoteId) return
+    document.getElementById(`note-${focusNoteId}`)?.scrollIntoView({ block: 'center' })
+  }, [focusNoteId])
 
   const canDeleteAny = ['admin', 'manager', 'butler_manager'].includes(userRole)
 
@@ -139,6 +151,17 @@ export function HandoverView({ today, year, month, notes, userId, userRole }: Pr
       try { await toggleHandoverLike(input) } catch (err) { alert(err instanceof Error ? err.message : '操作失敗') }
       await loadMonth(viewYear, viewMonth)
     })
+  }
+
+  async function changeLink(noteId: string, residentId: string, action: 'add' | 'remove') {
+    setLinkBusy(true)
+    try {
+      if (action === 'add') await addHandoverNoteResident({ noteId, residentId })
+      else await removeHandoverNoteResident({ noteId, residentId })
+      await loadMonth(viewYear, viewMonth)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '操作失敗')
+    } finally { setLinkBusy(false) }
   }
 
   async function submitComment(noteId: string, parentId: string | null, text: string) {
@@ -270,7 +293,7 @@ export function HandoverView({ today, year, month, notes, userId, userRole }: Pr
                 const noteKey = `note:${n.id}`
                 const topComments = n.comments.filter(c => !c.parent_id)
                 return (
-                  <div key={n.id}
+                  <div key={n.id} id={`note-${n.id}`}
                     className={`bg-white border rounded-xl p-3 border-l-4 ${isMine ? 'border-l-emerald-500' : 'border-l-amber-400'}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -288,12 +311,43 @@ export function HandoverView({ today, year, month, notes, userId, userRole }: Pr
                     </div>
                     {n.content && <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-wrap">{n.content}</p>}
 
+                    {(n.residents.length > 0 || ((isMine || canDeleteAny) && editLinksId === n.id)) && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        {n.residents.map(r => (
+                          <span key={r.resident_id}
+                            className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full pl-2.5 pr-2 py-0.5">
+                            <Link href={`/butler/residents/${r.resident_id}`} className="hover:underline">{residentLabel(r)}</Link>
+                            {(isMine || canDeleteAny) && editLinksId === n.id && (
+                              <button disabled={linkBusy} onClick={() => changeLink(n.id, r.resident_id, 'remove')} title="取消連結"
+                                className="text-emerald-400 hover:text-red-500 disabled:opacity-40">
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {(isMine || canDeleteAny) && editLinksId === n.id && (
+                      <div className="mt-2">
+                        <HandoverResidentPicker showChips={false} busy={linkBusy}
+                          selectedIds={n.residents.map(r => r.resident_id)}
+                          onAdd={r => changeLink(n.id, r.id, 'add')}
+                          onRemove={() => {}} />
+                      </div>
+                    )}
+
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                       <LikeButton likes={n.likes} userId={userId} isOwn={isMine} onToggle={() => handleLike({ noteId: n.id })} />
                       <button onClick={() => setReplyTarget(replyTarget === noteKey ? null : noteKey)}
                         className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600">
                         <MessageCircle className="w-3.5 h-3.5" /> 留言{topComments.length > 0 ? `（${n.comments.length}）` : ''}
                       </button>
+                      {(isMine || canDeleteAny) && (
+                        <button onClick={() => setEditLinksId(editLinksId === n.id ? null : n.id)}
+                          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-600">
+                          <UserPlus className="w-3.5 h-3.5" /> {editLinksId === n.id ? '完成' : '連結住戶'}
+                        </button>
+                      )}
                     </div>
 
                     {topComments.length > 0 && (

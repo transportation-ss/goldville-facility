@@ -1,15 +1,27 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, ExternalLink, ArrowLeft, BookOpen, Trash2, Users, Calendar } from 'lucide-react'
+import { Plus, ExternalLink, ArrowLeft, BookOpen, Trash2, Users, Calendar, NotebookPen } from 'lucide-react'
 import { getResident, getServiceLogs, deleteServiceLog, getResidentServices } from '../actions'
 import { getGroupActivitiesForResident } from '../../logs/actions'
 import { getServiceCatalog } from '../../../admin/services/actions'
+import { getHandoverNotesForResident } from '../../handover/actions'
 import { createClient } from '@/lib/supabase/server'
 import { ResidentServicesSection } from './ResidentServicesSection'
 
 export const dynamic = 'force-dynamic'
 
 const PERIOD_LABEL = { day: '日記錄', week: '週記錄', month: '月記錄', custom: '自訂區間' }
+
+function HandoverNoteLink({ note }: { note: { id: string; note_date: string; title: string; content: string; author_name: string } }) {
+  return (
+    <Link href={`/butler/handover?date=${note.note_date}&note=${note.id}`}
+      className="block border-l-4 border-l-emerald-400 bg-gray-50 rounded-r-lg px-3 py-2 hover:bg-emerald-50">
+      <p className="text-[11px] text-gray-400">{note.note_date}・{note.author_name}</p>
+      <p className="text-sm font-medium text-gray-900">{note.title}</p>
+      {note.content && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 whitespace-pre-wrap">{note.content}</p>}
+    </Link>
+  )
+}
 
 export default async function ResidentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -23,12 +35,13 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
     redirect('/butler/residents')
   }
 
-  const [resident, logs, groupActivities, residentServices, serviceCatalog] = await Promise.all([
+  const [resident, logs, groupActivities, residentServices, serviceCatalog, handoverNotes] = await Promise.all([
     getResident(id),
     getServiceLogs(id),
     getGroupActivitiesForResident(id),
     getResidentServices(id),
     getServiceCatalog(),
+    getHandoverNotesForResident(id),
   ])
   if (!resident) notFound()
 
@@ -136,6 +149,30 @@ export default async function ResidentDetailPage({ params }: { params: Promise<{
         catalog={serviceCatalog}
         canManage={canManage}
       />
+
+      {handoverNotes.length > 0 && (
+        <div className="bg-white border rounded-xl p-4 mb-4">
+          <h2 className="font-semibold text-gray-900 flex items-center gap-1.5 text-sm mb-2">
+            <NotebookPen className="w-4 h-4 text-emerald-600" /> 相關交接
+            <span className="text-xs text-gray-400 font-normal">（{handoverNotes.length} 則）</span>
+          </h2>
+          <div className="space-y-2">
+            {handoverNotes.slice(0, 5).map(n => (
+              <HandoverNoteLink key={n.id} note={n} />
+            ))}
+          </div>
+          {handoverNotes.length > 5 && (
+            <details className="mt-2">
+              <summary className="text-xs text-emerald-600 cursor-pointer">看更早的 {handoverNotes.length - 5} 則</summary>
+              <div className="space-y-2 mt-2">
+                {handoverNotes.slice(5).map(n => (
+                  <HandoverNoteLink key={n.id} note={n} />
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
 
       <Link href={`/butler/residents/${resident.id}/schedule`}
         className="flex items-center justify-center gap-1.5 text-sm text-emerald-600 border border-emerald-100 bg-emerald-50 rounded-lg py-2.5 mb-6">
