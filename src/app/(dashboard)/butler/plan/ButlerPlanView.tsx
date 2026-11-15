@@ -419,11 +419,12 @@ function SlotModal({ staffId, startTime, defaultDate, staff, residents, resident
 }
 
 // ── 時間軸列 ─────────────────────────────────────────────
-function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onClickSlot, onClickTask }: {
+function TimelineRow({ label, rowTasks, slots, isHighlighted, hoverSlot, onHoverSlot, onClickSlot, onClickTask }: {
   label: string
   rowTasks: ButlerTask[]
   slots: number[]
   isHighlighted: boolean
+  hoverSlot: number | null
   onHoverSlot: (slot: number | null) => void
   onClickSlot: (slot: number) => void
   onClickTask: (t: ButlerTask) => void
@@ -450,12 +451,14 @@ function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onCli
 
           return (
             <div key={slot}
-              className={`h-full border-l border-gray-100 cursor-pointer transition-colors flex-shrink-0 ${
+              className={`h-full border-l ${slot % 2 === 0 ? 'border-gray-300' : 'border-gray-200'} cursor-pointer transition-colors flex-shrink-0 ${
                 slotTask
                   ? isDone ? 'bg-gray-300 hover:bg-gray-400'
                   : isAppointment ? 'bg-purple-400 hover:bg-purple-500'
                   : isUrgent ? 'bg-red-400 hover:bg-red-500' : 'bg-emerald-400 hover:bg-emerald-500'
-                  : 'hover:bg-emerald-50'
+                  : isHighlighted && hoverSlot === slot ? 'bg-emerald-200'
+                  : isHighlighted || hoverSlot === slot ? 'bg-emerald-100'
+                  : 'bg-gray-100'
               }`}
               style={{ width: `${span * (100 / slots.length)}%` }}
               onMouseEnter={() => onHoverSlot(slot)}
@@ -468,7 +471,7 @@ function TimelineRow({ label, rowTasks, slots, isHighlighted, onHoverSlot, onCli
               )}
               {!slotTask && (
                 <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100">
-                  <Plus className="w-3 h-3 text-emerald-400" />
+                  <Plus className="w-3 h-3 text-emerald-600" />
                 </div>
               )}
             </div>
@@ -584,6 +587,10 @@ export function ButlerPlanView({ today, viewDate, tasks, staff, residents, resid
         </div>
       </div>
 
+      <p className="text-xs text-gray-500 mb-2">
+        💡 對照上方時間與左側姓名，點選灰色空白格即可在該時段新增工作；點已排的色塊可編輯。
+      </p>
+
       {/* 顏色圖例 */}
       <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400 inline-block" />未完成</span>
@@ -623,6 +630,7 @@ export function ButlerPlanView({ today, viewDate, tasks, staff, residents, resid
               rowTasks={row.rowTasks}
               slots={slots}
               isHighlighted={hover?.rowId === row.id}
+              hoverSlot={hover?.slot ?? null}
               onHoverSlot={slot => setHover(slot == null ? null : { rowId: row.id, slot })}
               onClickSlot={slot => setModal({ staffId: yAxis === 'staff' && row.id !== '__unassigned__' ? row.id : '', startTime: slotToLabel(slot) })}
               onClickTask={t => setModal({ staffId: t.assigned_to ?? '', startTime: t.start_time?.slice(0, 5) ?? '09:00', task: t })}
