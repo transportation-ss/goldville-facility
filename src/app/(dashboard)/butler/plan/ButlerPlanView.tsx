@@ -606,10 +606,10 @@ export function ButlerPlanView({ today, viewDate, tasks, staff, residents, resid
       )}
 
       {/* 時間軸 */}
-      <div className="overflow-x-auto">
+      <div className="overflow-auto max-h-[70vh]">
         <div className="min-w-[600px]">
-          {/* 時間列標頭 */}
-          <div className="flex mb-1">
+          {/* 時間列標頭（凍結：往下捲到其他管家時仍看得到時間） */}
+          <div className="flex mb-1 sticky top-0 z-10 bg-gray-50 pt-1">
             <div className="w-24 shrink-0" />
             {slots.filter((_, i) => i % 2 === 0).map(slot => {
               const isHourHighlighted = hover != null && Math.floor(hover.slot / 2) * 2 === slot
