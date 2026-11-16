@@ -13,6 +13,7 @@ export type HandoverComment = {
   author_id: string
   author_name: string
   created_at: string
+  edited_at: string | null
   likes: HandoverLike[]
 }
 
@@ -189,6 +190,21 @@ export async function createHandoverComment(input: { noteId: string; parentId?: 
   if (error) throw new Error(error.message)
 }
 
+/** 編輯留言內容：只有留言者本人可以（RLS 也會擋）。 */
+export async function updateHandoverComment(id: string, rawContent: string) {
+  const { supabase, user } = await requireUser()
+  const content = rawContent.trim()
+  if (!content) throw new Error('請填寫留言內容')
+  const { data, error } = await supabase
+    .from('butler_handover_comments')
+    .update({ content, edited_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('author_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) throw new Error('只有留言者本人可以編輯')
+}
+
 export async function deleteHandoverComment(id: string) {
   const { supabase } = await requireUser()
   const { error } = await supabase.from('butler_handover_comments').delete().eq('id', id)
@@ -244,13 +260,13 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
 
   type CommentRow = {
     id: string; note_id: string; parent_id: string | null; reply_to_id: string | null
-    content: string; author_id: string; created_at: string; author: NameEmbed
+    content: string; author_id: string; created_at: string; edited_at: string | null; author: NameEmbed
   }
   const commentRows: CommentRow[] = []
   for (const ids of chunk(noteIds, 50)) {
     const { data, error: cErr } = await supabase
       .from('butler_handover_comments')
-      .select('id, note_id, parent_id, reply_to_id, content, author_id, created_at, author:user_profiles(display_name)')
+      .select('id, note_id, parent_id, reply_to_id, content, author_id, created_at, edited_at, author:user_profiles(display_name)')
       .in('note_id', ids)
       .order('created_at', { ascending: true })
     if (cErr) throw new Error(cErr.message)
@@ -314,6 +330,7 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
         author_id: c.author_id,
         author_name: nameOf(c.author),
         created_at: c.created_at,
+        edited_at: c.edited_at,
         likes: likesOf(l => l.comment_id === c.id),
       })),
   }))

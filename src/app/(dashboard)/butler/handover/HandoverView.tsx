@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronLeft, ChevronRight, Trash2, ThumbsUp, MessageCircle, X, UserPlus } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Trash2, Pencil, ThumbsUp, MessageCircle, X, UserPlus } from 'lucide-react'
 import {
-  getHandoverNotesByMonth, deleteHandoverNote, createHandoverComment, deleteHandoverComment,
+  getHandoverNotesByMonth, deleteHandoverNote, createHandoverComment, deleteHandoverComment, updateHandoverComment,
   toggleHandoverLike, addHandoverNoteResident, removeHandoverNoteResident, type HandoverNote, type HandoverComment, type HandoverLike,
 } from './actions'
 import { HandoverQuickAdd } from '../HandoverQuickAdd'
@@ -60,10 +60,11 @@ function LikeButton({ likes, userId, isOwn, onToggle }: {
   )
 }
 
-function ReplyBox({ placeholder, onSubmit, onCancel }: {
+function ReplyBox({ placeholder, onSubmit, onCancel, initialText = '', submitLabel = '送出' }: {
   placeholder: string; onSubmit: (text: string) => Promise<void>; onCancel: () => void
+  initialText?: string; submitLabel?: string
 }) {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -84,7 +85,7 @@ function ReplyBox({ placeholder, onSubmit, onCancel }: {
         <button type="button" onClick={onCancel} className="text-xs text-gray-400 px-2 py-1">取消</button>
         <button type="submit" disabled={saving || !text.trim()}
           className="text-xs bg-emerald-600 text-white rounded-lg px-3 py-1 disabled:opacity-40">
-          {saving ? '送出中…' : '送出'}
+          {saving ? '儲存中…' : submitLabel}
         </button>
       </div>
     </form>
@@ -101,6 +102,8 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
   const [replyTarget, setReplyTarget] = useState<string | null>(null)
   // 正在編輯住戶連結的交接事項 id
   const [editLinksId, setEditLinksId] = useState<string | null>(null)
+  // 正在編輯內容的留言 id
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [linkBusy, setLinkBusy] = useState(false)
   const [, startTransition] = useTransition()
 
@@ -170,6 +173,12 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
     await loadMonth(viewYear, viewMonth)
   }
 
+  async function saveCommentEdit(id: string, text: string) {
+    await updateHandoverComment(id, text)
+    setEditingCommentId(null)
+    await loadMonth(viewYear, viewMonth)
+  }
+
   const calDays: (string | null)[] = [...Array(getFirstDayOfWeek(viewYear, viewMonth)).fill(null), ...getMonthDays(viewYear, viewMonth)]
   while (calDays.length % 7 !== 0) calDays.push(null)
 
@@ -184,20 +193,35 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
       <div key={c.id} className={depth === 3 ? 'ml-4 pl-3 border-l-2 border-gray-100' : ''}>
         <div className="bg-gray-50 rounded-lg px-2.5 py-2">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[11px] text-gray-400">{formatTime(c.created_at)}・{isMine ? '我' : c.author_name}</p>
-            {(isMine || canDeleteAny) && (
-              <button onClick={() => handleDeleteComment(c, replies.length > 0)} title="刪除"
-                className="text-gray-300 hover:text-red-500 shrink-0">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <p className="text-[11px] text-gray-400">
+              {formatTime(c.created_at)}・{isMine ? '我' : c.author_name}{c.edited_at && '・已編輯'}
+            </p>
+            <div className="flex items-center gap-2 shrink-0">
+              {isMine && (
+                <button onClick={() => setEditingCommentId(editingCommentId === c.id ? null : c.id)} title="編輯"
+                  className="text-gray-300 hover:text-emerald-600">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {(isMine || canDeleteAny) && (
+                <button onClick={() => handleDeleteComment(c, replies.length > 0)} title="刪除"
+                  className="text-gray-300 hover:text-red-500">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
           {c.reply_to_id && (
             <p className="text-[11px] text-gray-400 border-l-2 border-gray-200 pl-2 mt-1 line-clamp-2">
               {quoted ? `${quoted.author_id === userId ? '我' : quoted.author_name}：${quoted.content}` : '（原留言已刪除）'}
             </p>
           )}
-          <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap">{c.content}</p>
+          {editingCommentId === c.id ? (
+            <ReplyBox placeholder="編輯留言…" initialText={c.content} submitLabel="儲存"
+              onSubmit={t => saveCommentEdit(c.id, t)} onCancel={() => setEditingCommentId(null)} />
+          ) : (
+            <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap">{c.content}</p>
+          )}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
             <LikeButton likes={c.likes} userId={userId} isOwn={isMine} onToggle={() => handleLike({ commentId: c.id })} />
             <button onClick={() => setReplyTarget(replyTarget === key ? null : key)}
