@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ChevronLeft, ChevronRight, Trash2, Pencil, ThumbsUp, MessageCircle, X, UserPlus } from 'lucide-react'
 import {
@@ -8,8 +8,8 @@ import {
   toggleHandoverLike, addHandoverNoteResident, removeHandoverNoteResident, type HandoverNote, type HandoverComment, type HandoverLike,
 } from './actions'
 import { HandoverQuickAdd } from '../HandoverQuickAdd'
-import { TopicPicker } from './TopicPicker'
 import { HandoverTopicList } from './HandoverTopicList'
+import { NoteEditBox } from './NoteEditBox'
 import { HandoverResidentPicker, residentLabel } from './HandoverResidentPicker'
 
 interface Props {
@@ -94,44 +94,6 @@ function ReplyBox({ placeholder, onSubmit, onCancel, initialText = '', submitLab
   )
 }
 
-function NoteEditBox({ initialTopic, initialTitle, initialContent, onSubmit, onCancel }: {
-  initialTopic: string; initialTitle: string; initialContent: string
-  onSubmit: (v: { topic: string; title: string; content: string }) => Promise<void>; onCancel: () => void
-}) {
-  const [topic, setTopic] = useState(initialTopic)
-  const [title, setTitle] = useState(initialTitle)
-  const [content, setContent] = useState(initialContent)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!title.trim()) return
-    setSaving(true); setError('')
-    try { await onSubmit({ topic, title, content }) }
-    catch (err) { setError(err instanceof Error ? err.message : '儲存失敗'); setSaving(false) }
-  }
-
-  return (
-    <form onSubmit={submit} className="mt-1.5 space-y-1.5">
-      <TopicPicker value={topic} onChange={setTopic} allowEmpty />
-      <input value={title} onChange={e => setTitle(e.target.value)} placeholder="標題" autoFocus
-        className="w-full border rounded-lg px-2.5 py-1.5 text-sm font-semibold" />
-      <textarea value={content} onChange={e => setContent(e.target.value)} rows={4}
-        placeholder="內文：發生什麼事、做了什麼、接手的人要注意什麼"
-        className="w-full border rounded-lg px-2.5 py-1.5 text-sm" />
-      {error && <p className="text-xs text-red-500">{error}</p>}
-      <div className="flex gap-2 justify-end">
-        <button type="button" onClick={onCancel} className="text-xs text-gray-400 px-2 py-1">取消</button>
-        <button type="submit" disabled={saving || !title.trim()}
-          className="text-xs bg-emerald-600 text-white rounded-lg px-3 py-1 disabled:opacity-40">
-          {saving ? '儲存中…' : '儲存'}
-        </button>
-      </div>
-    </form>
-  )
-}
-
 export function HandoverView({ today, year, month, notes, userId, userRole, initialDate, focusNoteId }: Props) {
   const [viewYear, setViewYear]   = useState(year)
   const [viewMonth, setViewMonth] = useState(month)
@@ -149,7 +111,7 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
   const [linkBusy, setLinkBusy] = useState(false)
   // 版型：月曆型（預設）或主題型
   const [mode, setMode] = useState<'calendar' | 'topic'>('calendar')
-  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
+  const pendingFocusId = useRef<string | null>(null)
   const [, startTransition] = useTransition()
 
   // 從住戶頁「相關交接」點進來時，捲到該則交接事項
@@ -162,15 +124,15 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
 
   // 從主題型跳到月曆型後，等該月資料載入完再捲到該事項
   useEffect(() => {
-    if (mode !== 'calendar' || !pendingFocusId || loadingMonth) return
-    const el = document.getElementById(`note-${pendingFocusId}`)
-    if (el) { el.scrollIntoView({ block: 'center' }); setPendingFocusId(null) }
-  }, [mode, pendingFocusId, loadingMonth, viewNotes])
+    if (mode !== 'calendar' || !pendingFocusId.current || loadingMonth) return
+    const el = document.getElementById(`note-${pendingFocusId.current}`)
+    if (el) { el.scrollIntoView({ block: 'center' }); pendingFocusId.current = null }
+  }, [mode, loadingMonth, viewNotes])
 
   async function openInCalendar(note: { id: string; note_date: string }) {
     const [y, m] = note.note_date.split('-').map(Number)
     setViewYear(y); setViewMonth(m); setSelectedDate(note.note_date); setReplyTarget(null)
-    setPendingFocusId(note.id)
+    pendingFocusId.current = note.id
     setMode('calendar')
     await loadMonth(y, m)
   }

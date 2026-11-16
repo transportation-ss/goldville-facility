@@ -426,3 +426,33 @@ export async function getHandoverNotesByTopic(input: { topic: string; before?: s
     })),
   }
 }
+
+export type HandoverTopicComment = {
+  id: string
+  parent_id: string | null
+  content: string
+  author_id: string
+  author_name: string
+  created_at: string
+  edited_at: string | null
+}
+
+/** 主題型列表展開單則時才呼叫：只取這一則的留言（不含按讚），由舊到新。 */
+export async function getHandoverNoteComments(noteId: string): Promise<HandoverTopicComment[]> {
+  const { supabase } = await requireUser()
+  const { data, error } = await supabase
+    .from('butler_handover_comments')
+    .select('id, parent_id, content, author_id, created_at, edited_at, author:user_profiles(display_name)')
+    .eq('note_id', noteId)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(c => ({
+    id: c.id,
+    parent_id: c.parent_id,
+    content: c.content,
+    author_id: c.author_id,
+    author_name: nameOf(c.author as unknown as NameEmbed),
+    created_at: c.created_at,
+    edited_at: c.edited_at,
+  }))
+}
