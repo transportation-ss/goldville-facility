@@ -342,6 +342,7 @@ const butlerNav: (NavSingle | NavGroup)[] = [
       { label: '活動月曆', href: '/butler/calendar', icon: CalendarDays },
       { label: '回診表單', href: '/butler/appointments', icon: Stethoscope },
       { label: '班表',     href: '/butler/schedule',  icon: History   },
+      { label: '清潔值班', href: '/butler/cleaning',  icon: Droplets  },
       { label: '照片庫',   href: '/butler/photos',    icon: Images    },
       { label: '使用指引(管)', href: '/butler/guide',     icon: BookOpen  },
     ],

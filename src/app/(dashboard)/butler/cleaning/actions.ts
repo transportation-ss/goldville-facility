@@ -17,6 +17,12 @@ export async function getCleaningDuty(start: string, end: string) {
 }
 
 export async function regenerateCleaningDuty(start: string, end: string) {
+  const authed = await createClient()
+  const { data: { user } } = await authed.auth.getUser()
+  const { data: profile } = await authed.from('user_profiles').select('role').eq('id', user?.id ?? '').single()
+  if (!user || !profile || !['admin', 'manager', 'butler_manager'].includes(profile.role)) {
+    throw new Error('Unauthorized')
+  }
   const result = await generateCleaningDuty(start, end)
   revalidatePath('/butler/cleaning')
   return result

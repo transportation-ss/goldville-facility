@@ -37,9 +37,9 @@ function weekdayOf(date: string): number {
 }
 
 export function CleaningDutyView({
-  start, end, duty, roomSchedule, residentRoomOptions, staffOptions,
+  start, end, duty, roomSchedule, residentRoomOptions, staffOptions, canEdit,
 }: {
-  start: string; end: string; duty: DutyRow[]; roomSchedule: RoomRow[]; residentRoomOptions: string[]; staffOptions: string[]
+  start: string; end: string; duty: DutyRow[]; roomSchedule: RoomRow[]; residentRoomOptions: string[]; staffOptions: string[]; canEdit: boolean
 }) {
   const router = useRouter()
   const printRef = useRef<HTMLDivElement>(null)
@@ -77,11 +77,13 @@ export function CleaningDutyView({
   }
 
   function startEditStaff(date: string, period: 'AM' | 'PM') {
+    if (!canEdit) return
     setEditing({ date, period, kind: 'staff' })
     setDraft((byKey.get(`${date}|${period}`) ?? []).join('、'))
   }
 
   function startEditRoom(date: string, period: 'AM' | 'PM', entryIndex: number | 'new') {
+    if (!canEdit) return
     setEditing({ date, period, kind: 'room', entryIndex })
     if (entryIndex === 'new') {
       setDraft('')
@@ -207,14 +209,14 @@ export function CleaningDutyView({
       <div className="mb-4">
         <h1 className="text-lg font-semibold text-gray-800 mb-2">清潔值班表 {start} ～ {end}</h1>
         <div className="flex flex-wrap gap-2">
-          <button
+          {canEdit && <button
             onClick={syncResidents}
             disabled={syncing}
             className="flex items-center gap-1.5 text-sm bg-gray-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
           >
             <Users size={14} className={syncing ? 'animate-pulse' : ''} />
             {syncing ? '同步中...' : '同步住戶清單'}
-          </button>
+          </button>}
           <button
             onClick={shareToLine}
             disabled={sharing}
@@ -223,27 +225,29 @@ export function CleaningDutyView({
             {sharing ? <Loader2 size={14} className="animate-spin" /> : <Share2 size={14} />}
             分享到LINE
           </button>
-          <button
+          {canEdit && <button
             onClick={regenerate}
             disabled={isPending}
             className="flex items-center gap-1.5 text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
           >
             <RefreshCw size={14} className={isPending ? 'animate-spin' : ''} />
             產生本週未排的值班
-          </button>
-          <button
+          </button>}
+          {canEdit && <button
             onClick={generateTasks}
             disabled={generatingTasks}
             className="flex items-center gap-1.5 text-sm bg-purple-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
           >
             <ListChecks size={14} className={generatingTasks ? 'animate-pulse' : ''} />
             {generatingTasks ? '產生中...' : '產生本週清潔任務'}
-          </button>
+          </button>}
         </div>
       </div>
 
       <p className="text-xs text-gray-500 mb-3">
-        已經有值班紀錄的日期不會被覆蓋（含手動調整過的）。點時段格子可直接編輯，房間/長輩可參照住戶列表輸入。
+        {canEdit
+          ? '已經有值班紀錄的日期不會被覆蓋（含手動調整過的）。點時段格子可直接編輯，房間/長輩可參照住戶列表輸入。'
+          : '本頁僅供查看，如需調整請洽管家主管。'}
       </p>
 
       <div ref={printRef} className="bg-white overflow-x-auto rounded-lg border border-gray-200">
@@ -332,12 +336,12 @@ export function CleaningDutyView({
                                 >
                                   {name}
                                 </button>
-                                <button
+                                {canEdit && <button
                                   onClick={() => removeRoomEntry(date, period, idx)}
                                   className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 pt-px"
                                 >
                                   <X size={10} />
-                                </button>
+                                </button>}
                               </div>
                             )
                           })}
@@ -378,7 +382,7 @@ export function CleaningDutyView({
                                 <button onClick={() => setEditing(null)} className="text-xs text-gray-400">取消</button>
                               </div>
                             </div>
-                          ) : (
+                          ) : canEdit && (
                             <button
                               onClick={() => startEditRoom(date, period, 'new')}
                               className="w-full text-xs text-blue-400 hover:bg-blue-50 rounded py-0.5"
@@ -433,7 +437,7 @@ export function CleaningDutyView({
                             className="w-full min-h-[36px] flex items-center justify-center gap-1 rounded hover:bg-gray-100 text-blue-700 font-medium group"
                           >
                             {names.length > 0 ? names.join('、') : <span className="text-gray-300">—</span>}
-                            <Pencil size={10} className="opacity-0 group-hover:opacity-40" />
+                            {canEdit && <Pencil size={10} className="opacity-0 group-hover:opacity-40" />}
                           </button>
                         )}
                       </td>
