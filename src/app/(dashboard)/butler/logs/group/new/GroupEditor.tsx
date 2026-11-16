@@ -285,7 +285,15 @@ function ParticipantPicker({ label, icon, options, selected, onToggle, color, hi
 }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
-  const filtered = options.filter(o => !q || o.label.includes(q) || (o.sub ?? '').includes(q))
+  // 搜尋框可一次輸入多個房號／姓名（空白、逗號、頓號分隔），符合任一個就列出
+  const tokens = q.split(/[\s,，、]+/).filter(Boolean)
+  const filtered = tokens.length === 0
+    ? options
+    : options.filter(o => tokens.some(k => o.label.includes(k) || (o.sub ?? '').includes(k)))
+  const pending = tokens.length > 1 ? filtered.filter(o => !selected.has(o.id)) : []
+  const notFound = tokens.length > 1
+    ? tokens.filter(k => !options.some(o => o.label.includes(k) || (o.sub ?? '').includes(k)))
+    : []
   const t = (hintText ?? '').trim()
   const hinted = t
     ? options
@@ -342,7 +350,16 @@ function ParticipantPicker({ label, icon, options, selected, onToggle, color, hi
         <div className="border rounded-xl overflow-hidden shadow-sm">
           <div className="p-2 border-b bg-gray-50">
             <input className="w-full text-sm px-2 py-1 rounded-lg border focus:outline-none"
-              placeholder="搜尋…" value={q} onChange={e => setQ(e.target.value)} autoFocus />
+              placeholder="搜尋…可一次輸入多個房號，如 202 305 307" value={q} onChange={e => setQ(e.target.value)} autoFocus />
+            {pending.length > 0 && (
+              <button type="button" onClick={() => pending.forEach(o => onToggle(o.id))}
+                className="mt-2 w-full text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg py-1.5 hover:bg-emerald-100">
+                全部加入（{pending.length} 位）
+              </button>
+            )}
+            {notFound.length > 0 && (
+              <p className="mt-1.5 text-[11px] text-amber-600">找不到：{notFound.join('、')}</p>
+            )}
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filtered.map(o => (
