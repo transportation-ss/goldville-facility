@@ -8,6 +8,7 @@ import {
   toggleHandoverLike, addHandoverNoteResident, removeHandoverNoteResident, type HandoverNote, type HandoverComment, type HandoverLike,
 } from './actions'
 import { HandoverQuickAdd } from '../HandoverQuickAdd'
+import { TopicPicker } from './TopicPicker'
 import { HandoverResidentPicker, residentLabel } from './HandoverResidentPicker'
 
 interface Props {
@@ -92,10 +93,11 @@ function ReplyBox({ placeholder, onSubmit, onCancel, initialText = '', submitLab
   )
 }
 
-function NoteEditBox({ initialTitle, initialContent, onSubmit, onCancel }: {
-  initialTitle: string; initialContent: string
-  onSubmit: (v: { title: string; content: string }) => Promise<void>; onCancel: () => void
+function NoteEditBox({ initialTopic, initialTitle, initialContent, onSubmit, onCancel }: {
+  initialTopic: string; initialTitle: string; initialContent: string
+  onSubmit: (v: { topic: string; title: string; content: string }) => Promise<void>; onCancel: () => void
 }) {
+  const [topic, setTopic] = useState(initialTopic)
   const [title, setTitle] = useState(initialTitle)
   const [content, setContent] = useState(initialContent)
   const [saving, setSaving] = useState(false)
@@ -105,12 +107,13 @@ function NoteEditBox({ initialTitle, initialContent, onSubmit, onCancel }: {
     e.preventDefault()
     if (!title.trim()) return
     setSaving(true); setError('')
-    try { await onSubmit({ title, content }) }
+    try { await onSubmit({ topic, title, content }) }
     catch (err) { setError(err instanceof Error ? err.message : '儲存失敗'); setSaving(false) }
   }
 
   return (
     <form onSubmit={submit} className="mt-1.5 space-y-1.5">
+      <TopicPicker value={topic} onChange={setTopic} allowEmpty />
       <input value={title} onChange={e => setTitle(e.target.value)} placeholder="標題" autoFocus
         className="w-full border rounded-lg px-2.5 py-1.5 text-sm font-semibold" />
       <textarea value={content} onChange={e => setContent(e.target.value)} rows={4}
@@ -211,7 +214,7 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
     await loadMonth(viewYear, viewMonth)
   }
 
-  async function saveNoteEdit(id: string, v: { title: string; content: string }) {
+  async function saveNoteEdit(id: string, v: { topic: string; title: string; content: string }) {
     await updateHandoverNote(id, v)
     setEditingNoteId(null)
     await loadMonth(viewYear, viewMonth)
@@ -369,7 +372,12 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
                           {formatTime(n.created_at)}・{isMine ? '我' : n.author_name}{n.edited_at && '・已編輯'}
                         </p>
                         {editingNoteId !== n.id && (
-                          <p className="text-sm font-semibold text-gray-900 mt-0.5">{n.title}</p>
+                          <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                            {n.topic && (
+                              <span className="inline-block align-middle mr-1.5 text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1.5 py-px">{n.topic}</span>
+                            )}
+                            {n.title}
+                          </p>
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -388,7 +396,7 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
                       </div>
                     </div>
                     {editingNoteId === n.id ? (
-                      <NoteEditBox initialTitle={n.title} initialContent={n.content}
+                      <NoteEditBox initialTopic={n.topic ?? ''} initialTitle={n.title} initialContent={n.content}
                         onSubmit={v => saveNoteEdit(n.id, v)} onCancel={() => setEditingNoteId(null)} />
                     ) : (
                       n.content && <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-wrap">{n.content}</p>

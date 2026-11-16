@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { isHandoverTopic } from './topics'
 
 export type HandoverLike = { user_id: string; user_name: string }
 
@@ -24,6 +25,7 @@ export type LinkableResident = { id: string; name: string; room: string | null }
 export type HandoverNote = {
   id: string
   note_date: string
+  topic: string | null
   title: string
   content: string
   author_id: string
@@ -71,14 +73,17 @@ export async function listLinkableResidents(): Promise<LinkableResident[]> {
   return (data ?? []) as LinkableResident[]
 }
 
-export async function createHandoverNote(input: { title: string; content: string; residentIds?: string[] }) {
+export async function createHandoverNote(input: { topic: string; title: string; content: string; residentIds?: string[] }) {
   const { supabase, user } = await requireUser()
+
+  if (!isHandoverTopic(input.topic)) throw new Error('請選擇主題')
 
   const title = input.title.trim()
   if (!title) throw new Error('請填寫標題')
 
   const { data: note, error } = await supabase.from('butler_handover_notes').insert({
     note_date: taiwanToday(),
+    topic: input.topic,
     title,
     content: input.content.trim(),
     author_id: user.id,
@@ -146,13 +151,15 @@ export async function getHandoverNotesForResident(residentId: string): Promise<R
 }
 
 /** 編輯交接事項主文（標題＋內文）：只有作者本人可以（RLS 也會擋）。 */
-export async function updateHandoverNote(id: string, input: { title: string; content: string }) {
+export async function updateHandoverNote(id: string, input: { topic: string | null; title: string; content: string }) {
   const { supabase, user } = await requireUser()
+  // 舊資料沒有主題，編輯時允許維持空；有填就必須在清單內
+  if (input.topic && !isHandoverTopic(input.topic)) throw new Error('主題不在清單內')
   const title = input.title.trim()
   if (!title) throw new Error('請填寫標題')
   const { data, error } = await supabase
     .from('butler_handover_notes')
-    .update({ title, content: input.content.trim(), edited_at: new Date().toISOString() })
+    .update({ topic: input.topic || null, title, content: input.content.trim(), edited_at: new Date().toISOString() })
     .eq('id', id)
     .eq('author_id', user.id)
     .select('id')
@@ -264,7 +271,7 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
 
   const { data: notes, error } = await supabase
     .from('butler_handover_notes')
-    .select('id, note_date, title, content, author_id, created_at, edited_at, author:user_profiles(display_name)')
+    .select('id, note_date, topic, title, content, author_id, created_at, edited_at, author:user_profiles(display_name)')
     .gte('note_date', start)
     .lte('note_date', end)
     .order('created_at', { ascending: true })
@@ -325,6 +332,7 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
   return notes.map(n => ({
     id: n.id,
     note_date: n.note_date,
+    topic: n.topic ?? null,
     title: n.title,
     content: n.content,
     author_id: n.author_id,

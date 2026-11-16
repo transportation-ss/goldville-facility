@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { NotebookPen } from 'lucide-react'
 import { createHandoverNote } from './handover/actions'
 import { HandoverResidentPicker } from './handover/HandoverResidentPicker'
+import { TopicPicker } from './handover/TopicPicker'
 
 export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => void; hideLink?: boolean }) {
+  const [topic, setTopic] = useState('')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [residentIds, setResidentIds] = useState<string[]>([])
@@ -16,11 +18,11 @@ export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => vo
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!topic || !title.trim()) return
     setSaving(true); setError('')
     try {
-      await createHandoverNote({ title, content, residentIds })
-      setTitle(''); setContent(''); setResidentIds([]); setDone(true)
+      await createHandoverNote({ topic, title, content, residentIds })
+      setTopic(''); setTitle(''); setContent(''); setResidentIds([]); setDone(true)
       setTimeout(() => setDone(false), 3000)
       onCreated?.()
     } catch (err) {
@@ -38,6 +40,7 @@ export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => vo
           <Link href="/butler/handover" className="text-xs text-emerald-600 hover:underline">看交接本 →</Link>
         )}
       </div>
+      <TopicPicker value={topic} onChange={setTopic} />
       <input value={title} onChange={e => setTitle(e.target.value)} placeholder="標題（例：317 長輩跌倒處置）"
         className="w-full border rounded-lg px-3 py-2 text-sm" />
       <textarea value={content} onChange={e => setContent(e.target.value)} rows={3}
@@ -50,7 +53,7 @@ export function HandoverQuickAdd({ onCreated, hideLink }: { onCreated?: () => vo
         onRemove={r => setResidentIds(ids => ids.filter(id => id !== r.id))}
       />
       {error && <p className="text-xs text-red-500">{error}</p>}
-      <button type="submit" disabled={saving || !title.trim()}
+      <button type="submit" disabled={saving || !topic || !title.trim()}
         className="w-full bg-emerald-600 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-40">
         {saving ? '送出中…' : done ? '✓ 已加入交接本' : '加入管家交接本'}
       </button>
