@@ -9,6 +9,7 @@ import {
 } from './actions'
 import { HandoverQuickAdd } from '../HandoverQuickAdd'
 import { TopicPicker } from './TopicPicker'
+import { HandoverTopicList } from './HandoverTopicList'
 import { HandoverResidentPicker, residentLabel } from './HandoverResidentPicker'
 
 interface Props {
@@ -146,6 +147,9 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
   // 正在編輯主文（標題＋內文）的交接事項 id
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [linkBusy, setLinkBusy] = useState(false)
+  // 版型：月曆型（預設）或主題型
+  const [mode, setMode] = useState<'calendar' | 'topic'>('calendar')
+  const [pendingFocusId, setPendingFocusId] = useState<string | null>(null)
   const [, startTransition] = useTransition()
 
   // 從住戶頁「相關交接」點進來時，捲到該則交接事項
@@ -155,6 +159,21 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
   }, [focusNoteId])
 
   const canDeleteAny = ['admin', 'manager', 'butler_manager'].includes(userRole)
+
+  // 從主題型跳到月曆型後，等該月資料載入完再捲到該事項
+  useEffect(() => {
+    if (mode !== 'calendar' || !pendingFocusId || loadingMonth) return
+    const el = document.getElementById(`note-${pendingFocusId}`)
+    if (el) { el.scrollIntoView({ block: 'center' }); setPendingFocusId(null) }
+  }, [mode, pendingFocusId, loadingMonth, viewNotes])
+
+  async function openInCalendar(note: { id: string; note_date: string }) {
+    const [y, m] = note.note_date.split('-').map(Number)
+    setViewYear(y); setViewMonth(m); setSelectedDate(note.note_date); setReplyTarget(null)
+    setPendingFocusId(note.id)
+    setMode('calendar')
+    await loadMonth(y, m)
+  }
 
   async function loadMonth(y: number, m: number) {
     setLoadingMonth(true)
@@ -299,6 +318,18 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
 
       <HandoverQuickAdd hideLink onCreated={handleNoteCreated} />
 
+      <div className="flex gap-1 mt-5 p-1 bg-gray-100 rounded-lg">
+        {([['calendar', '月曆型'], ['topic', '主題型']] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setMode(k)}
+            className={`flex-1 text-sm py-1.5 rounded-md ${mode === k ? 'bg-white text-gray-900 font-medium shadow-sm' : 'text-gray-500'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'topic' && <HandoverTopicList userId={userId} onOpenInCalendar={openInCalendar} />}
+
+      {mode === 'calendar' && (<>
       <div className="flex items-center justify-between mb-3 mt-5">
         <button onClick={() => shiftMonth(-1)} className="text-gray-400 hover:text-gray-600 p-1">
           <ChevronLeft className="w-5 h-5" />
@@ -458,6 +489,7 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
           )}
         </>
       )}
+      </>)}
     </div>
   )
 }

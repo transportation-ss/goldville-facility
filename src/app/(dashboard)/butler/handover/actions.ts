@@ -360,3 +360,69 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
       })),
   }))
 }
+
+// ── 主題型列表（輕量：只拿列表需要的欄位，留言數另以一次 id 查詢取得；分頁避免一次載入全部歷史）──
+export type HandoverTopicEntry = {
+  id: string
+  note_date: string
+  topic: string | null
+  title: string
+  content: string
+  author_id: string
+  author_name: string
+  created_at: string
+  edited_at: string | null
+  comment_count: number
+}
+
+const TOPIC_PAGE_SIZE = 30
+
+/**
+ * topic：'all' 全部、'none' 未分類（舊資料）、其餘為主題名稱。
+ * before：上一頁最後一筆的 created_at，用來取下一頁（由新到舊）。
+ */
+export async function getHandoverNotesByTopic(input: { topic: string; before?: string | null }):
+  Promise<{ entries: HandoverTopicEntry[]; hasMore: boolean }> {
+  const { supabase } = await requireUser()
+
+  let q = supabase
+    .from('butler_handover_notes')
+    .select('id, note_date, topic, title, content, author_id, created_at, edited_at, author:user_profiles(display_name)')
+    .order('created_at', { ascending: false })
+    .limit(TOPIC_PAGE_SIZE + 1)
+  if (input.topic === 'none') q = q.is('topic', null)
+  else if (input.topic !== 'all') q = q.eq('topic', input.topic)
+  if (input.before) q = q.lt('created_at', input.before)
+
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+  const rows = data ?? []
+  const hasMore = rows.length > TOPIC_PAGE_SIZE
+  const page = rows.slice(0, TOPIC_PAGE_SIZE)
+
+  const counts = new Map<string, number>()
+  if (page.length > 0) {
+    const { data: cs, error: cErr } = await supabase
+      .from('butler_handover_comments')
+      .select('note_id')
+      .in('note_id', page.map(n => n.id))
+    if (cErr) throw new Error(cErr.message)
+    for (const c of cs ?? []) counts.set(c.note_id, (counts.get(c.note_id) ?? 0) + 1)
+  }
+
+  return {
+    hasMore,
+    entries: page.map(n => ({
+      id: n.id,
+      note_date: n.note_date,
+      topic: n.topic ?? null,
+      title: n.title,
+      content: n.content,
+      author_id: n.author_id,
+      author_name: nameOf(n.author as NameEmbed),
+      created_at: n.created_at,
+      edited_at: n.edited_at,
+      comment_count: counts.get(n.id) ?? 0,
+    })),
+  }
+}
