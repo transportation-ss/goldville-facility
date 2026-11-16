@@ -9,7 +9,7 @@ export function residentLabel(r: { name: string; room: string | null }) {
 }
 
 // 房號前後不可再接數字，避免「2011」誤中 201
-function mentionsRoom(text: string, room: string) {
+export function mentionsRoom(text: string, room: string) {
   let i = text.indexOf(room)
   while (i !== -1) {
     const before = text[i - 1]

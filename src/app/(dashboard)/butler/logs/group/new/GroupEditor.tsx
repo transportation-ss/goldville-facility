@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Type, Camera, Heading, Trash2, GripVertical, X, Users,
 import type { LogBlock } from '../../../residents/actions'
 import type { GroupActivity, ResidentOption, StaffOption } from '../../actions'
 import { createGroupActivity, updateGroupActivity } from '../../actions'
+import { mentionsRoom } from '../../../handover/HandoverResidentPicker'
 
 // ── Block 元件（複用 LogEditor 相同邏輯）────────────────
 function HeadingBlock({ block, onChange, onDelete }: {
@@ -273,17 +274,25 @@ function PhotoPicker({ cloudName, onConfirm, onClose }: {
 }
 
 // ── 參與者選擇器 ─────────────────────────────────────────
-function ParticipantPicker({ label, icon, options, selected, onToggle, color }: {
+function ParticipantPicker({ label, icon, options, selected, onToggle, color, hintText }: {
   label: string
   icon: React.ReactNode
   options: { id: string; label: string; sub?: string }[]
   selected: Set<string>
   onToggle: (id: string) => void
   color: 'emerald' | 'purple'
+  hintText?: string   // 文中若提到房號／姓名，顯示「文中提到」建議（需人點選才加入）
 }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const filtered = options.filter(o => !q || o.label.includes(q) || (o.sub ?? '').includes(q))
+  const t = (hintText ?? '').trim()
+  const hinted = t
+    ? options
+        .filter(o => !selected.has(o.id))
+        .filter(o => (o.sub && mentionsRoom(t, o.sub)) || (o.label.length >= 2 && t.includes(o.label)))
+        .slice(0, 8)
+    : []
 
   return (
     <div>
@@ -311,6 +320,19 @@ function ParticipantPicker({ label, icon, options, selected, onToggle, color }: 
               {o.label}{o.sub ? ` · ${o.sub}` : ''}
               <X className="w-3 h-3" />
             </span>
+          ))}
+        </div>
+      )}
+
+      {/* 文中提到的建議 */}
+      {hinted.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="text-[11px] text-gray-400">文中提到：</span>
+          {hinted.map(o => (
+            <button key={o.id} type="button" onClick={() => onToggle(o.id)}
+              className="inline-flex items-center gap-0.5 text-xs border border-dashed border-emerald-300 text-emerald-600 rounded-full px-2 py-0.5 hover:bg-emerald-50">
+              <Plus className="w-3 h-3" /> 加入 {o.sub ? `${o.sub} ` : ''}{o.label}
+            </button>
           ))}
         </div>
       )}
@@ -498,7 +520,8 @@ export function GroupEditor({ authorName, defaultDate, residents, staffList, exi
         <ParticipantPicker
           label="住民" icon={<User className="w-3.5 h-3.5" />}
           options={residents.map(r => ({ id: r.id, label: r.name, sub: r.room ?? undefined }))}
-          selected={selectedResidents} onToggle={toggleResident} color="emerald" />
+          selected={selectedResidents} onToggle={toggleResident} color="emerald"
+          hintText={[title, ...blocks.map(b => b.type === 'text' || b.type === 'heading' ? b.text : b.type === 'image' ? b.caption : '')].join(' ')} />
         <ParticipantPicker
           label="管家" icon={<Users className="w-3.5 h-3.5" />}
           options={staffList.map(s => ({ id: s.id, label: s.display_name }))}

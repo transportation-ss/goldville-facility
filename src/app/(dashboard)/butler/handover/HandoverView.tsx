@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, ChevronLeft, ChevronRight, Trash2, Pencil, ThumbsUp, MessageCircle, X, UserPlus } from 'lucide-react'
 import {
-  getHandoverNotesByMonth, deleteHandoverNote, createHandoverComment, deleteHandoverComment, updateHandoverComment,
+  getHandoverNotesByMonth, deleteHandoverNote, updateHandoverNote, createHandoverComment, deleteHandoverComment, updateHandoverComment,
   toggleHandoverLike, addHandoverNoteResident, removeHandoverNoteResident, type HandoverNote, type HandoverComment, type HandoverLike,
 } from './actions'
 import { HandoverQuickAdd } from '../HandoverQuickAdd'
@@ -92,6 +92,42 @@ function ReplyBox({ placeholder, onSubmit, onCancel, initialText = '', submitLab
   )
 }
 
+function NoteEditBox({ initialTitle, initialContent, onSubmit, onCancel }: {
+  initialTitle: string; initialContent: string
+  onSubmit: (v: { title: string; content: string }) => Promise<void>; onCancel: () => void
+}) {
+  const [title, setTitle] = useState(initialTitle)
+  const [content, setContent] = useState(initialContent)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim()) return
+    setSaving(true); setError('')
+    try { await onSubmit({ title, content }) }
+    catch (err) { setError(err instanceof Error ? err.message : '儲存失敗'); setSaving(false) }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-1.5 space-y-1.5">
+      <input value={title} onChange={e => setTitle(e.target.value)} placeholder="標題" autoFocus
+        className="w-full border rounded-lg px-2.5 py-1.5 text-sm font-semibold" />
+      <textarea value={content} onChange={e => setContent(e.target.value)} rows={4}
+        placeholder="內文：發生什麼事、做了什麼、接手的人要注意什麼"
+        className="w-full border rounded-lg px-2.5 py-1.5 text-sm" />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <div className="flex gap-2 justify-end">
+        <button type="button" onClick={onCancel} className="text-xs text-gray-400 px-2 py-1">取消</button>
+        <button type="submit" disabled={saving || !title.trim()}
+          className="text-xs bg-emerald-600 text-white rounded-lg px-3 py-1 disabled:opacity-40">
+          {saving ? '儲存中…' : '儲存'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 export function HandoverView({ today, year, month, notes, userId, userRole, initialDate, focusNoteId }: Props) {
   const [viewYear, setViewYear]   = useState(year)
   const [viewMonth, setViewMonth] = useState(month)
@@ -104,6 +140,8 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
   const [editLinksId, setEditLinksId] = useState<string | null>(null)
   // 正在編輯內容的留言 id
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  // 正在編輯主文（標題＋內文）的交接事項 id
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
   const [linkBusy, setLinkBusy] = useState(false)
   const [, startTransition] = useTransition()
 
@@ -170,6 +208,12 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
   async function submitComment(noteId: string, parentId: string | null, text: string) {
     await createHandoverComment({ noteId, parentId, content: text })
     setReplyTarget(null)
+    await loadMonth(viewYear, viewMonth)
+  }
+
+  async function saveNoteEdit(id: string, v: { title: string; content: string }) {
+    await updateHandoverNote(id, v)
+    setEditingNoteId(null)
     await loadMonth(viewYear, viewMonth)
   }
 
@@ -322,18 +366,33 @@ export function HandoverView({ today, year, month, notes, userId, userRole, init
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-xs text-gray-400">
-                          {formatTime(n.created_at)}・{isMine ? '我' : n.author_name}
+                          {formatTime(n.created_at)}・{isMine ? '我' : n.author_name}{n.edited_at && '・已編輯'}
                         </p>
-                        <p className="text-sm font-semibold text-gray-900 mt-0.5">{n.title}</p>
+                        {editingNoteId !== n.id && (
+                          <p className="text-sm font-semibold text-gray-900 mt-0.5">{n.title}</p>
+                        )}
                       </div>
-                      {(isMine || canDeleteAny) && (
-                        <button onClick={() => handleDelete(n.id)} title="刪除"
-                          className="text-gray-300 hover:text-red-500 p-1 shrink-0">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isMine && (
+                          <button onClick={() => setEditingNoteId(editingNoteId === n.id ? null : n.id)} title="編輯"
+                            className="text-gray-300 hover:text-emerald-600 p-1">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {(isMine || canDeleteAny) && (
+                          <button onClick={() => handleDelete(n.id)} title="刪除"
+                            className="text-gray-300 hover:text-red-500 p-1">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {n.content && <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-wrap">{n.content}</p>}
+                    {editingNoteId === n.id ? (
+                      <NoteEditBox initialTitle={n.title} initialContent={n.content}
+                        onSubmit={v => saveNoteEdit(n.id, v)} onCancel={() => setEditingNoteId(null)} />
+                    ) : (
+                      n.content && <p className="text-sm text-gray-600 mt-1.5 whitespace-pre-wrap">{n.content}</p>
+                    )}
 
                     {(n.residents.length > 0 || ((isMine || canDeleteAny) && editLinksId === n.id)) && (
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">

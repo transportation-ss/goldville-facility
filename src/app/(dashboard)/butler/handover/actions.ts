@@ -29,6 +29,7 @@ export type HandoverNote = {
   author_id: string
   author_name: string
   created_at: string
+  edited_at: string | null
   likes: HandoverLike[]
   comments: HandoverComment[]
   residents: HandoverResident[]
@@ -144,6 +145,21 @@ export async function getHandoverNotesForResident(residentId: string): Promise<R
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
 }
 
+/** 編輯交接事項主文（標題＋內文）：只有作者本人可以（RLS 也會擋）。 */
+export async function updateHandoverNote(id: string, input: { title: string; content: string }) {
+  const { supabase, user } = await requireUser()
+  const title = input.title.trim()
+  if (!title) throw new Error('請填寫標題')
+  const { data, error } = await supabase
+    .from('butler_handover_notes')
+    .update({ title, content: input.content.trim(), edited_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('author_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) throw new Error('只有作者本人可以編輯')
+}
+
 export async function deleteHandoverNote(id: string) {
   const { supabase } = await requireUser()
   const { error } = await supabase.from('butler_handover_notes').delete().eq('id', id)
@@ -248,7 +264,7 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
 
   const { data: notes, error } = await supabase
     .from('butler_handover_notes')
-    .select('id, note_date, title, content, author_id, created_at, author:user_profiles(display_name)')
+    .select('id, note_date, title, content, author_id, created_at, edited_at, author:user_profiles(display_name)')
     .gte('note_date', start)
     .lte('note_date', end)
     .order('created_at', { ascending: true })
@@ -314,6 +330,7 @@ export async function getHandoverNotesByMonth(year: number, month: number): Prom
     author_id: n.author_id,
     author_name: nameOf(n.author as NameEmbed),
     created_at: n.created_at,
+    edited_at: n.edited_at,
     likes: likesOf(l => l.note_id === n.id),
     residents: linkRows.filter(l => l.note_id === n.id).flatMap(l => {
       const r = Array.isArray(l.resident) ? l.resident[0] : l.resident
