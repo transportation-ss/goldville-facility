@@ -6,7 +6,7 @@ import { useState } from 'react'
 import {
   LayoutDashboard, ClipboardList, Package, Wrench, Menu, X,
   CalendarCheck, Archive, DoorOpen, Droplets, Moon, BedDouble,
-  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Layers, Images, BarChart3, Stethoscope, Brush, FileSpreadsheet,
+  Users, LogOut, BookOpen, History, Sparkles, UserCog, Settings, Images, BarChart3, Stethoscope, Brush, FileSpreadsheet,
   TrendingUp, Filter, ClipboardCheck, Calculator, Wallet, Coins, PieChart, Car,
   NotebookPen, CalendarDays,
 } from 'lucide-react'
@@ -106,7 +106,6 @@ function getNavByRole(role: string): RoleNav {
               { label: '房間登錄', href: '/rooms',            icon: DoorOpen  },
               { label: '帳號管理', href: '/admin/users',      icon: Users     },
               { label: '財產清單', href: '/assets',           icon: Archive   },
-              { label: '樓層配置', href: '/butler/floorplan', icon: Layers    },
               { label: '數據後台', href: process.env.NEXT_PUBLIC_USAGE_DASHBOARD_URL || 'http://localhost:3002', icon: BarChart3 },
               { label: '交通派車後台', href: 'https://line-transport-dispatch.onrender.com/admin', icon: Car },
             ],

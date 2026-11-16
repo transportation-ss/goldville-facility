@@ -8,7 +8,7 @@ import {
   LayoutDashboard, ClipboardList, CalendarCheck, Wrench, Package,
   Archive, DoorOpen, Droplets, LogOut, Settings, Moon,
   Users, BookOpen, KeyRound, BedDouble, History,
-  Sparkles, UserCog, Loader2, Layers, Images, BarChart3, Stethoscope, FileSpreadsheet,
+  Sparkles, UserCog, Loader2, Images, BarChart3, Stethoscope, FileSpreadsheet,
   TrendingUp, Filter, ClipboardCheck, Calculator, Wallet, Coins, PieChart, Car, ChevronDown,
   NotebookPen, CalendarDays,
 } from 'lucide-react'
@@ -54,7 +54,6 @@ const adminNav: NavItem[] = [
   { label: '硬體設備管理', href: '/hardware/admin',    icon: Wrench   },
   { label: '財產清單',     href: '/assets',            icon: Archive  },
   { label: '房間登錄',     href: '/rooms',             icon: DoorOpen },
-  { label: '樓層配置',     href: '/butler/floorplan',  icon: Layers   },
   { label: '數據後台',     href: process.env.NEXT_PUBLIC_USAGE_DASHBOARD_URL || 'http://localhost:3002', icon: BarChart3 },
   { label: '交通派車後台', href: 'https://line-transport-dispatch.onrender.com/admin', icon: Car },
 ]
