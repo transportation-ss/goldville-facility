@@ -7,7 +7,7 @@ import { Plus, Clock, MapPin, User, CheckCircle2, Circle, AlertCircle, Pencil, T
 import type { ButlerTask, ButlerStaff } from './actions'
 import { HandoverQuickAdd } from './HandoverQuickAdd'
 import { uploadTaskPhoto } from '@/lib/upload-task-photo'
-import { createButlerTask, updateButlerTask, deleteButlerTask, completeButlerTask, uncompleteButlerTask, updateCompletionData, findResidentIdBySpace } from './actions'
+import { createButlerTask, updateButlerTask, deleteButlerTask, completeButlerTask, uncompleteButlerTask, updateCompletionData, findResidentIdBySpace, claimButlerTask } from './actions'
 
 interface Props {
   today: string
@@ -422,6 +422,61 @@ function TaskRow({ task, canManage, onComplete, onEdit, onDelete, onUndo }: {
   )
 }
 
+// ── 待認領任務列 ──────────────────────────────────────────
+function PoolRow({ task, canManage, claiming, onClaim, onEdit, onDelete }: {
+  task: ButlerTask
+  canManage: boolean
+  claiming: boolean
+  onClaim: (id: string) => void
+  onEdit: (t: ButlerTask) => void
+  onDelete: (id: string) => void
+}) {
+  return (
+    <div className="flex gap-3 py-3 items-start">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          {task.priority === 'urgent' && (
+            <span className="text-xs font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">緊急</span>
+          )}
+          <span className="text-sm font-semibold text-gray-900">{task.title}</span>
+        </div>
+        {task.subtitle && <p className="text-xs text-gray-500 mt-0.5">{task.subtitle}</p>}
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+          {(task.start_time || task.duration_minutes) && (
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {formatTime(task.start_time)}
+              {task.duration_minutes && ` · ${formatDuration(task.duration_minutes)}`}
+            </span>
+          )}
+          {task.space && (
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <MapPin className="w-3 h-3" />{task.space}
+            </span>
+          )}
+        </div>
+        {task.notes && <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1 mt-1">{task.notes}</p>}
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        {canManage && (
+          <>
+            <button onClick={() => onEdit(task)} className="text-gray-300 hover:text-blue-400 p-1" title="編輯／指派">
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button onClick={() => onDelete(task.id)} className="text-gray-300 hover:text-red-400 p-1" title="刪除">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+        <button onClick={() => onClaim(task.id)} disabled={claiming}
+          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg px-3 py-1.5">
+          {claiming ? '認領中…' : '我來做'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── 列印視圖（隱藏，print 時顯示） ────────────────────────
 function PrintView({ tasks, today, userDisplayName }: {
   tasks: ButlerTask[]
@@ -487,9 +542,27 @@ export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props
   const [selected, setSelected] = useState<ButlerTask | null>(null)
   const [, startTransition] = useTransition()
 
+  const [claiming, setClaiming] = useState<string | null>(null)
+
+  // 沒有任何負責人的任務 → 進「待認領任務池」，不論切換到哪個檢視都獨立顯示
+  const isUnassigned = (t: ButlerTask) => !t.assigned_to_ids?.length
+  const pool = tasks.filter(t => isUnassigned(t) && t.status !== 'completed')
+
   const filtered = viewAll ? tasks : tasks.filter(t => t.assigned_to_ids?.includes(userId))
-  const pending   = filtered.filter(t => t.status !== 'completed')
+  const pending   = filtered.filter(t => t.status !== 'completed' && !isUnassigned(t))
   const completed = filtered.filter(t => t.status === 'completed')
+
+  async function handleClaim(id: string) {
+    setClaiming(id)
+    try {
+      const res = await claimButlerTask(id)
+      if (res.error) alert('認領失敗：' + res.error)
+    } catch (err) {
+      alert('認領失敗：' + (err instanceof Error ? err.message : '請截圖回報'))
+    } finally {
+      setClaiming(null)
+    }
+  }
 
   const currentUser = staff.find(s => s.id === userId)
 
@@ -562,10 +635,14 @@ export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props
         </div>
 
         {/* 統計卡 */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-3 mb-5">
           <div className="bg-white rounded-xl border p-3">
             <p className="text-xs text-gray-400">待完成</p>
             <p className="text-2xl font-bold text-gray-900 mt-0.5">{pending.length}</p>
+          </div>
+          <div className={`rounded-xl border p-3 ${pool.length > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
+            <p className="text-xs text-gray-400">待認領</p>
+            <p className={`text-2xl font-bold mt-0.5 ${pool.length > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{pool.length}</p>
           </div>
           <div className="bg-white rounded-xl border p-3">
             <p className="text-xs text-gray-400">已完成</p>
@@ -591,11 +668,18 @@ export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props
           </div>
         )}
 
-        {/* 一般任務 */}
-        <div className="bg-white border rounded-xl divide-y">
-          {pending.filter(t => t.priority !== 'urgent').length === 0 && completed.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-10">
-              {viewAll ? '今日尚無任務' : '今日沒有派給你的任務'}
+        {/* ① 今日任務項目 */}
+        <div className="bg-white border rounded-xl divide-y mb-4">
+          <div className="px-4 py-2 bg-gray-50 rounded-t-xl">
+            <p className="text-xs font-semibold text-gray-600">
+              📋 今日任務項目 {pending.filter(t => t.priority !== 'urgent').length} 件
+            </p>
+          </div>
+          {pending.filter(t => t.priority !== 'urgent').length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-6">
+              {pending.length > 0
+                ? '其餘任務都在上方的緊急區'
+                : viewAll ? '今日沒有已指派的任務' : '今日沒有派給你的任務'}
             </p>
           )}
           {pending.filter(t => t.priority !== 'urgent').map(t => (
@@ -604,23 +688,44 @@ export function ButlerTodayView({ today, tasks, staff, userRole, userId }: Props
                 onComplete={openComplete} onEdit={openEdit} onDelete={handleDelete} onUndo={openUndo} />
             </div>
           ))}
-          {completed.length > 0 && (
-            <>
-              <div className="px-4 py-2 bg-gray-50 flex items-center gap-2">
-                <p className="text-xs font-semibold text-gray-400 flex-1">已完成 {completed.length} 件</p>
-                <span className="text-[10px] text-gray-300 flex items-center gap-0.5">
-                  <RotateCcw className="w-2.5 h-2.5" /> 點擊 ✓ 可取消
-                </span>
-              </div>
-              {completed.map(t => (
-                <div key={t.id} className="px-4">
-                  <TaskRow task={t} canManage={canManage}
-                    onComplete={openComplete} onEdit={openEdit} onDelete={handleDelete} onUndo={openUndo} />
-                </div>
-              ))}
-            </>
-          )}
         </div>
+
+        {/* ② 待認領任務池 */}
+        <div className={`border rounded-xl divide-y mb-4 ${pool.length > 0 ? 'bg-amber-50/40 border-amber-200 divide-amber-100' : 'bg-white'}`}>
+          <div className={`px-4 py-2 rounded-t-xl ${pool.length > 0 ? 'bg-amber-100' : 'bg-gray-50'}`}>
+            <p className={`text-xs font-semibold ${pool.length > 0 ? 'text-amber-800' : 'text-gray-600'}`}>
+              🙋 待認領任務 {pool.length} 件
+              {pool.length > 0 && <span className="font-normal ml-2">還沒有人負責，有空的人按「我來做」</span>}
+            </p>
+          </div>
+          {pool.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-6">目前沒有待認領的任務</p>
+          )}
+          {pool.map(t => (
+            <div key={t.id} className="px-4">
+              <PoolRow task={t} canManage={canManage} claiming={claiming === t.id}
+                onClaim={handleClaim} onEdit={openEdit} onDelete={handleDelete} />
+            </div>
+          ))}
+        </div>
+
+        {/* ③ 已完成任務 */}
+        {completed.length > 0 && (
+          <div className="bg-white border rounded-xl divide-y">
+            <div className="px-4 py-2 bg-gray-50 rounded-t-xl flex items-center gap-2">
+              <p className="text-xs font-semibold text-gray-600 flex-1">✅ 已完成任務 {completed.length} 件</p>
+              <span className="text-[10px] text-gray-300 flex items-center gap-0.5">
+                <RotateCcw className="w-2.5 h-2.5" /> 點擊 ✓ 可取消
+              </span>
+            </div>
+            {completed.map(t => (
+              <div key={t.id} className="px-4">
+                <TaskRow task={t} canManage={canManage}
+                  onComplete={openComplete} onEdit={openEdit} onDelete={handleDelete} onUndo={openUndo} />
+              </div>
+            ))}
+          </div>
+        )}
 
         <HandoverQuickAdd />
 

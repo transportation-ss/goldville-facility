@@ -227,6 +227,33 @@ export async function deleteButlerTask(id: string): Promise<ActionResult> {
   return {}
 }
 
+/**
+ * 認領「待認領任務池」的任務：只有在目前沒有任何負責人、且尚未完成時才會成功。
+ * 以條件式 UPDATE 防止兩人同時認領同一件（後按的人會得到錯誤訊息）。
+ */
+export async function claimButlerTask(id: string): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: '請先登入' }
+  const { data: profile } = await supabase
+    .from('user_profiles').select('role').eq('id', user.id).single()
+  if (!['butler', 'butler_manager', 'admin', 'manager'].includes(profile?.role ?? '')) {
+    return { error: '你的角色無法認領任務' }
+  }
+
+  const { data, error } = await supabase
+    .from('butler_tasks')
+    .update({ assigned_to: user.id, assigned_to_ids: [user.id], updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('assigned_to_ids', '{}')
+    .neq('status', 'completed')
+    .select('id')
+  if (error) return { error: error.message }
+  if (!data || data.length === 0) return { error: '這件任務已被其他人認領或已完成，請重新整理' }
+  revalidatePath('/butler')
+  return {}
+}
+
 export async function completeButlerTask(id: string, notes: string, photoUrl?: string | null): Promise<ActionResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

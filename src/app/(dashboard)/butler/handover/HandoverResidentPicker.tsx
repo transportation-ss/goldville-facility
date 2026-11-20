@@ -20,6 +20,18 @@ export function mentionsRoom(text: string, room: string) {
   return false
 }
 
+// 模糊比對：輸入的每個字依序出現在目標中即可（忽略空白），例如「白英」「白」「王明」都能找到「王大明」
+function fuzzy(target: string, q: string) {
+  const t = target.toLowerCase()
+  let i = 0
+  for (const ch of q.replace(/\s+/g, '')) {
+    i = t.indexOf(ch, i)
+    if (i === -1) return false
+    i++
+  }
+  return true
+}
+
 // 住戶清單在同一個頁面內只抓一次
 let cache: Promise<LinkableResident[]> | null = null
 function loadResidents() {
@@ -31,11 +43,13 @@ function loadResidents() {
  * 住戶挑選：打房號或姓名出現建議，由人點選才連結（不會自動偷連）。
  * textHint：標題與內文，若提到某位住戶的房號或姓名，會多顯示一排「建議連結」。
  */
-export function HandoverResidentPicker({ selectedIds, onAdd, onRemove, textHint = '', busy = false, showChips = true }: {
+export function HandoverResidentPicker({ selectedIds, onAdd, onRemove, textHint = '', titleHint = '', busy = false, showChips = true }: {
   selectedIds: string[]
   onAdd: (r: LinkableResident) => void
   onRemove: (r: LinkableResident) => void
   textHint?: string
+  /** 標題：做模糊比對（含姓氏就提示）；內文（textHint）仍維持房號／完整姓名精準比對 */
+  titleHint?: string
   busy?: boolean
   showChips?: boolean
 }) {
@@ -57,18 +71,24 @@ export function HandoverResidentPicker({ selectedIds, onAdd, onRemove, textHint 
     if (!q) return []
     return residents
       .filter(r => !selectedIds.includes(r.id))
-      .filter(r => r.name.toLowerCase().includes(q) || (r.room ?? '').toLowerCase().includes(q))
+      .filter(r => fuzzy(r.name, q) || (r.room ?? '').toLowerCase().includes(q) || fuzzy(residentLabel(r), q))
+      // 名字開頭相符的排前面
+      .sort((a, b) => Number(b.name.toLowerCase().startsWith(q)) - Number(a.name.toLowerCase().startsWith(q)))
       .slice(0, 6)
   }, [query, residents, selectedIds])
 
   const hinted = useMemo(() => {
     const t = textHint.trim()
-    if (!t) return []
+    const title = titleHint.trim()
+    if (!t && !title) return []
     return residents
       .filter(r => !selectedIds.includes(r.id))
-      .filter(r => (r.room && mentionsRoom(t, r.room)) || (r.name.length >= 2 && t.includes(r.name)))
+      .filter(r =>
+        (t && r.room && mentionsRoom(t, r.room)) ||
+        (t && r.name.length >= 2 && t.includes(r.name)) ||
+        (title && r.name && title.includes(r.name[0])))
       .slice(0, 6)
-  }, [textHint, residents, selectedIds])
+  }, [textHint, titleHint, residents, selectedIds])
 
   return (
     <div className="space-y-1.5">
