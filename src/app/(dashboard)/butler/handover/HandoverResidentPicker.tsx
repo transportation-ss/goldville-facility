@@ -21,7 +21,7 @@ export function mentionsRoom(text: string, room: string) {
 }
 
 // 模糊比對：輸入的每個字依序出現在目標中即可（忽略空白），例如「白英」「白」「王明」都能找到「王大明」
-function fuzzy(target: string, q: string) {
+export function fuzzy(target: string, q: string) {
   const t = target.toLowerCase()
   let i = 0
   for (const ch of q.replace(/\s+/g, '')) {

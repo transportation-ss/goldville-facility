@@ -6,7 +6,7 @@ import { ArrowLeft, Plus, Type, Camera, Heading, Trash2, GripVertical, X, Users,
 import type { LogBlock } from '../../../residents/actions'
 import type { GroupActivity, ResidentOption, StaffOption } from '../../actions'
 import { createGroupActivity, updateGroupActivity } from '../../actions'
-import { mentionsRoom } from '../../../handover/HandoverResidentPicker'
+import { mentionsRoom, fuzzy } from '../../../handover/HandoverResidentPicker'
 
 // ── Block 元件（複用 LogEditor 相同邏輯）────────────────
 function HeadingBlock({ block, onChange, onDelete }: {
@@ -289,10 +289,10 @@ function ParticipantPicker({ label, icon, options, selected, onToggle, color, hi
   const tokens = q.split(/[\s,，、]+/).filter(Boolean)
   const filtered = tokens.length === 0
     ? options
-    : options.filter(o => tokens.some(k => o.label.includes(k) || (o.sub ?? '').includes(k)))
+    : options.filter(o => tokens.some(k => fuzzy(o.label, k) || (o.sub ?? '').includes(k)))
   const pending = tokens.length > 1 ? filtered.filter(o => !selected.has(o.id)) : []
   const notFound = tokens.length > 1
-    ? tokens.filter(k => !options.some(o => o.label.includes(k) || (o.sub ?? '').includes(k)))
+    ? tokens.filter(k => !options.some(o => fuzzy(o.label, k) || (o.sub ?? '').includes(k)))
     : []
   const t = (hintText ?? '').trim()
   const hinted = t
